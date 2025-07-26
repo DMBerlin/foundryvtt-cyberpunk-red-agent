@@ -1,119 +1,40 @@
-<form class="cp-agent cp-agent-home">
-  <header class="sheet-header">
-    <h1 class="charname">
-      <input name="name" type="text" value="{{actor.name}}" placeholder="Character Name" readonly />
-    </h1>
-    <div class="agent-status">
-      <span class="status-indicator online">ONLINE</span>
+<div class="cp-agent-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
     </div>
-  </header>
+  </div>
 
-  <nav class="sheet-navigation tabs" data-group="primary">
-    <a class="item active" data-tab="main">Main</a>
-    <a class="item" data-tab="contacts">Contacts</a>
-    <a class="item" data-tab="settings">Settings</a>
-  </nav>
+  <!-- Phone Screen -->
+  <div class="cp-phone-screen">
+    <!-- Welcome Message -->
+    <div class="cp-welcome-section">
+      <div class="cp-agent-logo">
+        <i class="fas fa-mobile-alt"></i>
+      </div>
+      <h2>Agent {{actor.name}}</h2>
+      <p>Seu assistente pessoal de comunicação</p>
+    </div>
 
-  <section class="sheet-body">
-    <!-- Main Tab -->
-    <div class="tab main" data-group="primary" data-tab="main">
-      <div class="cp-agent-main-interface">
-        <div class="cp-agent-welcome">
-          <h2>Welcome to your Agent, {{actor.name}}</h2>
-          <p>Your personal AI assistant for communication and networking.</p>
+    <!-- Apps Grid -->
+    <div class="cp-apps-container">
+      <div class="cp-app-icon" data-app="chat7">
+        <div class="cp-app-icon-inner">
+          <i class="fas fa-comments"></i>
         </div>
-
-        <div class="cp-quick-actions">
-          <h3>Quick Actions</h3>
-          <div class="cp-action-buttons">
-            <button type="button" class="chat-button">
-              <i class="fas fa-comments"></i>
-              Open Chat
-            </button>
-            <button type="button" class="contacts-button">
-              <i class="fas fa-address-book"></i>
-              Manage Contacts
-            </button>
-            <button type="button" class="settings-button">
-              <i class="fas fa-cog"></i>
-              Agent Settings
-            </button>
-          </div>
-        </div>
-
-        <div class="cp-recent-activity">
-          <h3>Recent Activity</h3>
-          <div class="cp-activity-list">
-            <div class="cp-activity-item">
-              <span class="cp-activity-time">2:34 PM</span>
-              <span class="cp-activity-text">Agent initialized successfully</span>
-            </div>
-            <div class="cp-activity-item">
-              <span class="cp-activity-time">2:30 PM</span>
-              <span class="cp-activity-text">Connected to local network</span>
-            </div>
-          </div>
-        </div>
+        <span class="cp-app-name">Chat7</span>
       </div>
     </div>
 
-    <!-- Contacts Tab -->
-    <div class="tab contacts" data-group="primary" data-tab="contacts">
-      <div class="cp-contacts-interface">
-        <h3>Contact Network</h3>
-        <div class="cp-contacts-list">
-          {{#each contacts}}
-          <div class="cp-contact-item" data-contact-id="{{this.id}}">
-            <img src="{{this.img}}" alt="{{this.name}}" class="cp-contact-avatar" />
-            <div class="cp-contact-info">
-              <span class="cp-contact-name">{{this.name}}</span>
-              <span class="cp-contact-status online">Online</span>
-            </div>
-            <div class="cp-contact-actions">
-              <button type="button" class="contact-chat" data-contact-id="{{this.id}}" title="Chat with {{this.name}}">
-                <i class="fas fa-comment"></i>
-              </button>
-              <button type="button" class="contact-call" data-contact-id="{{this.id}}" title="Call {{this.name}}">
-                <i class="fas fa-phone"></i>
-              </button>
-            </div>
-          </div>
-          {{else}}
-          <div class="cp-no-contacts">
-            <p>No contacts in your network yet.</p>
-            {{#if ../isGM}}
-            <p>Use the Contact Manager to add contacts.</p>
-            {{/if}}
-          </div>
-          {{/each}}
-        </div>
-      </div>
+    <!-- Footer -->
+    <div class="cp-phone-footer">
+      <div class="cp-home-indicator"></div>
     </div>
-
-    <!-- Settings Tab -->
-    <div class="tab settings" data-group="primary" data-tab="settings">
-      <div class="cp-settings-interface">
-        <h3>Agent Settings</h3>
-        <div class="cp-settings-group">
-          <label>Agent Name</label>
-          <input type="text" name="agentName" value="{{agentData.agentName}}" placeholder="Enter agent name" />
-        </div>
-        <div class="cp-settings-group">
-          <label for="autoResponse">Auto-Response</label>
-          <select name="autoResponse" id="autoResponse" title="Auto-Response setting">
-            <option value="enabled" {{#if agentData.autoResponse}}selected{{/if}}>Enabled</option>
-            <option value="disabled" {{#unless agentData.autoResponse}}selected{{/unless}}>Disabled</option>
-          </select>
-        </div>
-        <div class="cp-settings-group">
-          <label for="privacyLevel">Privacy Level</label>
-          <select name="privacyLevel" id="privacyLevel" title="Privacy Level setting">
-            <option value="public" {{#if (eq agentData.privacyLevel "public" )}}selected{{/if}}>Public</option>
-            <option value="private" {{#if (eq agentData.privacyLevel "private" )}}selected{{/if}}>Private</option>
-            <option value="stealth" {{#if (eq agentData.privacyLevel "stealth" )}}selected{{/if}}>Stealth</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </section>
-</form>
+  </div>
+</div>

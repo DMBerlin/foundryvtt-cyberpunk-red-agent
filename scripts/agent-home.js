@@ -24,8 +24,8 @@ class AgentHomeApplication extends FormApplication {
       id: "agent-home",
       classes: ["cyberpunk-agent", "agent-home"],
       template: "modules/cyberpunk-agent/templates/agent-home.html",
-      width: 800,
-      height: 600,
+      width: 400,
+      height: 700,
       resizable: true,
       minimizable: true,
       title: "Cyberpunk Agent"
@@ -38,25 +38,17 @@ class AgentHomeApplication extends FormApplication {
   getData(options = {}) {
     const data = super.getData(options);
 
-    // Get agent data for this actor
-    let agentData = {};
-    let contacts = [];
-
-    try {
-      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        agentData = window.CyberpunkAgent.instance.getAgentData(this.actor.id) || {};
-        contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
-      }
-    } catch (error) {
-      console.warn("Cyberpunk Agent | Error getting agent data:", error);
-    }
+    // Get current time
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     return {
       ...data,
       actor: this.actor,
-      agentData: agentData,
-      contacts: contacts,
-      isGM: game.user.isGM
+      currentTime: currentTime
     };
   }
 
@@ -66,43 +58,29 @@ class AgentHomeApplication extends FormApplication {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add custom event listeners
-    html.find('.chat-button').click(this._onChatClick.bind(this));
-    html.find('.contacts-button').click(this._onContactsClick.bind(this));
-    html.find('.settings-button').click(this._onSettingsClick.bind(this));
+    // Add custom event listeners for app icons
+    html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
   }
 
   /**
-   * Handle chat button click
+   * Handle Chat7 app click
    */
-  _onChatClick(event) {
+  _onChat7Click(event) {
     event.preventDefault();
-    console.log("Chat button clicked for actor:", this.actor.name);
+    console.log("Chat7 app clicked for actor:", this.actor.name);
 
-    // TODO: Open chat interface
-    ui.notifications.info("Chat interface coming soon!");
-  }
+    // Close the current application
+    this.close();
 
-  /**
-   * Handle contacts button click
-   */
-  _onContactsClick(event) {
-    event.preventDefault();
-    console.log("Contacts button clicked for actor:", this.actor.name);
-
-    // TODO: Open contacts interface
-    ui.notifications.info("Contacts interface coming soon!");
-  }
-
-  /**
-   * Handle settings button click
-   */
-  _onSettingsClick(event) {
-    event.preventDefault();
-    console.log("Settings button clicked for actor:", this.actor.name);
-
-    // TODO: Open settings interface
-    ui.notifications.info("Settings interface coming soon!");
+    // Open Chat7 application
+    const ChatClass = Chat7Application || window.Chat7Application;
+    if (typeof ChatClass !== 'undefined') {
+      const chat7 = new ChatClass(this.actor);
+      chat7.render(true);
+    } else {
+      console.error("Cyberpunk Agent | Chat7Application not loaded!");
+      ui.notifications.error("Erro ao carregar o Chat7. Tente recarregar a página (F5).");
+    }
   }
 
   /**
@@ -133,11 +111,11 @@ class Chat7Application extends FormApplication {
       id: "chat7",
       classes: ["cyberpunk-agent", "chat7"],
       template: "modules/cyberpunk-agent/templates/chat7.html",
-      width: 600,
-      height: 400,
+      width: 400,
+      height: 700,
       resizable: true,
       minimizable: true,
-      title: "Agent Chat"
+      title: "Chat7"
     });
   }
 
@@ -147,9 +125,29 @@ class Chat7Application extends FormApplication {
   getData(options = {}) {
     const data = super.getData(options);
 
+    // Get current time
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // Get contacts for this actor
+    let contacts = [];
+    try {
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
+      }
+    } catch (error) {
+      console.warn("Cyberpunk Agent | Error getting contacts:", error);
+    }
+
     return {
       ...data,
-      actor: this.actor
+      actor: this.actor,
+      currentTime: currentTime,
+      contacts: contacts,
+      isGM: game.user.isGM
     };
   }
 
@@ -159,43 +157,39 @@ class Chat7Application extends FormApplication {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add chat-specific event listeners
-    html.find('.cp-send-message').click(this._onSendMessage.bind(this));
-    html.find('.cp-message-input').keypress(this._onMessageKeypress.bind(this));
+    // Add custom event listeners
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-chat-button').click(this._onContactChatClick.bind(this));
   }
 
   /**
-   * Handle send message button click
+   * Handle back button click
    */
-  _onSendMessage(event) {
+  _onBackClick(event) {
     event.preventDefault();
-    const input = this.element.find('.cp-message-input');
-    const message = input.val().trim();
+    console.log("Back button clicked");
 
-    if (message) {
-      this._sendMessage(message);
-      input.val('');
+    // Close the current application
+    this.close();
+
+    // Reopen the Agent Home
+    const AgentClass = AgentHomeApplication || window.AgentHomeApplication;
+    if (typeof AgentClass !== 'undefined') {
+      const agentHome = new AgentClass(this.actor);
+      agentHome.render(true);
     }
   }
 
   /**
-   * Handle message input keypress (Enter key)
+   * Handle contact chat button click
    */
-  _onMessageKeypress(event) {
-    if (event.which === 13) { // Enter key
-      event.preventDefault();
-      this._onSendMessage(event);
-    }
-  }
+  _onContactChatClick(event) {
+    event.preventDefault();
+    const contactId = event.currentTarget.dataset.contactId;
+    console.log("Contact chat clicked for contact:", contactId);
 
-  /**
-   * Send a message
-   */
-  _sendMessage(message) {
-    console.log(`Sending message from ${this.actor.name}:`, message);
-
-    // TODO: Implement actual message sending logic
-    ui.notifications.info(`Message sent: ${message}`);
+    // TODO: Implement actual chat with contact
+    ui.notifications.info("Chat com contato será implementado em breve!");
   }
 
   /**
@@ -203,7 +197,7 @@ class Chat7Application extends FormApplication {
    */
   async _updateObject(event, formData) {
     // Handle any form updates if needed
-    console.log("Chat form updated:", formData);
+    console.log("Chat7 form updated:", formData);
   }
 }
 

@@ -1,77 +1,108 @@
-<form class="cp-agent cp-contact-manager">
-  <header class="sheet-header">
-    <h1 class="charname">Contact Network Manager</h1>
-    <div class="manager-status">
-      <span class="status-indicator">GM Interface</span>
-    </div>
-  </header>
+<div class="cp-contact-manager-config">
+  <!-- Header -->
+  <div class="cp-config-header">
+    <h2><i class="fas fa-users"></i> Gerenciador de Contatos</h2>
+    <p>Configure as redes de contatos para cada personagem. Marque os checkboxes para adicionar contatos.</p>
+  </div>
 
-  <section class="sheet-body">
-    <div class="cp-manager-interface">
-      <!-- Control Panel -->
-      <div class="cp-control-panel">
-        <button type="button" class="cp-refresh-contacts" title="Refresh Contact Networks">
-          <i class="fas fa-sync-alt"></i>
-          Refresh
-        </button>
-        <div class="cp-stats">
-          <span class="cp-stat-item">
-            <strong>{{characterActors.length}}</strong> Characters
-          </span>
-          <span class="cp-stat-item">
-            <strong>{{totalContacts}}</strong> Total Contacts
-          </span>
+  <!-- Stats Panel -->
+  <div class="cp-stats-panel">
+    <div class="cp-stat-item">
+      <span class="cp-stat-label">Total de Personagens:</span>
+      <span class="cp-stat-value">{{characterActors.length}}</span>
+    </div>
+    <div class="cp-stat-item">
+      <span class="cp-stat-label">Total de Contatos:</span>
+      <span class="cp-stat-value">{{totalContacts}}</span>
+    </div>
+    <div class="cp-stat-item">
+      <span class="cp-stat-label">Status:</span>
+      <span class="cp-stat-value online">Ativo</span>
+    </div>
+  </div>
+
+  <!-- Control Panel -->
+  <div class="cp-control-panel">
+    <div class="cp-search-filter-container">
+      <input type="text" class="cp-search-filter" placeholder="Filtrar personagens..." />
+      <i class="fas fa-search cp-filter-icon"></i>
+    </div>
+    <div class="cp-control-buttons">
+      <button class="cp-refresh-contacts" title="Atualizar redes de contatos">
+        <i class="fas fa-sync-alt"></i>
+        Atualizar
+      </button>
+      <button class="cp-save-all" title="Salvar todas as redes de contatos">
+        <i class="fas fa-save"></i>
+        Salvar Tudo
+      </button>
+    </div>
+  </div>
+
+  <!-- Contact Networks -->
+  <div class="cp-networks-container">
+    {{#each characterActors}}
+    <div class="cp-network-section" data-actor-id="{{this.id}}">
+      <!-- Actor Header -->
+      <div class="cp-actor-header">
+        <div class="cp-actor-info">
+          <img src="{{this.img}}" alt="{{this.name}}" class="cp-actor-avatar" />
+          <div class="cp-actor-details">
+            <h3>{{this.name}}</h3>
+            <span class="cp-contact-count" id="contact-count-{{this.id}}">
+              {{#with (lookup ../contactNetworks this.id)}}{{contacts.length}}{{else}}0{{/with}} contatos
+            </span>
+          </div>
+        </div>
+        <div class="cp-actor-controls">
+          <button class="cp-add-contact-btn" data-actor-id="{{this.id}}" title="Adicionar contatos">
+            <i class="fas fa-plus"></i>
+            Adicionar
+          </button>
         </div>
       </div>
 
-      <!-- Contact Networks -->
-      <div class="cp-contact-networks">
-        {{#each contactNetworks}}
-        <div class="cp-network-section" data-actor-id="{{this.actor.id}}">
-          <div class="cp-network-header">
-            <div class="cp-actor-info">
-              <img src="{{this.actor.img}}" alt="{{this.actor.name}}" class="cp-actor-avatar" />
-              <div class="cp-actor-details">
-                <h3>{{this.actor.name}}</h3>
-                <span class="cp-contact-count">{{this.contacts.length}} contacts</span>
-              </div>
-            </div>
-            <button type="button" class="cp-add-contact" data-actor-id="{{this.actor.id}}" title="Add Contact">
-              <i class="fas fa-plus"></i>
-              Add Contact
-            </button>
-          </div>
-
-          <div class="cp-contacts-grid">
-            {{#each this.contacts}}
-            <div class="cp-contact-card" data-contact-id="{{this.id}}">
-              <img src="{{this.img}}" alt="{{this.name}}" class="cp-contact-avatar" />
-              <div class="cp-contact-details">
-                <span class="cp-contact-name">{{this.name}}</span>
-                <span class="cp-contact-status online">Online</span>
-              </div>
-              <div class="cp-contact-actions">
-                <button type="button" class="cp-remove-contact" data-actor-id="{{../this.actor.id}}"
-                  data-contact-id="{{this.id}}" title="Remove Contact">
+      <!-- Selected Contacts Chips -->
+      <div class="cp-selected-contacts" id="selected-contacts-{{this.id}}">
+        {{#with (lookup ../contactNetworks this.id)}}
+          {{#if contacts.length}}
+            <div class="cp-contacts-chips">
+              {{#each contacts}}
+              <div class="cp-contact-chip" data-contact-id="{{this.id}}" data-actor-id="{{../actor.id}}">
+                <img src="{{this.img}}" alt="{{this.name}}" class="cp-chip-avatar" />
+                <span class="cp-chip-name">{{this.name}}</span>
+                <button class="cp-remove-contact" title="Remover {{this.name}}">
                   <i class="fas fa-times"></i>
                 </button>
               </div>
+              {{/each}}
             </div>
-            {{else}}
-            <div class="cp-no-contacts">
-              <p>No contacts yet</p>
-              <small>Click "Add Contact" to add contacts to this character's network</small>
+          {{else}}
+            <div class="cp-no-contacts" id="no-contacts-{{../actor.id}}">
+              <p>Nenhum contato configurado para este personagem.</p>
             </div>
-            {{/each}}
-          </div>
-        </div>
+          {{/if}}
         {{else}}
-        <div class="cp-no-networks">
-          <p>No character actors found</p>
-          <small>Create character actors to manage their contact networks</small>
-        </div>
-        {{/each}}
+          <div class="cp-no-contacts" id="no-contacts-{{this.id}}">
+            <p>Nenhum contato configurado para este personagem.</p>
+          </div>
+        {{/with}}
       </div>
     </div>
-  </section>
-</form>
+    {{else}}
+    <div class="cp-no-actors">
+      <div class="cp-no-actors-icon">
+        <i class="fas fa-user-slash"></i>
+      </div>
+      <h3>Nenhum Personagem Encontrado</h3>
+      <p>Não há personagens (actors) no jogo para configurar contatos.</p>
+    </div>
+    {{/each}}
+  </div>
+
+  <!-- Footer -->
+  <div class="cp-config-footer">
+    <p><i class="fas fa-info-circle"></i> As alterações são salvas automaticamente. Use "Salvar Tudo" para garantir que
+      todas as mudanças sejam persistidas.</p>
+  </div>
+</div>

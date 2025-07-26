@@ -24,7 +24,7 @@ class CyberpunkAgent {
             name: 'Redes de Contatos',
             hint: 'Configure as redes de contatos para cada Actor',
             scope: 'world',
-            config: true,
+            config: false,
             type: Object,
             default: {}
         });
@@ -36,6 +36,16 @@ class CyberpunkAgent {
             config: false,
             type: Object,
             default: {}
+        });
+
+        // Register a custom settings menu for Cyberpunk Agent
+        game.settings.registerMenu('cyberpunk-agent', 'contact-manager-menu', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_BUTTON'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_HINT'),
+            label: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_BUTTON'),
+            icon: 'fas fa-users',
+            type: ContactManagerMenu,
+            restricted: true
         });
 
         console.log("Cyberpunk Agent | Settings registered successfully");
@@ -463,32 +473,14 @@ Hooks.once('ready', () => {
         }
     });
 
-    // Hook for adding GM menu button
-    Hooks.on('renderActorDirectory', (app, html) => {
-        if (game.user.isGM) {
-            const button = $(`
-                <button class="cp-agent-settings-btn" title="Open Contact Manager">
-                    <i class="fas fa-users"></i>
-                    Contact Manager
-                </button>
-            `);
-
-            button.click(() => {
-                const ContactClass = ContactManagerApplication || window.ContactManagerApplication;
-                if (typeof ContactClass !== 'undefined') {
-                    const contactManager = new ContactClass();
-                    contactManager.render(true);
-                } else {
-                    ui.notifications.error("Contact Manager not loaded!");
-                }
-            });
-
-            html.find('.directory-header').append(button);
-        }
-    });
+    // Note: Contact Manager is now accessed through a custom settings menu
 });
 
 Hooks.once('disableModule', () => {
     console.log("Cyberpunk Agent | Disable hook triggered");
     CyberpunkAgent.cleanup();
-}); 
+});
+
+// Make CyberpunkAgent globally available
+window.CyberpunkAgent = CyberpunkAgent;
+console.log("Cyberpunk Agent | CyberpunkAgent class made globally available"); 

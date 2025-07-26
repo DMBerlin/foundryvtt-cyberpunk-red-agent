@@ -50,13 +50,16 @@
       "NO_CONTACTS_AVAILABLE": "No contacts available to add.",
       "SUCCESS": "Operation completed successfully",
       "ERROR": "An error occurred",
-      "WARNING": "Warning"
+      "WARNING": "Warning",
+      "GM_ONLY": "Only the Game Master can access the Contact Manager."
     },
     "SETTINGS": {
       "TITLE": "Cyberpunk Agent Settings",
       "CONTACT_NETWORKS": "Contact Networks",
       "CONTACT_NETWORKS_HINT": "Configure contact networks for each Actor",
-      "MANAGE_CONTACTS": "Manage Contacts"
+      "MANAGE_CONTACTS": "Manage Contacts",
+      "CONTACT_MANAGER_BUTTON": "Contact Management",
+      "CONTACT_MANAGER_HINT": "Open the contact manager to configure contact networks for each character"
     }
   }
 }

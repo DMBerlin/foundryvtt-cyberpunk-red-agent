@@ -1308,3 +1308,1295 @@
 .cp-contact-manager .cp-contact-networks::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 255, 0, 0.7);
 }
+
+/* ===== CYBERPUNK 2077 PHONE DESIGN ===== */
+
+/* Phone Container */
+.cp-agent-phone,
+.cp-chat7-phone {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  border: 3px solid #00ff00;
+  border-radius: 25px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Orbitron', monospace;
+  color: #00ff00;
+  position: relative;
+  box-shadow:
+    0 0 20px rgba(0, 255, 0, 0.3),
+    inset 0 0 20px rgba(0, 255, 0, 0.1);
+}
+
+/* Phone Header */
+.cp-phone-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.cp-phone-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.cp-time {
+  font-weight: bold;
+}
+
+.cp-status-icons {
+  display: flex;
+  gap: 5px;
+}
+
+.cp-status-icons i {
+  font-size: 0.7em;
+}
+
+/* Phone Screen */
+.cp-phone-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+}
+
+/* Welcome Section */
+.cp-welcome-section {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 20px;
+}
+
+.cp-agent-logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  color: #000;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
+
+.cp-welcome-section h2 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.5em;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.cp-welcome-section p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.8);
+  font-size: 0.9em;
+}
+
+/* Apps Container */
+.cp-apps-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cp-app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid rgba(0, 255, 0, 0.3);
+  min-width: 120px;
+}
+
+.cp-app-icon:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+}
+
+.cp-app-icon-inner {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #333 0%, #1a1a1a 100%);
+  border: 3px solid #00ff00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  font-size: 2em;
+  color: #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.cp-app-name {
+  font-size: 1em;
+  color: #00ff00;
+  text-align: center;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+/* Phone Footer */
+.cp-phone-footer {
+  padding: 10px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.cp-home-indicator {
+  width: 40px;
+  height: 4px;
+  background: #00ff00;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* App Header */
+.cp-app-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-weight: bold;
+}
+
+.cp-back-button {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.cp-back-button:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-app-title {
+  flex: 1;
+  text-align: center;
+}
+
+.cp-app-title h3 {
+  margin: 0 0 2px 0;
+  font-size: 1.2em;
+}
+
+.cp-app-subtitle {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.cp-app-menu {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.cp-app-menu:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+/* Contacts Container */
+.cp-contacts-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.cp-contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cp-contact-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-contact-item:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: translateX(5px);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 15px;
+  border: 2px solid #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-contact-info {
+  flex: 1;
+}
+
+.cp-contact-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 5px;
+  display: block;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-status {
+  color: #00cc00;
+  font-size: 0.9em;
+}
+
+.cp-contact-status.online {
+  color: #00ff00;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.cp-contact-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.cp-chat-button {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.cp-chat-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* No Contacts */
+.cp-no-contacts {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(0, 255, 0, 0.6);
+}
+
+.cp-no-contacts-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+  color: rgba(0, 255, 0, 0.4);
+}
+
+.cp-no-contacts h3 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-no-contacts p {
+  margin: 0 0 15px 0;
+  font-size: 1em;
+}
+
+.cp-no-contacts small {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* ===== RESPONSIVE DESIGN FOR PHONE ===== */
+@media (max-width: 768px) {
+
+  .cp-agent-phone,
+  .cp-chat7-phone {
+    border-radius: 20px;
+  }
+
+  .cp-phone-screen {
+    padding: 15px;
+  }
+
+  .cp-agent-logo {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5em;
+  }
+
+  .cp-app-icon-inner {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5em;
+  }
+
+  .cp-contacts-container {
+    padding: 15px;
+  }
+}
+
+/* ===== SCROLLBARS FOR PHONE ===== */
+.cp-contacts-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cp-contacts-container::-webkit-scrollbar-track {
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 3px;
+}
+
+.cp-contacts-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 0, 0.5);
+  border-radius: 3px;
+}
+
+.cp-contacts-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 0, 0.7);
+}
+
+/* ===== CONTACT MANAGER CONFIGURATION ===== */
+
+.cp-contact-manager-config {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  color: #00ff00;
+  font-family: 'Orbitron', monospace;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Config Header */
+.cp-config-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 15px;
+  border: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-config-header h2 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.8em;
+  text-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-config-header p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.8);
+  font-size: 1em;
+}
+
+/* Stats Panel */
+.cp-stats-panel {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 15px;
+  border: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cp-stat-label {
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.cp-stat-value {
+  color: #00ff00;
+  font-size: 1.5em;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.cp-stat-value.online {
+  color: #00ff00;
+}
+
+/* Control Panel */
+.cp-control-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid rgba(0, 255, 0, 0.3);
+  border-radius: 12px;
+}
+
+.cp-search-filter-container {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+}
+
+.cp-search-filter {
+  width: 100%;
+  padding: 10px 35px 10px 15px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(0, 255, 0, 0.4);
+  border-radius: 8px;
+  color: #00ff00;
+  font-family: inherit;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+}
+
+.cp-search-filter:focus {
+  outline: none;
+  border-color: #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.cp-search-filter::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+.cp-filter-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 1em;
+}
+
+.cp-control-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.cp-control-panel button {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+.cp-control-panel button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
+
+/* Networks Container */
+.cp-networks-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  overflow-y: auto;
+}
+
+/* Network Section */
+.cp-network-section {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid rgba(0, 255, 0, 0.3);
+  border-radius: 15px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+  min-height: 200px;
+}
+
+.cp-network-section:hover {
+  border-color: #00ff00;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+}
+
+/* Actor Header */
+.cp-actor-header {
+  background: rgba(0, 255, 0, 0.2);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-actor-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cp-actor-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 3px solid #00ff00;
+  object-fit: cover;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.cp-actor-details h3 {
+  margin: 0 0 5px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-count {
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 0.9em;
+}
+
+.cp-actor-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.cp-actor-controls button {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.4);
+  color: #00ff00;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 0.9em;
+}
+
+.cp-actor-controls button:hover {
+  background: rgba(0, 255, 0, 0.3);
+  border-color: #00ff00;
+  transform: scale(1.05);
+}
+
+.cp-add-contact-btn {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%) !important;
+  color: #000 !important;
+  font-weight: bold !important;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
+}
+
+.cp-add-contact-btn:hover {
+  background: linear-gradient(135deg, #00cc00 0%, #009900 100%) !important;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5) !important;
+}
+
+/* Selected Contacts Chips */
+.cp-selected-contacts {
+  padding: 20px;
+  min-height: 100px;
+}
+
+.cp-contacts-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cp-contact-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 200, 0, 0.1) 100%);
+  border: 2px solid rgba(0, 255, 0, 0.4);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  max-width: 200px;
+}
+
+.cp-contact-chip:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.25) 0%, rgba(0, 200, 0, 0.15) 100%);
+  border-color: #00ff00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
+}
+
+.cp-chip-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cp-chip-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.cp-remove-contact {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  color: #ff6666;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7em;
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.cp-contact-chip:hover .cp-remove-contact {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.cp-remove-contact:hover {
+  background: rgba(255, 0, 0, 0.4);
+  border-color: #ff6666;
+  color: #ff9999;
+  transform: scale(1.1);
+}
+
+.cp-contact-manager-config .cp-contact-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 15px !important;
+  flex: 1 !important;
+}
+
+.cp-contact-manager-config .cp-contact-avatar {
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 50% !important;
+  border: 3px solid #00ff00 !important;
+  object-fit: cover !important;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
+  flex-shrink: 0 !important;
+}
+
+.cp-contact-manager-config .cp-contact-details {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.cp-contact-manager-config .cp-contact-name {
+  color: #00ff00 !important;
+  font-weight: bold !important;
+  font-size: 1.1em !important;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.3) !important;
+  letter-spacing: 0.5px !important;
+}
+
+.cp-contact-manager-config .cp-contact-type {
+  color: rgba(0, 255, 0, 0.7) !important;
+  font-size: 0.85em !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  font-weight: 500 !important;
+}
+
+/* Contact Control */
+.cp-contact-manager-config .cp-contact-control {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.cp-contact-manager-config .cp-contact-checkbox {
+  display: none !important;
+}
+
+.cp-contact-manager-config .cp-checkbox-label {
+  width: 32px !important;
+  height: 32px !important;
+  border: 3px solid rgba(0, 255, 0, 0.5) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.2) !important;
+}
+
+.cp-contact-manager-config .cp-checkbox-label:hover {
+  border-color: #00ff00 !important;
+  background: rgba(0, 255, 0, 0.15) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3) !important;
+}
+
+.cp-contact-manager-config .cp-checkbox-label i {
+  color: transparent !important;
+  font-size: 1em !important;
+  transition: all 0.3s ease !important;
+  font-weight: bold !important;
+}
+
+.cp-contact-manager-config .cp-contact-checkbox:checked+.cp-checkbox-label {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%) !important;
+  border-color: #00ff00 !important;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5) !important;
+}
+
+.cp-contact-manager-config .cp-contact-checkbox:checked+.cp-checkbox-label i {
+  color: #000 !important;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* No Contacts */
+.cp-no-contacts {
+  text-align: center;
+  padding: 30px;
+  color: rgba(0, 255, 0, 0.6);
+  font-style: italic;
+}
+
+/* Scrollbar for contacts grid */
+.cp-contacts-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cp-contacts-grid::-webkit-scrollbar-track {
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 4px;
+}
+
+.cp-contacts-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-contacts-grid::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00cc00 0%, #009900 100%);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+/* No Actors */
+.cp-no-actors {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(0, 255, 0, 0.6);
+}
+
+.cp-no-actors-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+  color: rgba(0, 255, 0, 0.4);
+}
+
+.cp-no-actors h3 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+}
+
+.cp-no-actors p {
+  margin: 0;
+  font-size: 1em;
+}
+
+/* Config Footer */
+.cp-config-footer {
+  margin-top: 30px;
+  padding: 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  text-align: center;
+}
+
+.cp-config-footer p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.8);
+  font-size: 0.9em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .cp-contact-manager-config {
+    padding: 15px;
+  }
+
+  .cp-stats-panel {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .cp-control-panel {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cp-actor-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .cp-contacts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-contact-item {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+}
+
+/* Scrollbars for Contact Manager */
+.cp-contact-manager-config::-webkit-scrollbar,
+.cp-networks-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cp-contact-manager-config::-webkit-scrollbar-track,
+.cp-networks-container::-webkit-scrollbar-track {
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 4px;
+}
+
+.cp-contact-manager-config::-webkit-scrollbar-thumb,
+.cp-networks-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 0, 0.5);
+  border-radius: 4px;
+}
+
+.cp-contact-manager-config::-webkit-scrollbar-thumb:hover,
+.cp-networks-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 0, 0.7);
+}
+
+/* ===== CONTACT MANAGER SETTINGS BUTTON ===== */
+
+.cp-contact-manager-btn {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 0.9em;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+  width: auto;
+  justify-content: center;
+  margin: 0;
+  min-width: 120px;
+  height: 32px;
+}
+
+.cp-contact-manager-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+  background: linear-gradient(135deg, #00cc00 0%, #009900 100%);
+}
+
+.cp-contact-manager-btn:active {
+  transform: scale(0.98);
+}
+
+.cp-contact-manager-btn i {
+  font-size: 1.2em;
+}
+
+.cp-contact-manager-btn span {
+  font-size: 1em;
+}
+
+/* Settings section styling - Optional enhancement */
+.settings-list .settings-group[data-module="cyberpunk-agent"] {
+  border-left: 3px solid rgba(0, 255, 0, 0.3);
+}
+
+/* Responsive design for settings button */
+@media (max-width: 768px) {
+  .cp-contact-manager-btn {
+    padding: 12px 20px;
+    font-size: 1em;
+  }
+
+  .cp-contact-manager-btn i {
+    font-size: 1.1em;
+  }
+}
+
+/* ===== CONTACT MANAGER MENU ===== */
+
+.cp-contact-manager-menu {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  color: #00ff00;
+  font-family: 'Orbitron', monospace;
+  padding: 20px;
+}
+
+/* Menu Header */
+.cp-menu-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 15px;
+  border: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-menu-header h2 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.8em;
+  text-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-menu-header p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.8);
+  font-size: 1em;
+}
+
+/* Menu Content */
+.cp-menu-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Menu Info */
+.cp-menu-info {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.cp-menu-info p {
+  margin: 0 0 15px 0;
+  color: #00ff00;
+  font-size: 1em;
+}
+
+.cp-menu-info ul {
+  margin: 0;
+  padding-left: 20px;
+  color: rgba(0, 255, 0, 0.8);
+}
+
+.cp-menu-info li {
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+/* Menu Actions */
+.cp-menu-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.cp-open-contact-manager {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 15px 30px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+  min-width: 200px;
+  justify-content: center;
+}
+
+.cp-open-contact-manager:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+  background: linear-gradient(135deg, #00cc00 0%, #009900 100%);
+}
+
+.cp-open-contact-manager:active {
+  transform: scale(0.98);
+}
+
+.cp-open-contact-manager i {
+  font-size: 1.2em;
+}
+
+.cp-open-contact-manager span {
+  font-size: 1em;
+}
+
+/* ===== CONTACT SEARCH MODAL ===== */
+
+.cp-contact-search-modal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  color: #00ff00;
+  font-family: 'Orbitron', monospace;
+}
+
+/* Search Header */
+.cp-search-header {
+  text-align: center;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-bottom: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-search-header h3 {
+  margin: 0 0 8px 0;
+  color: #00ff00;
+  font-size: 1.4em;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.cp-search-header p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 0.9em;
+}
+
+/* Search Content */
+.cp-search-content {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Search Input */
+.cp-search-input-container {
+  position: relative;
+}
+
+.cp-search-input {
+  width: 100%;
+  padding: 12px 40px 12px 15px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(0, 255, 0, 0.4);
+  border-radius: 8px;
+  color: #00ff00;
+  font-family: inherit;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.cp-search-input:focus {
+  outline: none;
+  border-color: #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.cp-search-input::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+.cp-search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 1.1em;
+}
+
+/* Search Results */
+.cp-search-results {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-search-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-search-result:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: translateX(5px);
+  box-shadow: 0 2px 10px rgba(0, 255, 0, 0.2);
+}
+
+.cp-result-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cp-result-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1em;
+  flex: 1;
+}
+
+.cp-result-type {
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cp-no-results {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(0, 255, 0, 0.5);
+  font-style: italic;
+}
+
+/* Search Footer */
+.cp-search-footer {
+  padding: 20px;
+  text-align: center;
+  border-top: 2px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-cancel-search {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  font-size: 0.9em;
+}
+
+.cp-cancel-search:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+/* Scrollbar for search results */
+.cp-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cp-search-results::-webkit-scrollbar-track {
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 3px;
+}
+
+.cp-search-results::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border-radius: 3px;
+}
+
+.cp-search-results::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00cc00 0%, #009900 100%);
+}
