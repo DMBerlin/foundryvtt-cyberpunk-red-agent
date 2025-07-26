@@ -1,0 +1,62 @@
+{
+  "CYBERPUNK_AGENT": {
+    "TITLE": "Cyberpunk Agent",
+    "DESCRIPTION": "A FoundryVTT module that adds a cyberpunk-style messaging system for players to communicate through their characters' agents",
+    "INITIALIZING": "Initializing module...",
+    "LOADED": "Module loaded successfully!",
+    "SYSTEM_DETECTED": "Cyberpunk RED system detected!",
+    "USER_JOINED": "User {name} joined the session",
+    "CLEANUP": "Cleaning up module resources...",
+    "AGENT": {
+      "TITLE": "Agent",
+      "HOME": "Home",
+      "APPS": {
+        "CHAT7": {
+          "NAME": "Chat7",
+          "DESCRIPTION": "Messages and contacts"
+        }
+      }
+    },
+    "CHAT7": {
+      "TITLE": "Chat7",
+      "MESSAGES": "Messages",
+      "NO_CONTACTS": "No contacts available",
+      "NO_CONTACTS_DESC": "The GM needs to configure your contacts in the module settings.",
+      "ONLINE": "Online",
+      "MESSAGE_PLACEHOLDER": "Type your message...",
+      "SEND": "Send"
+    },
+    "CONTACT_MANAGER": {
+      "TITLE": "Contact Manager",
+      "ADD_CONTACT": "Add Contact",
+      "REMOVE_CONTACT": "Remove Contact",
+      "NO_CONTACTS_CONFIGURED": "No contacts configured",
+      "SELECT_CONTACT": "Select contact to add:",
+      "ADD": "Add",
+      "CANCEL": "Cancel"
+    },
+    "DIALOGS": {
+      "SELECT_ACTOR": "Select Actor",
+      "SELECT_ACTOR_DESC": "Choose which Actor to use with the Agent:",
+      "CONFIRM": "Confirm",
+      "CANCEL": "Cancel"
+    },
+    "NOTIFICATIONS": {
+      "NO_ACTOR_ACCESS": "You don't have access to any Actor to use the Agent.",
+      "CONTACT_ADDED": "Contact added successfully!",
+      "CONTACT_REMOVED": "Contact removed successfully!",
+      "ERROR_ADDING_CONTACT": "Error adding contact.",
+      "ERROR_REMOVING_CONTACT": "Error removing contact.",
+      "NO_CONTACTS_AVAILABLE": "No contacts available to add.",
+      "SUCCESS": "Operation completed successfully",
+      "ERROR": "An error occurred",
+      "WARNING": "Warning"
+    },
+    "SETTINGS": {
+      "TITLE": "Cyberpunk Agent Settings",
+      "CONTACT_NETWORKS": "Contact Networks",
+      "CONTACT_NETWORKS_HINT": "Configure contact networks for each Actor",
+      "MANAGE_CONTACTS": "Manage Contacts"
+    }
+  }
+}

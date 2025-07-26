@@ -1,0 +1,1310 @@
+/**
+ * Cyberpunk Agent - CSS Styles
+ * Compatible with FoundryVTT V11 and Cyberpunk RED 0.88+
+ */
+
+/* ===== FOUNDRY VTT V11 APPLICATION STYLES ===== */
+.cp-agent {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  border: 2px solid #00ff00;
+  border-radius: 15px;
+  overflow: hidden;
+  font-family: 'Orbitron', monospace;
+  color: #00ff00;
+}
+
+.cp-agent .sheet-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #00ff00;
+}
+
+.cp-agent .charname {
+  margin: 0;
+  flex: 1;
+}
+
+.cp-agent .charname input {
+  background: transparent;
+  border: none;
+  color: #000;
+  font-size: 1.5em;
+  font-weight: bold;
+  width: 100%;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.cp-agent .status-indicator {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.cp-agent .status-indicator.online {
+  background: rgba(0, 255, 0, 0.3);
+  color: #000;
+}
+
+.cp-agent .sheet-navigation {
+  background: rgba(0, 255, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+  padding: 0;
+}
+
+.cp-agent .sheet-navigation .item {
+  color: #00ff00;
+  border: none;
+  background: transparent;
+  padding: 10px 20px;
+  transition: all 0.3s ease;
+}
+
+.cp-agent .sheet-navigation .item:hover {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+.cp-agent .sheet-navigation .item.active {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  font-weight: bold;
+}
+
+.cp-agent .sheet-body {
+  padding: 20px;
+  height: calc(100% - 120px);
+  overflow-y: auto;
+}
+
+.cp-agent .tab {
+  display: none;
+}
+
+.cp-agent .tab.active {
+  display: block;
+}
+
+/* ===== AGENT HOME SPECIFIC STYLES ===== */
+.cp-agent-home .cp-agent-main-interface {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cp-agent-home .cp-agent-welcome {
+  text-align: center;
+  padding: 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-agent-home .cp-agent-welcome h2 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.5em;
+}
+
+.cp-agent-home .cp-agent-welcome p {
+  margin: 0;
+  color: rgba(0, 255, 0, 0.8);
+}
+
+.cp-agent-home .cp-quick-actions h3 {
+  margin: 0 0 15px 0;
+  color: #00ff00;
+  font-size: 1.2em;
+}
+
+.cp-agent-home .cp-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.cp-agent-home .cp-action-buttons button {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  color: #00ff00;
+  padding: 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+}
+
+.cp-agent-home .cp-action-buttons button:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.cp-agent-home .cp-action-buttons button i {
+  font-size: 1.5em;
+}
+
+.cp-agent-home .cp-recent-activity {
+  flex: 1;
+  background: rgba(0, 255, 0, 0.05);
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.cp-agent-home .cp-recent-activity h3 {
+  margin: 0 0 15px 0;
+  color: #00ff00;
+  font-size: 1.2em;
+}
+
+.cp-agent-home .cp-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-agent-home .cp-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 5px;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.cp-agent-home .cp-activity-time {
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 0.8em;
+  min-width: 60px;
+}
+
+.cp-agent-home .cp-activity-text {
+  color: #00ff00;
+  font-size: 0.9em;
+}
+
+/* ===== CONTACTS TAB STYLES ===== */
+.cp-contacts-interface h3 {
+  margin: 0 0 20px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+}
+
+.cp-contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cp-contact-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.cp-contact-item:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: translateX(5px);
+}
+
+.cp-contact-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+  margin-right: 15px;
+  object-fit: cover;
+}
+
+.cp-contact-info {
+  flex: 1;
+}
+
+.cp-contact-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.cp-contact-status {
+  color: #00cc00;
+  font-size: 0.9em;
+}
+
+.cp-contact-status.online {
+  color: #00ff00;
+}
+
+.cp-contact-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.cp-contact-actions button {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.4);
+  color: #00ff00;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-contact-actions button:hover {
+  background: rgba(0, 255, 0, 0.3);
+  border-color: #00ff00;
+  transform: scale(1.1);
+}
+
+.cp-no-contacts {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(0, 255, 0, 0.6);
+}
+
+.cp-no-contacts p {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+
+.cp-no-contacts small {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+/* ===== SETTINGS TAB STYLES ===== */
+.cp-settings-interface h3 {
+  margin: 0 0 20px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+}
+
+.cp-settings-group {
+  margin-bottom: 20px;
+}
+
+.cp-settings-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.cp-settings-group input,
+.cp-settings-group select {
+  width: 100%;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 5px;
+  color: #00ff00;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.cp-settings-group input:focus,
+.cp-settings-group select:focus {
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-settings-group input::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+/* ===== CHAT7 SPECIFIC STYLES ===== */
+.cp-chat7 .cp-chat-interface {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-chat7 .cp-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cp-chat7 .cp-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-chat7 .cp-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cp-chat7 .cp-message.system {
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.cp-chat7 .cp-message-time {
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 0.8em;
+  min-width: 60px;
+}
+
+.cp-chat7 .cp-message-text {
+  color: #00ff00;
+  font-size: 0.9em;
+}
+
+.cp-chat7 .cp-message-input-area {
+  border-top: 1px solid rgba(0, 255, 0, 0.3);
+  background: rgba(0, 255, 0, 0.05);
+  padding: 15px;
+}
+
+.cp-chat7 .cp-input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cp-chat7 .cp-message-input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 25px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #00ff00;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.cp-chat7 .cp-message-input:focus {
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-chat7 .cp-message-input::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+.cp-chat7 .cp-send-message {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-chat7 .cp-send-message:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-chat7 .cp-input-options {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.cp-chat7 .cp-input-options button {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.4);
+  color: #00ff00;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-chat7 .cp-input-options button:hover {
+  background: rgba(0, 255, 0, 0.3);
+  border-color: #00ff00;
+  transform: scale(1.1);
+}
+
+/* ===== CONTACT MANAGER SPECIFIC STYLES ===== */
+.cp-contact-manager .cp-manager-interface {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cp-contact-manager .cp-control-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-manager .cp-refresh-contacts {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.cp-contact-manager .cp-refresh-contacts:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-contact-manager .cp-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.cp-contact-manager .cp-stat-item {
+  color: #00ff00;
+  font-size: 0.9em;
+}
+
+.cp-contact-manager .cp-stat-item strong {
+  color: #00ff00;
+  font-size: 1.1em;
+}
+
+.cp-contact-manager .cp-contact-networks {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cp-contact-manager .cp-network-section {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cp-contact-manager .cp-network-header {
+  background: rgba(0, 255, 0, 0.2);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-contact-manager .cp-actor-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cp-contact-manager .cp-actor-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+  object-fit: cover;
+}
+
+.cp-contact-manager .cp-actor-details h3 {
+  margin: 0 0 5px 0;
+  color: #00ff00;
+  font-size: 1.2em;
+}
+
+.cp-contact-manager .cp-contact-count {
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 0.9em;
+}
+
+.cp-contact-manager .cp-add-contact {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.cp-contact-manager .cp-add-contact:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-contact-manager .cp-contacts-grid {
+  padding: 15px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.cp-contact-manager .cp-contact-card {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.cp-contact-manager .cp-contact-card:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: scale(1.02);
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+  object-fit: cover;
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-details {
+  flex: 1;
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-status {
+  color: #00cc00;
+  font-size: 0.8em;
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-status.online {
+  color: #00ff00;
+}
+
+.cp-contact-manager .cp-contact-card .cp-contact-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.cp-contact-manager .cp-remove-contact {
+  background: linear-gradient(135deg, #ff0066 0%, #cc0052 100%);
+  border: none;
+  color: #fff;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+}
+
+.cp-contact-manager .cp-remove-contact:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 0, 102, 0.5);
+}
+
+.cp-contact-manager .cp-no-contacts,
+.cp-contact-manager .cp-no-networks {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(0, 255, 0, 0.6);
+}
+
+.cp-contact-manager .cp-no-contacts p,
+.cp-contact-manager .cp-no-networks p {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+
+.cp-contact-manager .cp-no-contacts small,
+.cp-contact-manager .cp-no-networks small {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+/* ===== TOKEN TOOL BUTTON ===== */
+.control-tool[data-tool="agent"] {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  transition: all 0.3s ease;
+}
+
+.control-tool[data-tool="agent"]:hover {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.control-tool[data-tool="agent"] i {
+  font-size: 1.2em;
+}
+
+/* ===== LEGACY STYLES (for backward compatibility) ===== */
+.cp-agent-home-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+}
+
+.cp-agent-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #00ff00;
+}
+
+.cp-agent-title h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.cp-agent-owner {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+.cp-agent-close {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.cp-agent-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-apps-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 30px;
+  align-content: center;
+}
+
+.cp-app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 15px;
+  border-radius: 15px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-app-icon:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.cp-app-icon-inner {
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #333 0%, #1a1a1a 100%);
+  border: 2px solid #00ff00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  font-size: 24px;
+  color: #00ff00;
+}
+
+.cp-app-name {
+  font-size: 0.9em;
+  color: #00ff00;
+  text-align: center;
+  font-weight: bold;
+}
+
+.cp-agent-footer {
+  background: rgba(0, 255, 0, 0.1);
+  padding: 10px 20px;
+  border-top: 1px solid rgba(0, 255, 0, 0.3);
+  text-align: center;
+}
+
+.cp-agent-time {
+  color: #00ff00;
+  font-size: 0.8em;
+}
+
+/* ===== CHAT7 APPLICATION ===== */
+.cp-chat7-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-chat7-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 2px solid #00ff00;
+}
+
+.cp-back-button {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.cp-back-button:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-chat-title h3 {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+.cp-chat-subtitle {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.cp-chat7-close {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  margin-left: auto;
+}
+
+.cp-chat7-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-chat7-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Contact List */
+.cp-contacts-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.cp-contact-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  margin-bottom: 10px;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-contact-item:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  transform: translateX(5px);
+}
+
+.cp-contact-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 15px;
+  border: 2px solid #00ff00;
+}
+
+.cp-contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-contact-info {
+  flex: 1;
+}
+
+.cp-contact-name {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 5px;
+}
+
+.cp-contact-status {
+  color: #00cc00;
+  font-size: 0.9em;
+}
+
+.cp-no-contacts {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.cp-no-contacts i {
+  font-size: 3em;
+  margin-bottom: 20px;
+  color: #00ff00;
+}
+
+.cp-no-contacts p {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.cp-no-contacts small {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+/* Chat Messages */
+.cp-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cp-message {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.cp-message-own {
+  justify-content: flex-end;
+}
+
+.cp-message-other {
+  justify-content: flex-start;
+}
+
+.cp-message-content {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 15px;
+  position: relative;
+}
+
+.cp-message-own .cp-message-content {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  border-bottom-right-radius: 5px;
+}
+
+.cp-message-other .cp-message-content {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-bottom-left-radius: 5px;
+}
+
+.cp-message-text {
+  margin-bottom: 5px;
+  word-wrap: break-word;
+}
+
+.cp-message-time {
+  font-size: 0.8em;
+  opacity: 0.7;
+  text-align: right;
+}
+
+/* Message Input */
+.cp-message-input-container {
+  display: flex;
+  padding: 15px 20px;
+  gap: 10px;
+  border-top: 1px solid rgba(0, 255, 0, 0.3);
+  background: rgba(0, 255, 0, 0.05);
+}
+
+.cp-message-input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 25px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #00ff00;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.cp-message-input:focus {
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-message-input::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+.cp-send-message {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-send-message:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* ===== CONTACT MANAGER ===== */
+.cp-contact-manager-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-contact-manager-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #00ff00;
+}
+
+.cp-contact-manager-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.cp-contact-manager-close {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.cp-contact-manager-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-contact-manager-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.cp-actors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cp-actor-section {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cp-actor-header {
+  background: rgba(0, 255, 0, 0.2);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-actor-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cp-actor-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #00ff00;
+}
+
+.cp-actor-info h3 {
+  margin: 0;
+  color: #00ff00;
+  font-size: 1.2em;
+}
+
+.cp-add-contact {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-add-contact:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-contacts-section {
+  padding: 15px 20px;
+}
+
+.cp-contact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+}
+
+.cp-contact-item:last-child {
+  border-bottom: none;
+}
+
+.cp-contact-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-contact-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #00ff00;
+}
+
+.cp-contact-name {
+  color: #00ff00;
+  font-size: 0.9em;
+}
+
+.cp-remove-contact {
+  background: linear-gradient(135deg, #ff0066 0%, #cc0052 100%);
+  border: none;
+  color: #fff;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+}
+
+.cp-remove-contact:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 0, 102, 0.5);
+}
+
+.cp-no-contacts {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+/* ===== SETTINGS BUTTON ===== */
+.cp-agent-settings-btn {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.cp-agent-settings-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .cp-apps-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 20px;
+  }
+
+  .cp-app-icon-inner {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .cp-chat7-header {
+    padding: 10px 15px;
+  }
+
+  .cp-message-input-container {
+    padding: 10px 15px;
+  }
+
+  .cp-contact-manager-content {
+    padding: 15px;
+  }
+
+  .cp-contact-manager .cp-contacts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-agent-home .cp-action-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== SCROLLBARS ===== */
+.cp-chat7-content::-webkit-scrollbar,
+.cp-contact-manager-content::-webkit-scrollbar,
+.cp-chat-messages::-webkit-scrollbar,
+.cp-agent .sheet-body::-webkit-scrollbar,
+.cp-contact-manager .cp-contact-networks::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cp-chat7-content::-webkit-scrollbar-track,
+.cp-contact-manager-content::-webkit-scrollbar-track,
+.cp-chat-messages::-webkit-scrollbar-track,
+.cp-agent .sheet-body::-webkit-scrollbar-track,
+.cp-contact-manager .cp-contact-networks::-webkit-scrollbar-track {
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 4px;
+}
+
+.cp-chat7-content::-webkit-scrollbar-thumb,
+.cp-contact-manager-content::-webkit-scrollbar-thumb,
+.cp-chat-messages::-webkit-scrollbar-thumb,
+.cp-agent .sheet-body::-webkit-scrollbar-thumb,
+.cp-contact-manager .cp-contact-networks::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 0, 0.5);
+  border-radius: 4px;
+}
+
+.cp-chat7-content::-webkit-scrollbar-thumb:hover,
+.cp-contact-manager-content::-webkit-scrollbar-thumb:hover,
+.cp-chat-messages::-webkit-scrollbar-thumb:hover,
+.cp-agent .sheet-body::-webkit-scrollbar-thumb:hover,
+.cp-contact-manager .cp-contact-networks::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 0, 0.7);
+}

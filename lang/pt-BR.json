@@ -1,0 +1,62 @@
+{
+  "CYBERPUNK_AGENT": {
+    "TITLE": "Cyberpunk Agent",
+    "DESCRIPTION": "Um módulo para FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk para jogadores se comunicarem através dos agents de seus personagens",
+    "INITIALIZING": "Inicializando módulo...",
+    "LOADED": "Módulo carregado com sucesso!",
+    "SYSTEM_DETECTED": "Sistema Cyberpunk RED detectado!",
+    "USER_JOINED": "Usuário {name} entrou na sessão",
+    "CLEANUP": "Limpando recursos do módulo...",
+    "AGENT": {
+      "TITLE": "Agent",
+      "HOME": "Início",
+      "APPS": {
+        "CHAT7": {
+          "NAME": "Chat7",
+          "DESCRIPTION": "Mensagens e contatos"
+        }
+      }
+    },
+    "CHAT7": {
+      "TITLE": "Chat7",
+      "MESSAGES": "Mensagens",
+      "NO_CONTACTS": "Nenhum contato disponível",
+      "NO_CONTACTS_DESC": "O GM precisa configurar seus contatos nas configurações do módulo.",
+      "ONLINE": "Online",
+      "MESSAGE_PLACEHOLDER": "Digite sua mensagem...",
+      "SEND": "Enviar"
+    },
+    "CONTACT_MANAGER": {
+      "TITLE": "Gerenciador de Contatos",
+      "ADD_CONTACT": "Adicionar Contato",
+      "REMOVE_CONTACT": "Remover Contato",
+      "NO_CONTACTS_CONFIGURED": "Nenhum contato configurado",
+      "SELECT_CONTACT": "Selecione o contato para adicionar:",
+      "ADD": "Adicionar",
+      "CANCEL": "Cancelar"
+    },
+    "DIALOGS": {
+      "SELECT_ACTOR": "Selecionar Actor",
+      "SELECT_ACTOR_DESC": "Escolha qual Actor usar com o Agent:",
+      "CONFIRM": "Confirmar",
+      "CANCEL": "Cancelar"
+    },
+    "NOTIFICATIONS": {
+      "NO_ACTOR_ACCESS": "Você não tem acesso a nenhum Actor para usar o Agent.",
+      "CONTACT_ADDED": "Contato adicionado com sucesso!",
+      "CONTACT_REMOVED": "Contato removido com sucesso!",
+      "ERROR_ADDING_CONTACT": "Erro ao adicionar contato.",
+      "ERROR_REMOVING_CONTACT": "Erro ao remover contato.",
+      "NO_CONTACTS_AVAILABLE": "Não há contatos disponíveis para adicionar.",
+      "SUCCESS": "Operação concluída com sucesso",
+      "ERROR": "Ocorreu um erro",
+      "WARNING": "Aviso"
+    },
+    "SETTINGS": {
+      "TITLE": "Configurações do Cyberpunk Agent",
+      "CONTACT_NETWORKS": "Redes de Contatos",
+      "CONTACT_NETWORKS_HINT": "Configure as redes de contatos para cada Actor",
+      "MANAGE_CONTACTS": "Gerenciar Contatos"
+    }
+  }
+}

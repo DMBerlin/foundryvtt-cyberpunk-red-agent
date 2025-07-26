@@ -1,0 +1,61 @@
+{
+  "title": "Cyberpunk Agent",
+  "description": "A FoundryVTT module that adds a cyberpunk-style messaging system for players to communicate through their characters' agents",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Daniel Marinho Goncalves",
+      "url": "https://github.com/dmberlin",
+      "discord": "dmberlin#0000"
+    }
+  ],
+  "id": "cyberpunk-agent",
+  "esmodules": [
+    "scripts/module.js",
+    "scripts/agent-home.js",
+    "scripts/contact-manager.js",
+    "scripts/status-check.js",
+    "scripts/class-checker.js",
+    "scripts/debug.js",
+    "scripts/test.js",
+    "scripts/dev-helper.js"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "cyberpunk-red-core",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.88.0"
+        }
+      }
+    ]
+  },
+  "styles": [
+    "styles/module.css"
+  ],
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11",
+    "maximum": "11"
+  },
+  "url": "https://github.com/dmberlin/cyberpunk-agent",
+  "manifest": "https://github.com/dmberlin/cyberpunk-agent/releases/latest/download/module.json",
+  "download": "https://github.com/dmberlin/cyberpunk-agent/releases/latest/download/module.zip",
+  "license": "MIT",
+  "readme": "README.md",
+  "bugs": "https://github.com/dmberlin/cyberpunk-agent/issues",
+  "changelog": "CHANGELOG.md"
+}

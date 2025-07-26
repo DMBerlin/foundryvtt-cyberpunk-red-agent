@@ -1,0 +1,46 @@
+<form class="cp-agent cp-chat7">
+  <header class="sheet-header">
+    <h1 class="charname">
+      <input name="name" type="text" value="{{actor.name}}" placeholder="Character Name" readonly />
+    </h1>
+    <div class="chat-status">
+      <span class="status-indicator online">CHAT ACTIVE</span>
+    </div>
+  </header>
+
+  <section class="sheet-body">
+    <div class="cp-chat-interface">
+      <!-- Chat Messages Area -->
+      <div class="cp-chat-messages" id="chat-messages">
+        <div class="cp-message-list">
+          <!-- Messages will be dynamically added here -->
+          <div class="cp-message system">
+            <span class="cp-message-time">2:34 PM</span>
+            <span class="cp-message-text">Chat session initialized</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Input Area -->
+      <div class="cp-message-input-area">
+        <div class="cp-input-group">
+          <input type="text" class="cp-message-input" placeholder="Type your message..." maxlength="500" />
+          <button type="button" class="cp-send-message" title="Send Message">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+        <div class="cp-input-options">
+          <button type="button" class="emoji-button" title="Add Emoji">
+            <i class="fas fa-smile"></i>
+          </button>
+          <button type="button" class="attachment-button" title="Add Attachment">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <button type="button" class="voice-button" title="Voice Message">
+            <i class="fas fa-microphone"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</form>
