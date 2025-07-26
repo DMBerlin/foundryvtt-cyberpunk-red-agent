@@ -12,9 +12,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Estrutura básica do módulo
 - Suporte ao FoundryVTT V11
 - Compatibilidade com Cyberpunk RED 0.88+
+- Pasta `__tests__` para organização de testes
+- Documentação completa de testes no `__tests__/README.md`
 
 ### Alterado
-- N/A
+- Reorganização: Todos os arquivos de teste movidos para pasta `__tests__`
+- Atualização de referências no `module.json` e documentação
+- Script `dev:watch` atualizado para monitorar pasta `__tests__`
 
 ### Removido
 - N/A

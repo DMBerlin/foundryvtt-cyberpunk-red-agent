@@ -12,6 +12,7 @@ class CyberpunkAgent {
         this.version = "1.0.0";
         this.agentData = new Map(); // Store agent data per actor
         this.contactNetworks = new Map(); // Store contact networks per actor
+        this.socketLibIntegration = null; // SocketLib integration
     }
 
     /**
@@ -36,6 +37,22 @@ class CyberpunkAgent {
             config: false,
             type: Object,
             default: {}
+        });
+
+        game.settings.register('cyberpunk-agent', 'communication-method', {
+            name: 'Método de Comunicação',
+            hint: 'Escolha como o módulo deve comunicar mudanças entre usuários',
+            scope: 'world',
+            config: true,
+            type: String,
+            choices: {
+                'auto': 'Automático (Recomendado)',
+                'socketlib-only': 'Apenas SocketLib (Melhor)',
+                'socket-only': 'Apenas Socket Nativo',
+                'chat-only': 'Apenas Chat (Fallback)',
+                'none': 'Sem Comunicação'
+            },
+            default: 'auto'
         });
 
         // Register a custom settings menu for Cyberpunk Agent
@@ -88,6 +105,12 @@ class CyberpunkAgent {
 
         // Load agent data
         this.loadAgentData();
+
+        // Setup SocketLib integration if available
+        this.setupSocketLibIntegration();
+
+        // Setup socket communication for real-time updates (fallback)
+        this.setupSocketCommunication();
 
         // Setup hooks only if methods exist
         if (this.handleActorUpdate) {
@@ -418,9 +441,543 @@ class CyberpunkAgent {
         try {
             const networksObject = Object.fromEntries(this.contactNetworks);
             game.settings.set('cyberpunk-agent', 'contact-networks', networksObject);
+
+            // Notify all clients about the contact update
+            this.notifyContactUpdate();
+
+            // Also trigger immediate update for local interfaces
+            this._updateContactManagerImmediately();
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving contact networks:", error);
         }
+    }
+
+    /**
+     * Update contact manager immediately for better UX
+     */
+    _updateContactManagerImmediately() {
+        // Find and update any open ContactManagerApplication
+        const openWindows = Object.values(ui.windows);
+        openWindows.forEach(window => {
+            if (window && window.rendered && window.constructor.name === 'ContactManagerApplication') {
+                console.log("Cyberpunk Agent | Updating ContactManagerApplication immediately");
+                try {
+                    // Use the internal update method if available
+                    if (window._handleRealtimeUpdate) {
+                        window._handleRealtimeUpdate();
+                    } else {
+                        // Fallback to re-render
+                        window.render(true);
+                    }
+                } catch (error) {
+                    console.warn("Cyberpunk Agent | Error updating ContactManagerApplication:", error);
+                }
+            }
+        });
+    }
+
+    /**
+     * Setup SocketLib integration
+     */
+    setupSocketLibIntegration() {
+        try {
+            // Check if SocketLib integration is available
+            if (typeof window.SocketLibIntegration !== 'undefined') {
+                this.socketLibIntegration = new window.SocketLibIntegration();
+                console.log("Cyberpunk Agent | SocketLib integration initialized");
+            } else {
+                console.log("Cyberpunk Agent | SocketLib integration not available");
+            }
+        } catch (error) {
+            console.warn("Cyberpunk Agent | Error setting up SocketLib integration:", error);
+        }
+    }
+
+    /**
+     * Check if cross-client communication is needed
+     */
+    _needsCrossClientCommunication() {
+        // Only need cross-client communication if there are multiple users
+        return game.users.size > 1;
+    }
+
+    /**
+     * Check if socket communication is working
+     */
+    _isSocketWorking() {
+        return game.socket && game.socket.connected;
+    }
+
+    /**
+ * Get preferred communication method
+ */
+    _getCommunicationMethod() {
+        // Check user preference (if implemented)
+        const preferredMethod = game.settings.get('cyberpunk-agent', 'communication-method') || 'auto';
+
+        switch (preferredMethod) {
+            case 'socketlib-only':
+                return this._isSocketLibAvailable() ? 'socketlib' : 'none';
+            case 'socket-only':
+                return this._isSocketWorking() ? 'socket' : 'none';
+            case 'chat-only':
+                return 'chat';
+            case 'auto':
+            default:
+                // Priority: SocketLib > Socket > Chat > None
+                if (this._isSocketLibAvailable()) {
+                    return 'socketlib';
+                } else if (this._isSocketWorking()) {
+                    return 'socket';
+                } else if (this._needsCrossClientCommunication()) {
+                    return 'chat';
+                } else {
+                    return 'none';
+                }
+        }
+    }
+
+    /**
+     * Check if SocketLib is available and working
+     */
+    _isSocketLibAvailable() {
+        return this.socketLibIntegration && this.socketLibIntegration.isAvailable && typeof socketlib !== 'undefined';
+    }
+
+    /**
+     * Send notification via native socket
+     */
+    _sendViaNativeSocket() {
+        if (game.socket) {
+            console.log("Cyberpunk Agent | Sending contact update notification via native socket");
+
+            const notificationData = {
+                type: 'contactUpdate',
+                data: {
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    sessionId: game.data.id
+                }
+            };
+
+            // Send via socket
+            game.socket.emit('module.cyberpunk-agent', notificationData);
+
+            // Only use chat fallback if socket might not reach all users
+            if (game.user.isGM) {
+                this.broadcastContactUpdate(notificationData);
+            }
+        } else {
+            console.warn("Cyberpunk Agent | Native socket not available, falling back to chat.");
+            this._sendViaChat();
+        }
+    }
+
+    /**
+     * Send notification via chat
+     */
+    _sendViaChat() {
+        console.log("Cyberpunk Agent | Sending contact update notification via chat message (fallback)");
+        this.broadcastContactUpdate({
+            type: 'contactUpdate',
+            data: {
+                timestamp: Date.now(),
+                userId: game.user.id,
+                userName: game.user.name,
+                sessionId: game.data.id
+            }
+        });
+    }
+
+    /**
+     * Test socket connectivity
+     */
+    _testSocketConnectivity() {
+        if (!game.socket) {
+            return false;
+        }
+
+        return new Promise((resolve) => {
+            const testData = {
+                type: 'ping',
+                timestamp: Date.now()
+            };
+
+            // Set a timeout for the test
+            const timeout = setTimeout(() => {
+                resolve(false);
+            }, 2000);
+
+            // Listen for pong response
+            const pongHandler = (data) => {
+                if (data.type === 'pong' && data.timestamp === testData.timestamp) {
+                    clearTimeout(timeout);
+                    game.socket.off('module.cyberpunk-agent', pongHandler);
+                    resolve(true);
+                }
+            };
+
+            game.socket.on('module.cyberpunk-agent', pongHandler);
+
+            // Send ping
+            game.socket.emit('module.cyberpunk-agent', testData);
+        });
+    }
+
+    /**
+     * Notify all clients about contact updates
+     */
+    async notifyContactUpdate() {
+        // Always update local interfaces immediately for better UX
+        this._updateContactManagerImmediately();
+
+        // Only send cross-client notifications if there are multiple users
+        if (!this._needsCrossClientCommunication()) {
+            console.log("Cyberpunk Agent | Single user session, skipping cross-client notification");
+            return;
+        }
+
+        const communicationMethod = this._getCommunicationMethod();
+        console.log("Cyberpunk Agent | Using communication method:", communicationMethod);
+
+        if (communicationMethod === 'socketlib') {
+            console.log("Cyberpunk Agent | Sending contact update notification via SocketLib");
+
+            try {
+                const success = await this.socketLibIntegration.sendContactUpdate({
+                    type: 'contactUpdate',
+                    action: 'contactModified'
+                });
+
+                if (success) {
+                    console.log("Cyberpunk Agent | SocketLib notification sent successfully");
+                    return;
+                } else {
+                    console.warn("Cyberpunk Agent | SocketLib failed, trying fallback methods");
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | SocketLib error:", error);
+            }
+
+            // Fallback to native socket
+            if (this._isSocketWorking()) {
+                console.log("Cyberpunk Agent | Falling back to native socket");
+                this._sendViaNativeSocket();
+            } else {
+                console.log("Cyberpunk Agent | Falling back to chat");
+                this._sendViaChat();
+            }
+        } else if (communicationMethod === 'socket') {
+            this._sendViaNativeSocket();
+        } else if (communicationMethod === 'chat') {
+            this._sendViaChat();
+        } else {
+            console.log("Cyberpunk Agent | No communication method available, skipping notification.");
+        }
+    }
+
+    /**
+     * Broadcast contact update via chat message (fallback method)
+     * This method creates completely invisible chat messages for cross-client communication
+     */
+    broadcastContactUpdate(data) {
+        try {
+            // Validate data before broadcasting
+            if (!data || !data.type || !data.data) {
+                console.error("Cyberpunk Agent | Invalid data for broadcast:", data);
+                return;
+            }
+
+            // Create a completely invisible chat message to broadcast the update
+            const messageData = {
+                user: game.user.id,
+                speaker: {
+                    User: game.user.id
+                },
+                content: `<div class="cyberpunk-agent-update" data-update='${JSON.stringify(data)}' style="display: none; position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></div>`,
+                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+                whisper: [],
+                blind: true, // Make message blind (only visible to GM)
+                flags: {
+                    'cyberpunk-agent': {
+                        isSystemMessage: true,
+                        invisible: true
+                    }
+                }
+            };
+
+            ChatMessage.create(messageData);
+            console.log("Cyberpunk Agent | Contact update broadcasted via invisible chat message");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error broadcasting contact update:", error);
+            console.error("Data that failed to broadcast:", data);
+        }
+    }
+
+    /**
+    * Handle contact update notifications from other clients
+    */
+    handleContactUpdate(data) {
+        console.log("Cyberpunk Agent | Received contact update notification from:", data.userName);
+
+        // Prevent processing our own updates
+        if (data.userId === game.user.id) {
+            console.log("Cyberpunk Agent | Ignoring own update notification");
+            return;
+        }
+
+        // Check if this is a recent update to avoid duplicates
+        const now = Date.now();
+        const timeDiff = now - data.timestamp;
+        if (timeDiff > 30000) { // Ignore updates older than 30 seconds
+            console.log("Cyberpunk Agent | Ignoring old update notification (age:", timeDiff, "ms)");
+            return;
+        }
+
+        // Reload contact data from settings
+        this.loadAgentData();
+
+        // Update all open interfaces
+        this.updateOpenInterfaces();
+
+        // Show notification to user with more details
+        const message = data.userName === game.user.name
+            ? "Sua lista de contatos foi atualizada!"
+            : `Lista de contatos atualizada por ${data.userName}!`;
+
+        ui.notifications.info(message);
+
+        console.log("Cyberpunk Agent | Contact update processed successfully");
+    }
+
+    /**
+    * Update all open agent interfaces
+    */
+    updateOpenInterfaces() {
+        console.log("Cyberpunk Agent | Updating open interfaces...");
+
+        // Check if there are any open interfaces first
+        if (!this.hasOpenInterfaces()) {
+            console.log("Cyberpunk Agent | No open interfaces to update");
+            return;
+        }
+
+        const openWindows = Object.values(ui.windows);
+        let updatedCount = 0;
+
+        openWindows.forEach(window => {
+            if (window && window.rendered) {
+                // Check if it's an agent-related application
+                if (window.constructor.name === 'AgentHomeApplication' ||
+                    window.constructor.name === 'Chat7Application' ||
+                    window.constructor.name === 'ContactManagerApplication') {
+
+                    console.log(`Cyberpunk Agent | Updating ${window.constructor.name}`);
+
+                    try {
+                        // Re-render the application to refresh data
+                        window.render(true);
+                        updatedCount++;
+                    } catch (error) {
+                        console.warn(`Cyberpunk Agent | Error updating ${window.constructor.name}:`, error);
+                    }
+                }
+            }
+        });
+
+        // Also check for any dialogs that might be open
+        const dialogs = document.querySelectorAll('.dialog');
+        dialogs.forEach(dialog => {
+            const dialogContent = dialog.querySelector('.dialog-content');
+            if (dialogContent && dialogContent.innerHTML.includes('cyberpunk-agent')) {
+                console.log("Cyberpunk Agent | Found agent-related dialog, updating...");
+                // Trigger a custom event to refresh dialog content
+                dialog.dispatchEvent(new CustomEvent('cyberpunk-agent-update'));
+            }
+        });
+
+        // Trigger custom event for any other listeners
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'contactUpdate'
+            }
+        }));
+
+        console.log(`Cyberpunk Agent | Updated ${updatedCount} interfaces`);
+
+        // Show a subtle notification if interfaces were updated
+        if (updatedCount > 0) {
+            ui.notifications.info(`Atualizadas ${updatedCount} interface(s) do Agent`);
+        }
+    }
+
+    /**
+ * Setup socket communication for real-time updates
+ */
+    setupSocketCommunication() {
+        if (game.socket) {
+            console.log("Cyberpunk Agent | Setting up socket communication");
+
+            game.socket.on('module.cyberpunk-agent', (data) => {
+                if (data.type === 'contactUpdate') {
+                    console.log("Cyberpunk Agent | Received socket notification:", data);
+                    this.handleContactUpdate(data.data);
+                } else if (data.type === 'ping') {
+                    // Respond to ping with pong
+                    console.log("Cyberpunk Agent | Received ping, sending pong");
+                    game.socket.emit('module.cyberpunk-agent', {
+                        type: 'pong',
+                        timestamp: data.timestamp
+                    });
+                }
+            });
+        }
+
+        // Setup chat message listener for fallback communication
+        this.setupChatMessageListener();
+
+        console.log("Cyberpunk Agent | Socket communication setup complete");
+    }
+
+    /**
+    * Setup chat message listener for fallback communication
+    */
+    setupChatMessageListener() {
+        Hooks.on('createChatMessage', (message) => {
+            try {
+                // Check if this is a cyberpunk agent update message
+                // message.content is a string, not a DOM element
+                if (!message || typeof message.content !== 'string') {
+                    return; // Skip if message is invalid or content is not a string
+                }
+
+                if (message.content.includes('cyberpunk-agent-update')) {
+                    // Create a temporary DOM element to parse the content
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = message.content;
+
+                    const updateElement = tempDiv.querySelector('.cyberpunk-agent-update');
+                    if (updateElement && updateElement.dataset.update) {
+                        const updateData = JSON.parse(updateElement.dataset.update);
+                        if (updateData && updateData.type === 'contactUpdate' && updateData.data) {
+                            console.log("Cyberpunk Agent | Received chat notification:", updateData);
+                            this.handleContactUpdate(updateData.data);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in chat message listener:", error);
+                console.error("Message content:", message?.content);
+            }
+        });
+
+        console.log("Cyberpunk Agent | Chat message listener setup complete");
+    }
+
+    /**
+    * Test the real-time update system
+    */
+    testRealtimeUpdate() {
+        console.log("Cyberpunk Agent | Testing real-time update system...");
+
+        if (game.user.isGM) {
+            // Simulate a contact update
+            this.notifyContactUpdate();
+            console.log("Cyberpunk Agent | Test notification sent");
+        } else {
+            // Test interface update
+            this.updateOpenInterfaces();
+            console.log("Cyberpunk Agent | Test interface update completed");
+        }
+    }
+
+    /**
+    * Test cross-client communication
+    */
+    testCrossClientCommunication() {
+        console.log("Cyberpunk Agent | Testing cross-client communication...");
+
+        if (!game.user.isGM) {
+            console.log("Cyberpunk Agent | Cross-client test requires GM permissions");
+            return;
+        }
+
+        // Test socket communication
+        if (game.socket) {
+            console.log("Cyberpunk Agent | Socket available, testing...");
+            this.notifyContactUpdate();
+        } else {
+            console.log("Cyberpunk Agent | Socket not available, testing fallback...");
+            this.broadcastContactUpdate({
+                type: 'contactUpdate',
+                data: {
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    sessionId: game.data.id
+                }
+            });
+        }
+
+        console.log("Cyberpunk Agent | Cross-client test completed");
+    }
+
+    /**
+     * Test chat message broadcasting specifically
+     */
+    testChatBroadcasting() {
+        console.log("Cyberpunk Agent | Testing chat message broadcasting...");
+
+        if (!game.user.isGM) {
+            console.log("Cyberpunk Agent | Chat broadcasting test requires GM permissions");
+            return;
+        }
+
+        try {
+            this.broadcastContactUpdate({
+                type: 'contactUpdate',
+                data: {
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    sessionId: game.data.id,
+                    test: true
+                }
+            });
+            console.log("Cyberpunk Agent | Chat broadcasting test completed");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error in chat broadcasting test:", error);
+        }
+    }
+
+    /**
+     * Check if there are any open agent interfaces
+     */
+    hasOpenInterfaces() {
+        const openWindows = Object.values(ui.windows);
+        return openWindows.some(window =>
+            window && window.rendered && (
+                window.constructor.name === 'AgentHomeApplication' ||
+                window.constructor.name === 'Chat7Application' ||
+                window.constructor.name === 'ContactManagerApplication'
+            )
+        );
+    }
+
+    /**
+     * Get count of open agent interfaces
+     */
+    getOpenInterfacesCount() {
+        const openWindows = Object.values(ui.windows);
+        return openWindows.filter(window =>
+            window && window.rendered && (
+                window.constructor.name === 'AgentHomeApplication' ||
+                window.constructor.name === 'Chat7Application' ||
+                window.constructor.name === 'ContactManagerApplication'
+            )
+        ).length;
     }
 
     /**
@@ -473,6 +1030,20 @@ Hooks.once('ready', () => {
         }
     });
 
+    // Hook for settings changes (backup for real-time updates)
+    Hooks.on('renderSettingsConfig', (app, html, data) => {
+        if (CyberpunkAgent.instance) {
+            // Listen for changes to our module settings
+            html.find('input[name="cyberpunk-agent.contact-networks"]').on('change', () => {
+                console.log("Cyberpunk Agent | Settings change detected");
+                setTimeout(() => {
+                    CyberpunkAgent.instance.loadAgentData();
+                    CyberpunkAgent.instance.updateOpenInterfaces();
+                }, 100);
+            });
+        }
+    });
+
     // Note: Contact Manager is now accessed through a custom settings menu
 });
 
@@ -483,4 +1054,50 @@ Hooks.once('disableModule', () => {
 
 // Make CyberpunkAgent globally available
 window.CyberpunkAgent = CyberpunkAgent;
-console.log("Cyberpunk Agent | CyberpunkAgent class made globally available"); 
+
+// Make test functions globally available
+window.testRealtimeUpdate = () => {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testRealtimeUpdate();
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+window.testCrossClientCommunication = () => {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testCrossClientCommunication();
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+window.testChatBroadcasting = () => {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testChatBroadcasting();
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+window.checkOpenInterfaces = () => {
+    if (CyberpunkAgent.instance) {
+        const count = CyberpunkAgent.instance.getOpenInterfacesCount();
+        const hasOpen = CyberpunkAgent.instance.hasOpenInterfaces();
+        console.log(`Cyberpunk Agent | Open interfaces: ${count} (has open: ${hasOpen})`);
+        return { count, hasOpen };
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+        return { count: 0, hasOpen: false };
+    }
+};
+
+window.forceUpdateInterfaces = () => {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.updateOpenInterfaces();
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+console.log("Cyberpunk Agent | CyberpunkAgent class and test functions made globally available"); 

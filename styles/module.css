@@ -1299,6 +1299,7 @@
 .cp-contact-manager .cp-contact-networks::-webkit-scrollbar-thumb {
   background: rgba(0, 255, 0, 0.5);
   border-radius: 4px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
 }
 
 .cp-chat7-content::-webkit-scrollbar-thumb:hover,
@@ -2599,4 +2600,137 @@
 
 .cp-search-results::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #00cc00 0%, #009900 100%);
+}
+
+/* ===== ANIMATIONS FOR CONTACT MANAGER ===== */
+
+/* Animation for contact chip feedback */
+.cp-contact-chip.removing {
+  opacity: 0.5;
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.cp-contact-chip.adding {
+  animation: contactChipAdd 0.3s ease;
+}
+
+@keyframes contactChipAdd {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation for search result feedback */
+.cp-search-result.removing {
+  opacity: 0.5;
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.cp-search-result.adding {
+  animation: searchResultAdd 0.3s ease;
+}
+
+@keyframes searchResultAdd {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Smooth transitions for real-time updates */
+.cp-network-section {
+  transition: all 0.3s ease;
+}
+
+.cp-contact-count {
+  transition: all 0.3s ease;
+}
+
+.cp-contacts-chips {
+  transition: all 0.3s ease;
+}
+
+/* Loading state for contact manager */
+.cp-contact-manager-config.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.cp-contact-manager-config.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid rgba(0, 255, 0, 0.3);
+  border-top: 3px solid #00ff00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 1000;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== INVISIBLE CHAT MESSAGES ===== */
+
+/* Hide cyberpunk agent system messages completely */
+.chat-message[data-flags*="cyberpunk-agent"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Hide the content of cyberpunk agent messages */
+.chat-message[data-flags*="cyberpunk-agent"] .message-content {
+  display: none !important;
+}
+
+/* Hide cyberpunk agent update divs */
+.cyberpunk-agent-update {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  pointer-events: none !important;
 }

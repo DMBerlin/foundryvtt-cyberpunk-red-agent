@@ -45,6 +45,7 @@ cyberpunk-agent/
 │   ├── TESTING.md              # Testing guide
 │   └── TROUBLESHOOTING.md      # Troubleshooting guide
 ├── scripts/                     # JavaScript files
+├── __tests__/                   # Test files
 ├── styles/                      # CSS files
 ├── lang/                        # Localization files
 ├── assets/                      # Static resources

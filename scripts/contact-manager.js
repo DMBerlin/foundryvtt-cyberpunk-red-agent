@@ -86,6 +86,8 @@ class ContactManagerApplication extends FormApplication {
   constructor(options = {}) {
     super({}, options);
     console.log("ContactManagerApplication constructor called");
+    this.lastUpdateTime = Date.now();
+    this.currentFilterTerm = ''; // Store current filter term
   }
 
   /**
@@ -151,13 +153,221 @@ class ContactManagerApplication extends FormApplication {
     super.activateListeners(html);
 
     // Add custom event listeners
-    html.find('.cp-refresh-contacts').click(this._onRefreshContacts.bind(this));
-    html.find('.cp-save-all').click(this._onSaveAll.bind(this));
     html.find('.cp-add-contact-btn').click(this._onAddContactClick.bind(this));
     html.find('.cp-remove-contact').click(this._onRemoveContactClick.bind(this));
-    
+
     // Add filter functionality
     html.find('.cp-search-filter').on('input', this._onFilterInput.bind(this));
+
+    // Restore filter state if there was a previous filter
+    this._restoreFilterState();
+
+    // Listen for real-time updates
+    this._setupRealtimeListener();
+  }
+
+  /**
+   * Setup real-time update listener
+   */
+  _setupRealtimeListener() {
+    // Listen for custom events from the module
+    document.addEventListener('cyberpunk-agent-update', () => {
+      console.log("ContactManagerApplication | Received real-time update event");
+      this._handleRealtimeUpdate();
+    });
+
+    // Also listen for window focus to refresh data
+    window.addEventListener('focus', () => {
+      this._handleRealtimeUpdate();
+    });
+  }
+
+  /**
+   * Handle real-time updates
+   */
+  _handleRealtimeUpdate() {
+    const now = Date.now();
+    // Prevent too frequent updates (minimum 1 second between updates)
+    if (now - this.lastUpdateTime < 1000) {
+      return;
+    }
+    this.lastUpdateTime = now;
+
+    console.log("ContactManagerApplication | Handling real-time update");
+
+    // Store current filter state before updating
+    this._storeFilterState();
+
+    // Try to update only the contact data first (more efficient)
+    if (this._updateContactDataOnly()) {
+      console.log("ContactManagerApplication | Updated contact data only");
+    } else {
+      // Fallback to full re-render if partial update fails
+      console.log("ContactManagerApplication | Falling back to full re-render");
+      this.render(true);
+    }
+  }
+
+  /**
+   * Update only contact data without full re-render
+   */
+  _updateContactDataOnly() {
+    try {
+      // Get updated contact data
+      const characterActors = game.actors.filter(actor => actor.type === 'character');
+      let hasChanges = false;
+
+      characterActors.forEach(actor => {
+        const currentContacts = window.CyberpunkAgent?.instance?.getContactsForActor(actor.id) || [];
+        const contactCountElement = this.element.find(`#contact-count-${actor.id}`);
+        const contactsContainer = this.element.find(`#selected-contacts-${actor.id}`);
+        const noContactsElement = this.element.find(`#no-contacts-${actor.id}`);
+
+        if (contactCountElement.length) {
+          const newCount = currentContacts.length;
+          const currentCountText = contactCountElement.text();
+          const expectedCountText = `${newCount} contatos`;
+
+          if (currentCountText !== expectedCountText) {
+            contactCountElement.text(expectedCountText);
+            hasChanges = true;
+          }
+        }
+
+        // Update contacts display
+        if (contactsContainer.length) {
+          if (currentContacts.length > 0) {
+            // Generate new contacts HTML
+            const contactsHtml = currentContacts.map(contact => `
+              <div class="cp-contact-chip" data-contact-id="${contact.id}" data-actor-id="${actor.id}">
+                <img src="${contact.img}" alt="${contact.name}" class="cp-chip-avatar" />
+                <span class="cp-chip-name">${contact.name}</span>
+                <button class="cp-remove-contact" title="Remover ${contact.name}">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            `).join('');
+
+            const newContactsHtml = `
+              <div class="cp-contacts-chips">
+                ${contactsHtml}
+              </div>
+            `;
+
+            // Check if content actually changed
+            const currentContent = contactsContainer.html();
+            if (currentContent !== newContactsHtml) {
+              contactsContainer.html(newContactsHtml);
+              hasChanges = true;
+            }
+
+            // Hide no-contacts message if it exists
+            if (noContactsElement.length) {
+              noContactsElement.hide();
+            }
+          } else {
+            // Show no-contacts message
+            const noContactsHtml = `
+              <div class="cp-no-contacts" id="no-contacts-${actor.id}">
+                <p>Nenhum contato configurado para este personagem.</p>
+              </div>
+            `;
+
+            const currentContent = contactsContainer.html();
+            if (currentContent !== noContactsHtml) {
+              contactsContainer.html(noContactsHtml);
+              hasChanges = true;
+            }
+          }
+        }
+      });
+
+      // Re-attach event listeners for new contact chips
+      if (hasChanges) {
+        this._reattachContactEventListeners();
+      }
+
+      // Restore filter state after partial update
+      this._restoreFilterStateAfterPartialUpdate();
+
+      return true;
+    } catch (error) {
+      console.warn("ContactManagerApplication | Error in partial update:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Re-attach event listeners for contact chips after partial update
+   */
+  _reattachContactEventListeners() {
+    // Re-attach remove contact event listeners
+    this.element.find('.cp-remove-contact').off('click').on('click', this._onRemoveContactClick.bind(this));
+
+    console.log("ContactManagerApplication | Re-attached contact event listeners");
+  }
+
+  /**
+   * Store current filter state
+   */
+  _storeFilterState() {
+    const filterInput = this.element.find('.cp-search-filter');
+    if (filterInput.length) {
+      this.currentFilterTerm = filterInput.val() || '';
+      console.log("ContactManagerApplication | Stored filter term:", this.currentFilterTerm);
+    }
+  }
+
+  /**
+ * Restore filter state after re-render
+ */
+  _restoreFilterState() {
+    if (this.currentFilterTerm) {
+      const filterInput = this.element.find('.cp-search-filter');
+      if (filterInput.length) {
+        // Set the input value
+        filterInput.val(this.currentFilterTerm);
+
+        // Reapply the filter
+        this._applyFilter(this.currentFilterTerm);
+
+        console.log("ContactManagerApplication | Restored filter term:", this.currentFilterTerm);
+      }
+    }
+  }
+
+  /**
+   * Restore filter state after partial update
+   */
+  _restoreFilterStateAfterPartialUpdate() {
+    if (this.currentFilterTerm) {
+      // Reapply the filter without changing the input value
+      this._applyFilter(this.currentFilterTerm);
+
+      console.log("ContactManagerApplication | Restored filter after partial update:", this.currentFilterTerm);
+    }
+  }
+
+  /**
+   * Apply filter to network sections
+   */
+  _applyFilter(searchTerm) {
+    const networkSections = this.element.find('.cp-network-section');
+
+    if (searchTerm === '') {
+      // Show all sections
+      networkSections.show();
+    } else {
+      // Filter sections based on actor name
+      networkSections.each((index, section) => {
+        const actorName = $(section).find('.cp-actor-details h3').text().toLowerCase();
+        if (actorName.includes(searchTerm.toLowerCase())) {
+          $(section).show();
+        } else {
+          $(section).hide();
+        }
+      });
+    }
   }
 
   /**
@@ -186,11 +396,26 @@ class ContactManagerApplication extends FormApplication {
     event.preventDefault();
     const actorId = event.currentTarget.closest('.cp-contact-chip').dataset.actorId;
     const contactId = event.currentTarget.closest('.cp-contact-chip').dataset.contactId;
+    const contactName = event.currentTarget.closest('.cp-contact-chip').querySelector('.cp-chip-name').textContent;
+
+    // Add visual feedback immediately
+    const contactChip = event.currentTarget.closest('.cp-contact-chip');
+    contactChip.style.opacity = '0.5';
+    contactChip.style.transform = 'scale(0.95)';
 
     if (window.CyberpunkAgent?.instance?.removeContactFromActor(actorId, contactId)) {
-      ui.notifications.info(`Contato removido com sucesso!`);
-      this.render(true); // Refresh the display
+      // Show success notification
+      ui.notifications.info(`Contato "${contactName}" removido com sucesso!`);
+
+      // The real-time update system will handle the refresh automatically
+      // But we can also provide immediate visual feedback
+      setTimeout(() => {
+        this._handleRealtimeUpdate();
+      }, 100);
     } else {
+      // Restore visual state on error
+      contactChip.style.opacity = '1';
+      contactChip.style.transform = 'scale(1)';
       ui.notifications.error("Erro ao remover contato!");
     }
   }
@@ -208,48 +433,10 @@ class ContactManagerApplication extends FormApplication {
    */
   _onFilterInput(event) {
     const searchTerm = event.target.value.toLowerCase().trim();
-    const networkSections = this.element.find('.cp-network-section');
+    this.currentFilterTerm = event.target.value; // Store the original value (not trimmed)
 
-    if (searchTerm === '') {
-      // Show all sections
-      networkSections.show();
-    } else {
-      // Filter sections based on actor name
-      networkSections.each((index, section) => {
-        const actorName = $(section).find('.cp-actor-details h3').text().toLowerCase();
-        if (actorName.includes(searchTerm)) {
-          $(section).show();
-        } else {
-          $(section).hide();
-        }
-      });
-    }
+    this._applyFilter(searchTerm);
   }
-
-  /**
-   * Handle refresh contacts button click
-   */
-  _onRefreshContacts(event) {
-    event.preventDefault();
-    this.render(true);
-    ui.notifications.info("Redes de contatos atualizadas!");
-  }
-
-  /**
-   * Handle save all button click
-   */
-  _onSaveAll(event) {
-    event.preventDefault();
-    if (window.CyberpunkAgent?.instance?.saveContactNetworks) {
-      window.CyberpunkAgent.instance.saveContactNetworks();
-      ui.notifications.info("Todas as redes de contatos salvas!");
-    } else {
-      console.error("Cyberpunk Agent | CyberpunkAgent.instance not available for saving");
-      ui.notifications.error("Erro ao salvar redes de contatos!");
-    }
-  }
-
-
 
   /**
    * Handle form submission
@@ -309,7 +496,7 @@ class ContactSearchModal extends FormApplication {
     // Add event listeners
     html.find('.cp-search-input').on('input', this._onSearchInput.bind(this));
     html.find('.cp-cancel-search').click(this._onCancel.bind(this));
-    
+
     // Use event delegation for search results
     html.find('.cp-search-results').on('click', '.cp-search-result', this._onResultClick.bind(this));
   }
@@ -374,12 +561,30 @@ class ContactSearchModal extends FormApplication {
    */
   _onResultClick(event) {
     const actorId = event.currentTarget.dataset.actorId;
+    const actorName = event.currentTarget.querySelector('.cp-result-name').textContent;
+
+    // Add visual feedback immediately
+    const resultElement = event.currentTarget;
+    resultElement.style.opacity = '0.5';
+    resultElement.style.transform = 'scale(0.95)';
 
     if (window.CyberpunkAgent?.instance?.addContactToActor(this.actorId, actorId)) {
-      ui.notifications.info(`Contato adicionado com sucesso!`);
+      // Show success notification
+      ui.notifications.info(`Contato "${actorName}" adicionado com sucesso!`);
+
       this.close();
-      this.parentApp.render(true); // Refresh parent
+
+      // The real-time update system will handle the refresh automatically
+      // But we can also provide immediate feedback to the parent app
+      if (this.parentApp && this.parentApp._handleRealtimeUpdate) {
+        setTimeout(() => {
+          this.parentApp._handleRealtimeUpdate();
+        }, 100);
+      }
     } else {
+      // Restore visual state on error
+      resultElement.style.opacity = '1';
+      resultElement.style.transform = 'scale(1)';
       ui.notifications.error("Erro ao adicionar contato!");
     }
   }

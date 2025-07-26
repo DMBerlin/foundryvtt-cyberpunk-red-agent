@@ -11,7 +11,7 @@
     "diagnose": "node scripts/diagnose-module.js",
     "dev:copy": "powershell -Command \"Copy-Item -Path '.\\*' -Destination 'C:\\Users\\danie\\AppData\\Local\\FoundryVTT\\V11\\Data\\modules\\cyberpunk-agent\\' -Recurse -Force -Exclude 'node_modules','.git','cyberpunk-agent.zip','docs'\"",
     "dev:copy-alt": "xcopy .\\* \"C:\\Users\\danie\\AppData\\Local\\FoundryVTT\\V11\\Data\\modules\\cyberpunk-agent\\\" /E /Y",
-    "dev:watch": "nodemon --watch scripts --watch styles --watch lang --watch module.json --exec \"npm run dev:copy\"",
+    "dev:watch": "nodemon --watch scripts --watch __tests__ --watch styles --watch lang --watch module.json --exec \"npm run dev:copy\"",
     "test": "npm run dev:copy && echo 'Files copied to FoundryVTT. Please refresh your browser.'",
     "dev": "npm run dev:copy && echo 'Development files copied. Refresh FoundryVTT to test changes.'"
   },

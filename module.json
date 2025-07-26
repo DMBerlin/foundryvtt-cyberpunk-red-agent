@@ -12,12 +12,25 @@
   "id": "cyberpunk-agent",
   "esmodules": [
     "scripts/module.js",
+    "scripts/socketlib-integration.js",
     "scripts/agent-home.js",
     "scripts/contact-manager.js",
     "scripts/status-check.js",
     "scripts/class-checker.js",
     "scripts/debug.js",
-    "scripts/test.js",
+    "__tests__/test.js",
+    "__tests__/test-realtime.js",
+    "__tests__/test-cross-client.js",
+    "__tests__/test-contact-manager.js",
+    "__tests__/test-filter-preservation.js",
+    "__tests__/test-chat-messages.js",
+    "__tests__/test-communication-methods.js",
+    "__tests__/test-socketlib-comparison.js",
+    "__tests__/test-socketlib-propagation.js",
+    "__tests__/test-socketlib-debug.js",
+    "__tests__/test-socketlib-simple.js",
+    "__tests__/test-socketlib-fix.js",
+    "__tests__/test-compact-ui.js",
     "scripts/dev-helper.js"
   ],
   "languages": [
@@ -37,6 +50,16 @@
       {
         "id": "cyberpunk-red-core",
         "type": "system",
+        "compatibility": {
+          "minimum": "0.88.0"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/latest/download/module.json",
         "compatibility": {
           "minimum": "0.88.0"
         }
