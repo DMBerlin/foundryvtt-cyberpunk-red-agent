@@ -1,304 +1,370 @@
 /**
- * Test script for Chat Message Prevention
- * Run this in the browser console to test if chat messages are being avoided
+ * Test Chat Messages with SocketLib
+ * Tests the messaging functionality using SocketLib for real-time communication
  */
 
-console.log("Cyberpunk Agent | Testing chat message prevention...");
+console.log("Cyberpunk Agent | Loading chat messages test...");
 
-function testChatMessagePrevention() {
-  console.log("=== Chat Message Prevention Test ===");
+/**
+ * Test basic message sending and receiving
+ */
+async function testBasicMessageFlow() {
+  console.log("=== Basic Message Flow Test ===");
 
-  // Check if the module is loaded
   if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-    console.error("❌ CyberpunkAgent not loaded!");
+    console.error("❌ CyberpunkAgent not available");
     return false;
   }
 
-  console.log("✅ CyberpunkAgent loaded");
+  const agent = window.CyberpunkAgent.instance;
 
-  // Test cross-client communication detection
-  console.log("Testing cross-client communication detection...");
+  // Get character actors for testing
+  const characterActors = game.actors.filter(actor => actor.type === 'character');
+  if (characterActors.length < 2) {
+    console.error("❌ Need at least 2 character actors for message test");
+    return false;
+  }
 
-  if (typeof window.CyberpunkAgent.instance._needsCrossClientCommunication === 'function') {
-    console.log("✅ _needsCrossClientCommunication method available");
+  const actor1 = characterActors[0];
+  const actor2 = characterActors[1];
 
-    const needsCommunication = window.CyberpunkAgent.instance._needsCrossClientCommunication();
-    const userCount = game.users.size;
+  console.log(`📱 Testing message flow between ${actor1.name} and ${actor2.name}`);
 
-    console.log(`📊 Users in session: ${userCount}`);
-    console.log(`📊 Needs cross-client communication: ${needsCommunication}`);
+  // Test 1: Send message
+  console.log("📤 Sending test message...");
+  const testMessage = "Esta é uma mensagem de teste via SocketLib!";
+  const success = await agent.sendMessage(actor1.id, actor2.id, testMessage);
 
-    if (userCount === 1 && !needsCommunication) {
-      console.log("✅ Correctly detected single user session");
-    } else if (userCount > 1 && needsCommunication) {
-      console.log("✅ Correctly detected multi-user session");
+  if (!success) {
+    console.error("❌ Failed to send message");
+    return false;
+  }
+
+  console.log("✅ Message sent successfully");
+
+  // Test 2: Check if message was saved locally
+  console.log("📋 Checking local message storage...");
+  const messages = agent.getMessagesForConversation(actor1.id, actor2.id);
+  const lastMessage = messages[messages.length - 1];
+
+  if (!lastMessage || lastMessage.text !== testMessage) {
+    console.error("❌ Message not found in local storage");
+    console.log("Messages:", messages);
+    return false;
+  }
+
+  console.log("✅ Message found in local storage");
+
+  // Test 3: Check SocketLib integration
+  console.log("🔌 Checking SocketLib integration...");
+  if (agent._isSocketLibAvailable()) {
+    console.log("✅ SocketLib available");
+
+    // Test SocketLib message sending
+    const socketLibTest = await agent.socketLibIntegration.testMessageSending();
+    if (socketLibTest) {
+      console.log("✅ SocketLib message test successful");
     } else {
-      console.warn("⚠️ Cross-client communication detection may not be working correctly");
+      console.warn("⚠️ SocketLib message test failed");
     }
   } else {
-    console.error("❌ _needsCrossClientCommunication method not available");
-    return false;
+    console.warn("⚠️ SocketLib not available");
   }
 
-  // Test notification method
-  console.log("Testing notification method...");
-
-  if (typeof window.CyberpunkAgent.instance.notifyContactUpdate === 'function') {
-    console.log("✅ notifyContactUpdate method available");
-  } else {
-    console.error("❌ notifyContactUpdate method not available");
-    return false;
-  }
-
-  // Test broadcast method
-  console.log("Testing broadcast method...");
-
-  if (typeof window.CyberpunkAgent.instance.broadcastContactUpdate === 'function') {
-    console.log("✅ broadcastContactUpdate method available");
-  } else {
-    console.error("❌ broadcastContactUpdate method not available");
-    return false;
-  }
-
-  console.log("=== Chat message prevention tests completed successfully! ===");
+  console.log("✅ Basic message flow test completed");
   return true;
 }
 
-function testSingleUserBehavior() {
-  console.log("=== Single User Behavior Test ===");
+/**
+ * Test real-time message updates
+ */
+async function testRealtimeMessageUpdates() {
+  console.log("=== Real-time Message Updates Test ===");
 
-  // Check if there's only one user
-  if (game.users.size !== 1) {
-    console.warn("⚠️ This test requires a single user session");
-    console.log(`💡 Current users: ${game.users.size}`);
+  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+    console.error("❌ CyberpunkAgent not available");
     return false;
   }
 
-  console.log("✅ Single user session detected");
+  const agent = window.CyberpunkAgent.instance;
 
-  // Test that notifications are skipped for single user
-  console.log("Testing notification behavior for single user...");
+  // Get character actors for testing
+  const characterActors = game.actors.filter(actor => actor.type === 'character');
+  if (characterActors.length < 2) {
+    console.error("❌ Need at least 2 character actors for realtime test");
+    return false;
+  }
 
-  try {
-    // Store original console.log to capture output
-    const originalLog = console.log;
-    let logOutput = '';
-    console.log = function (...args) {
-      logOutput += args.join(' ') + '\n';
-      originalLog.apply(console, args);
-    };
+  const actor1 = characterActors[0];
+  const actor2 = characterActors[1];
 
-    // Trigger a notification
-    window.CyberpunkAgent.instance.notifyContactUpdate();
+  console.log(`🔄 Testing real-time updates between ${actor1.name} and ${actor2.name}`);
 
-    // Restore console.log
-    console.log = originalLog;
+  // Test 1: Check communication method
+  const communicationMethod = agent._getCommunicationMethod();
+  console.log(`📡 Communication method: ${communicationMethod}`);
 
-    // Check if the skip message was logged
-    if (logOutput.includes('Single user session, skipping cross-client notification')) {
-      console.log("✅ Correctly skipped cross-client notification for single user");
-    } else {
-      console.warn("⚠️ Cross-client notification may not have been skipped");
+  if (communicationMethod === 'none') {
+    console.warn("⚠️ No communication method available for real-time testing");
+    return false;
+  }
+
+  // Test 2: Send multiple messages to test real-time updates
+  const testMessages = [
+    "Mensagem de teste #1",
+    "Mensagem de teste #2",
+    "Mensagem de teste #3"
+  ];
+
+  console.log("📤 Sending multiple test messages...");
+
+  for (let i = 0; i < testMessages.length; i++) {
+    const message = testMessages[i];
+    console.log(`📤 Sending message ${i + 1}: ${message}`);
+
+    const success = await agent.sendMessage(actor1.id, actor2.id, message);
+    if (!success) {
+      console.error(`❌ Failed to send message ${i + 1}`);
+      return false;
     }
 
-  } catch (error) {
-    console.error("❌ Error during single user test:", error);
+    // Small delay between messages
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  console.log("✅ All test messages sent");
+
+  // Test 3: Check if all messages are in storage
+  const messages = agent.getMessagesForConversation(actor1.id, actor2.id);
+  console.log(`📋 Total messages in conversation: ${messages.length}`);
+
+  // Check if our test messages are there
+  const recentMessages = messages.slice(-testMessages.length);
+  const allTestMessagesFound = testMessages.every((testMsg, index) =>
+    recentMessages[index] && recentMessages[index].text === testMsg
+  );
+
+  if (!allTestMessagesFound) {
+    console.error("❌ Not all test messages found in storage");
+    console.log("Expected:", testMessages);
+    console.log("Found:", recentMessages.map(m => m.text));
     return false;
   }
 
-  console.log("=== Single user behavior test completed! ===");
+  console.log("✅ All test messages found in storage");
+
+  console.log("✅ Real-time message updates test completed");
   return true;
 }
 
-function testMultiUserBehavior() {
-  console.log("=== Multi User Behavior Test ===");
+/**
+ * Test message interface updates
+ */
+async function testMessageInterfaceUpdates() {
+  console.log("=== Message Interface Updates Test ===");
 
-  // Check if there are multiple users
-  if (game.users.size <= 1) {
-    console.warn("⚠️ This test requires multiple users");
-    console.log(`💡 Current users: ${game.users.size}`);
+  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+    console.error("❌ CyberpunkAgent not available");
     return false;
   }
 
-  console.log("✅ Multi-user session detected");
+  const agent = window.CyberpunkAgent.instance;
 
-  // Test that notifications are sent for multiple users
-  console.log("Testing notification behavior for multiple users...");
+  // Test 1: Check if there are open interfaces
+  const openInterfacesCount = agent.getOpenInterfacesCount();
+  console.log(`🖥️ Open interfaces: ${openInterfacesCount}`);
 
-  try {
-    // Store original console.log to capture output
-    const originalLog = console.log;
-    let logOutput = '';
-    console.log = function (...args) {
-      logOutput += args.join(' ') + '\n';
-      originalLog.apply(console, args);
-    };
-
-    // Trigger a notification
-    window.CyberpunkAgent.instance.notifyContactUpdate();
-
-    // Restore console.log
-    console.log = originalLog;
-
-    // Check if the notification was sent
-    if (logOutput.includes('Sending contact update notification to all clients')) {
-      console.log("✅ Correctly sent cross-client notification for multiple users");
-    } else {
-      console.warn("⚠️ Cross-client notification may not have been sent");
-    }
-
-  } catch (error) {
-    console.error("❌ Error during multi-user test:", error);
+  if (openInterfacesCount === 0) {
+    console.warn("⚠️ No open interfaces to test updates");
+    console.log("💡 Open a chat interface to test real-time updates");
     return false;
   }
 
-  console.log("=== Multi-user behavior test completed! ===");
+  // Test 2: Force update interfaces
+  console.log("🔄 Forcing interface updates...");
+  agent.forceUpdateChatInterfaces();
+  agent.updateOpenInterfaces();
+
+  console.log("✅ Interface updates test completed");
   return true;
 }
 
-function testInvisibleChatMessages() {
-  console.log("=== Invisible Chat Messages Test ===");
+/**
+ * Test SocketLib message handlers
+ */
+async function testSocketLibMessageHandlers() {
+  console.log("=== SocketLib Message Handlers Test ===");
 
-  // Check if we can create a test message
-  if (!game.user.isGM) {
-    console.warn("⚠️ This test requires GM permissions");
+  if (!window.SocketLibIntegration) {
+    console.error("❌ SocketLib integration not available");
     return false;
   }
 
-  console.log("✅ GM permissions confirmed");
+  const integration = new window.SocketLibIntegration();
 
-  try {
-    // Test the broadcast method
-    const testData = {
-      type: 'contactUpdate',
-      data: {
-        timestamp: Date.now(),
-        userId: game.user.id,
-        userName: game.user.name,
-        sessionId: game.data.id,
-        test: true
+  if (!integration.isAvailable) {
+    console.error("❌ SocketLib integration not available");
+    return false;
+  }
+
+  console.log("✅ SocketLib integration available");
+
+  // Test 1: Test message sending via SocketLib
+  console.log("📤 Testing SocketLib message sending...");
+  const messageTest = await integration.testMessageSending();
+
+  if (messageTest) {
+    console.log("✅ SocketLib message sending test successful");
+  } else {
+    console.warn("⚠️ SocketLib message sending test failed");
+  }
+
+  // Test 2: Test connection
+  console.log("🔌 Testing SocketLib connection...");
+  const connectionTest = await integration.testConnection();
+
+  if (connectionTest) {
+    console.log("✅ SocketLib connection test successful");
+  } else {
+    console.warn("⚠️ SocketLib connection test failed");
+  }
+
+  // Test 3: Get status
+  console.log("📊 Getting SocketLib status...");
+  const status = integration.getDetailedStatus();
+  console.log("Status:", status);
+
+  console.log("✅ SocketLib message handlers test completed");
+  return true;
+}
+
+/**
+ * Test message persistence
+ */
+async function testMessagePersistence() {
+  console.log("=== Message Persistence Test ===");
+
+  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+    console.error("❌ CyberpunkAgent not available");
+    return false;
+  }
+
+  const agent = window.CyberpunkAgent.instance;
+
+  // Get character actors for testing
+  const characterActors = game.actors.filter(actor => actor.type === 'character');
+  if (characterActors.length < 2) {
+    console.error("❌ Need at least 2 character actors for persistence test");
+    return false;
+  }
+
+  const actor1 = characterActors[0];
+  const actor2 = characterActors[1];
+
+  console.log(`💾 Testing message persistence between ${actor1.name} and ${actor2.name}`);
+
+  // Test 1: Send a message
+  const testMessage = "Mensagem de teste para persistência";
+  console.log("📤 Sending test message...");
+  const success = await agent.sendMessage(actor1.id, actor2.id, testMessage);
+
+  if (!success) {
+    console.error("❌ Failed to send message");
+    return false;
+  }
+
+  // Test 2: Check if message is saved to settings
+  console.log("💾 Checking message persistence...");
+  const savedMessages = game.settings.get('cyberpunk-agent', 'messages') || {};
+  const conversationKey = agent._getConversationKey(actor1.id, actor2.id);
+  const savedConversation = savedMessages[conversationKey] || [];
+
+  const messageFound = savedConversation.some(msg => msg.text === testMessage);
+
+  if (!messageFound) {
+    console.error("❌ Message not found in saved settings");
+    console.log("Saved messages:", savedMessages);
+    return false;
+  }
+
+  console.log("✅ Message found in saved settings");
+
+  // Test 3: Reload data and check if message is still there
+  console.log("🔄 Reloading agent data...");
+  agent.loadAgentData();
+
+  const reloadedMessages = agent.getMessagesForConversation(actor1.id, actor2.id);
+  const reloadedMessageFound = reloadedMessages.some(msg => msg.text === testMessage);
+
+  if (!reloadedMessageFound) {
+    console.error("❌ Message not found after data reload");
+    return false;
+  }
+
+  console.log("✅ Message found after data reload");
+
+  console.log("✅ Message persistence test completed");
+  return true;
+}
+
+/**
+ * Run all message tests
+ */
+async function runAllMessageTests() {
+  console.log("🚀 Running all message tests...");
+
+  const tests = [
+    { name: "Basic Message Flow", test: testBasicMessageFlow },
+    { name: "Real-time Updates", test: testRealtimeMessageUpdates },
+    { name: "Interface Updates", test: testMessageInterfaceUpdates },
+    { name: "SocketLib Handlers", test: testSocketLibMessageHandlers },
+    { name: "Message Persistence", test: testMessagePersistence }
+  ];
+
+  let passed = 0;
+  let failed = 0;
+
+  for (const testCase of tests) {
+    console.log(`\n🧪 Running: ${testCase.name}`);
+    try {
+      const result = await testCase.test();
+      if (result) {
+        console.log(`✅ ${testCase.name}: PASSED`);
+        passed++;
+      } else {
+        console.log(`❌ ${testCase.name}: FAILED`);
+        failed++;
       }
-    };
-
-    // Create a test message
-    window.CyberpunkAgent.instance.broadcastContactUpdate(testData);
-
-    console.log("✅ Test message created successfully");
-
-    // Check if CSS is applied to hide messages
-    const styleSheets = Array.from(document.styleSheets);
-    const cyberpunkStyles = styleSheets.find(sheet =>
-      sheet.href && sheet.href.includes('cyberpunk-agent')
-    );
-
-    if (cyberpunkStyles) {
-      console.log("✅ Cyberpunk Agent CSS loaded");
-    } else {
-      console.warn("⚠️ Cyberpunk Agent CSS may not be loaded");
+    } catch (error) {
+      console.error(`❌ ${testCase.name}: ERROR -`, error);
+      failed++;
     }
-
-    // Check for invisible message styles
-    const invisibleStyles = document.querySelector('style[data-cyberpunk-agent]') ||
-      document.querySelector('link[href*="cyberpunk-agent"]');
-
-    if (invisibleStyles) {
-      console.log("✅ Invisible message styles found");
-    } else {
-      console.log("ℹ️ Invisible message styles may be in external CSS");
-    }
-
-  } catch (error) {
-    console.error("❌ Error during invisible message test:", error);
-    return false;
   }
 
-  console.log("=== Invisible chat messages test completed! ===");
-  return true;
-}
+  console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed`);
 
-function checkCurrentChatMessages() {
-  console.log("=== Current Chat Messages Check ===");
-
-  // Get all chat messages
-  const chatMessages = game.messages.contents;
-  const cyberpunkMessages = chatMessages.filter(msg =>
-    msg.flags && msg.flags['cyberpunk-agent']
-  );
-
-  console.log(`📊 Total chat messages: ${chatMessages.length}`);
-  console.log(`📊 Cyberpunk Agent messages: ${cyberpunkMessages.length}`);
-
-  if (cyberpunkMessages.length > 0) {
-    console.log("📋 Cyberpunk Agent messages found:");
-    cyberpunkMessages.forEach((msg, index) => {
-      console.log(`  ${index + 1}. ID: ${msg.id}, User: ${msg.user.name}, Visible: ${!msg.data.blind}`);
-    });
+  if (failed === 0) {
+    console.log("🎉 All message tests passed!");
   } else {
-    console.log("✅ No Cyberpunk Agent messages found");
+    console.log("⚠️ Some message tests failed");
   }
 
-  // Check for visible cyberpunk messages
-  const visibleCyberpunkMessages = cyberpunkMessages.filter(msg => !msg.data.blind);
-
-  if (visibleCyberpunkMessages.length > 0) {
-    console.warn("⚠️ Found visible Cyberpunk Agent messages!");
-    visibleCyberpunkMessages.forEach((msg, index) => {
-      console.warn(`  ${index + 1}. ID: ${msg.id}, User: ${msg.user.name}`);
-    });
-  } else {
-    console.log("✅ All Cyberpunk Agent messages are properly hidden");
-  }
-
-  return {
-    total: chatMessages.length,
-    cyberpunk: cyberpunkMessages.length,
-    visible: visibleCyberpunkMessages.length
-  };
-}
-
-// Main test function
-function runAllChatMessageTests() {
-  console.log("🚀 Starting Chat Message Prevention comprehensive tests...");
-
-  const results = {
-    prevention: testChatMessagePrevention(),
-    singleUser: testSingleUserBehavior(),
-    multiUser: testMultiUserBehavior(),
-    invisible: testInvisibleChatMessages(),
-    current: checkCurrentChatMessages()
-  };
-
-  console.log("=== Chat Message Test Results Summary ===");
-  console.log("Message Prevention:", results.prevention ? "✅ PASS" : "❌ FAIL");
-  console.log("Single User Behavior:", results.singleUser ? "✅ PASS" : "❌ FAIL");
-  console.log("Multi User Behavior:", results.multiUser ? "✅ PASS" : "❌ FAIL");
-  console.log("Invisible Messages:", results.invisible ? "✅ PASS" : "❌ FAIL");
-
-  if (results.current) {
-    console.log("Current Messages:", results.current.visible === 0 ? "✅ PASS" : "❌ FAIL");
-  }
-
-  const allPassed = Object.values(results).every(result =>
-    result === true || (typeof result === 'object' && result.visible === 0)
-  );
-
-  if (allPassed) {
-    console.log("🎉 All chat message tests passed! Messages are being properly handled.");
-  } else {
-    console.log("⚠️ Some chat message tests failed. Check the logs above for details.");
-  }
-
-  return allPassed;
+  return { passed, failed };
 }
 
 // Make test functions globally available
-window.testChatMessagePrevention = testChatMessagePrevention;
-window.testSingleUserBehavior = testSingleUserBehavior;
-window.testMultiUserBehavior = testMultiUserBehavior;
-window.testInvisibleChatMessages = testInvisibleChatMessages;
-window.checkCurrentChatMessages = checkCurrentChatMessages;
-window.runAllChatMessageTests = runAllChatMessageTests;
+window.testBasicMessageFlow = testBasicMessageFlow;
+window.testRealtimeMessageUpdates = testRealtimeMessageUpdates;
+window.testMessageInterfaceUpdates = testMessageInterfaceUpdates;
+window.testSocketLibMessageHandlers = testSocketLibMessageHandlers;
+window.testMessagePersistence = testMessagePersistence;
+window.runAllMessageTests = runAllMessageTests;
 
-console.log("Cyberpunk Agent | Chat message prevention test functions loaded");
-console.log("Run 'runAllChatMessageTests()' to test everything");
-console.log("Run 'checkCurrentChatMessages()' to check current messages"); 
+console.log("Cyberpunk Agent | Chat messages test loaded");
+console.log("Available test functions:");
+console.log("  - testBasicMessageFlow() - Test basic message sending");
+console.log("  - testRealtimeMessageUpdates() - Test real-time updates");
+console.log("  - testMessageInterfaceUpdates() - Test interface updates");
+console.log("  - testSocketLibMessageHandlers() - Test SocketLib handlers");
+console.log("  - testMessagePersistence() - Test message persistence");
+console.log("  - runAllMessageTests() - Run all message tests"); 

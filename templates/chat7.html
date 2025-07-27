@@ -20,9 +20,6 @@
       <h3>Chat7</h3>
       <span class="cp-app-subtitle">Mensagens</span>
     </div>
-    <button class="cp-app-menu" title="Menu">
-      <i class="fas fa-ellipsis-v"></i>
-    </button>
   </div>
 
   <!-- Contacts List -->
@@ -30,18 +27,16 @@
     {{#if contacts.length}}
     <div class="cp-contacts-list">
       {{#each contacts}}
-      <div class="cp-contact-item" data-contact-id="{{this.id}}">
+      <div class="cp-contact-item {{#if this.isAnonymous}}anonymous{{/if}}" data-contact-id="{{this.id}}"
+        title="Conversar com {{this.name}}">
         <div class="cp-contact-avatar">
           <img src="{{this.img}}" alt="{{this.name}}" />
         </div>
         <div class="cp-contact-info">
           <span class="cp-contact-name">{{this.name}}</span>
-          <span class="cp-contact-status online">Online</span>
-        </div>
-        <div class="cp-contact-actions">
-          <button class="cp-chat-button" data-contact-id="{{this.id}}" title="Conversar com {{this.name}}">
-            <i class="fas fa-comment"></i>
-          </button>
+          {{#if this.isAnonymous}}
+          <span class="cp-contact-status anonymous">Anônimo</span>
+          {{/if}}
         </div>
       </div>
       {{/each}}

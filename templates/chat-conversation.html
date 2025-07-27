@@ -1,0 +1,67 @@
+<div class="cp-chat-conversation-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Header -->
+  <div class="cp-chat-header">
+    <button class="cp-back-button" data-action="back" title="Voltar">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="cp-chat-contact-info">
+      <div class="cp-chat-contact-avatar">
+        <img src="{{contact.img}}" alt="{{contact.name}}" />
+      </div>
+      <div class="cp-chat-contact-details">
+        <h3>{{contact.name}}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages Container -->
+  <div class="cp-messages-container" id="messages-container">
+    {{#if messages.length}}
+    <div class="cp-messages-list">
+      {{#each messages}}
+      <div class="cp-message {{#if this.isOwn}}own{{else}}other{{/if}}" data-message-id="{{this.id}}">
+        <div class="cp-message-content">
+          <div class="cp-message-text">{{this.text}}</div>
+          <div class="cp-message-time">
+            {{this.time}}
+            {{#if ../isGM}}
+            <i class="cp-message-delete fas fa-trash" data-message-id="{{this.id}}" title="Deletar mensagem"></i>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="cp-no-messages">
+      <div class="cp-no-messages-icon">
+        <i class="fas fa-comments"></i>
+      </div>
+      <h3>Nenhuma mensagem</h3>
+      <p>Inicie uma conversa com {{contact.name}}</p>
+    </div>
+    {{/if}}
+  </div>
+
+  <!-- Message Input -->
+  <div class="cp-message-input-container">
+    <div class="cp-input-wrapper">
+      <input type="text" class="cp-message-input" placeholder="Digite sua mensagem..." maxlength="500" />
+      <button class="cp-send-message" title="Enviar">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</div>

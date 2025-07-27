@@ -120,8 +120,8 @@ class Chat7Application extends FormApplication {
   }
 
   /**
-   * Get data for the template
-   */
+ * Get data for the template
+ */
   getData(options = {}) {
     const data = super.getData(options);
 
@@ -137,6 +137,12 @@ class Chat7Application extends FormApplication {
     try {
       if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
         contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
+
+        // Get anonymous contacts (people who sent messages but aren't in contact list)
+        const anonymousContacts = window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id) || [];
+
+        // Combine regular contacts with anonymous contacts
+        contacts = [...contacts, ...anonymousContacts];
       }
     } catch (error) {
       console.warn("Cyberpunk Agent | Error getting contacts:", error);
@@ -159,7 +165,7 @@ class Chat7Application extends FormApplication {
 
     // Add custom event listeners
     html.find('.cp-back-button').click(this._onBackClick.bind(this));
-    html.find('.cp-chat-button').click(this._onContactChatClick.bind(this));
+    html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
   }
 
   /**
@@ -188,8 +194,33 @@ class Chat7Application extends FormApplication {
     const contactId = event.currentTarget.dataset.contactId;
     console.log("Contact chat clicked for contact:", contactId);
 
-    // TODO: Implement actual chat with contact
-    ui.notifications.info("Chat com contato será implementado em breve!");
+    // Get contact data from regular contacts
+    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    let contact = contacts.find(c => c.id === contactId);
+
+    // If not found in regular contacts, check anonymous contacts
+    if (!contact) {
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      contact = anonymousContacts.find(c => c.id === contactId);
+    }
+
+    if (!contact) {
+      ui.notifications.error("Contato não encontrado!");
+      return;
+    }
+
+    // Close the current application
+    this.close();
+
+    // Open Chat Conversation application
+    const ChatConversationClass = ChatConversationApplication || window.ChatConversationApplication;
+    if (typeof ChatConversationClass !== 'undefined') {
+      const chatConversation = new ChatConversationClass(this.actor, contact);
+      chatConversation.render(true);
+    } else {
+      console.error("Cyberpunk Agent | ChatConversationApplication not loaded!");
+      ui.notifications.error("Erro ao carregar o chat. Tente recarregar a página (F5).");
+    }
   }
 
   /**
@@ -201,12 +232,314 @@ class Chat7Application extends FormApplication {
   }
 }
 
+/**
+ * Chat Conversation Application - Individual chat between two characters
+ * Extends FormApplication for proper FoundryVTT v11 compatibility
+ */
+class ChatConversationApplication extends FormApplication {
+  constructor(actor, contact, options = {}) {
+    super(actor, options);
+    this.actor = actor;
+    this.contact = contact;
+    console.log("ChatConversationApplication constructor called with:", actor.name, "and", contact.name);
+  }
+
+  /**
+   * Default options for the application
+   */
+  static get defaultOptions() {
+    return mergeObject(super.defaultOptions, {
+      id: "chat-conversation",
+      classes: ["cyberpunk-agent", "chat-conversation"],
+      template: "modules/cyberpunk-agent/templates/chat-conversation.html",
+      width: 400,
+      height: 700,
+      resizable: true,
+      minimizable: true,
+      title: "Chat"
+    });
+  }
+
+  /**
+   * Get data for the template
+   */
+  getData(options = {}) {
+    const data = super.getData(options);
+
+    // Get current time
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // Get messages for this conversation
+    let messages = [];
+    try {
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        messages = window.CyberpunkAgent.instance.getMessagesForConversation(this.actor.id, this.contact.id) || [];
+      }
+    } catch (error) {
+      console.warn("Cyberpunk Agent | Error getting messages:", error);
+    }
+
+
+
+    return {
+      ...data,
+      actor: this.actor,
+      contact: this.contact,
+      currentTime: currentTime,
+      messages: messages,
+      isGM: game.user.isGM
+    };
+  }
+
+  /**
+   * Activate event listeners
+   */
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    // Add custom event listeners
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-send-message').click(this._onSendMessage.bind(this));
+    html.find('.cp-message-input').on('keypress', this._onMessageInputKeypress.bind(this));
+
+    // GM-only message delete
+    if (game.user.isGM) {
+      html.find('.cp-message-delete').click(this._onDeleteMessage.bind(this));
+    }
+
+    // Scroll to bottom of messages
+    this._scrollToBottom();
+
+    // Listen for real-time updates
+    this._setupRealtimeListener();
+  }
+
+  /**
+   * Setup real-time update listener
+   */
+  _setupRealtimeListener() {
+    // Listen for custom events from the module
+    document.addEventListener('cyberpunk-agent-update', (event) => {
+      if (event.detail && event.detail.type === 'messageUpdate') {
+        // Always scroll to bottom on new message
+        this._scrollToBottomOnNewMessage();
+      }
+    });
+
+    // Also listen for window focus to scroll to bottom
+    window.addEventListener('focus', () => {
+      setTimeout(() => {
+        this._autoScrollIfAtBottom();
+      }, 100);
+    });
+  }
+
+  /**
+ * Handle delete message button click
+ */
+  async _onDeleteMessage(event) {
+    event.preventDefault();
+
+    const messageId = event.currentTarget.dataset.messageId;
+    if (!messageId) {
+      console.error("Cyberpunk Agent | No message ID found");
+      return;
+    }
+
+    // Show confirmation dialog using Foundry's Dialog
+    const confirmed = await new Dialog({
+      title: "Confirmar Deleção",
+      content: "Tem certeza que deseja deletar esta mensagem? Esta ação não pode ser desfeita.",
+      buttons: {
+        yes: {
+          icon: '<i class="fas fa-trash"></i>',
+          label: "Deletar",
+          callback: async () => {
+            try {
+              // Delete message through CyberpunkAgent
+              if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+                const success = await window.CyberpunkAgent.instance.deleteMessages(
+                  this.actor.id,
+                  this.contact.id,
+                  [messageId]
+                );
+
+                if (success) {
+                  // Use the correct notification method
+                  ui.notifications.info("Mensagem deletada com sucesso!");
+
+                  // Don't re-render here - let the notification system handle it
+                  // The message will be removed when the deletion notification is processed
+                } else {
+                  ui.notifications.warn("Erro ao deletar mensagem!");
+                }
+              } else {
+                ui.notifications.warn("Sistema Cyberpunk Agent não disponível!");
+              }
+            } catch (error) {
+              console.error("Cyberpunk Agent | Error deleting message:", error);
+              ui.notifications.warn("Erro ao deletar mensagem: " + error.message);
+            }
+            return true;
+          }
+        },
+        no: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancelar",
+          callback: () => false
+        }
+      },
+      default: "no"
+    }).render(true);
+
+    // The deletion is now handled inside the dialog callback
+    // No need to check confirmed here anymore
+  }
+
+
+
+  /**
+   * Handle back button click
+   */
+  _onBackClick(event) {
+    event.preventDefault();
+    console.log("Back button clicked");
+
+    // Close the current application
+    this.close();
+
+    // Reopen the Chat7
+    const ChatClass = Chat7Application || window.Chat7Application;
+    if (typeof ChatClass !== 'undefined') {
+      const chat7 = new ChatClass(this.actor);
+      chat7.render(true);
+    }
+  }
+
+  /**
+   * Handle send message button click
+   */
+  _onSendMessage(event) {
+    event.preventDefault();
+    this._sendMessage();
+  }
+
+  /**
+   * Handle message input keypress (Enter to send)
+   */
+  _onMessageInputKeypress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this._sendMessage();
+    }
+  }
+
+  /**
+ * Send message
+ */
+  async _sendMessage() {
+    const input = this.element.find('.cp-message-input');
+    const text = input.val().trim();
+
+    if (!text) {
+      return;
+    }
+
+    // Clear input
+    input.val('');
+
+    // Send message through CyberpunkAgent
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      try {
+        await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.contact.id, text);
+        console.log("Cyberpunk Agent | Message sent successfully");
+      } catch (error) {
+        console.error("Cyberpunk Agent | Error sending message:", error);
+        ui.notifications.error("Erro ao enviar mensagem: " + error.message);
+      }
+    }
+
+    // Note: The interface will be updated automatically via real-time updates
+    // No need to manually re-render here
+  }
+
+  /**
+   * Scroll to bottom of messages
+   */
+  _scrollToBottom() {
+    const messagesContainer = this.element.find('#messages-container');
+    if (messagesContainer.length) {
+      // Use smooth scrolling for better UX
+      messagesContainer[0].scrollTo({
+        top: messagesContainer[0].scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
+
+  /**
+   * Scroll to bottom immediately (without smooth animation)
+   */
+  _scrollToBottomImmediate() {
+    const messagesContainer = this.element.find('#messages-container');
+    if (messagesContainer.length) {
+      messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+    }
+  }
+
+  /**
+   * Check if user is at bottom of messages
+   */
+  _isAtBottom() {
+    const messagesContainer = this.element.find('#messages-container');
+    if (messagesContainer.length) {
+      const container = messagesContainer[0];
+      const threshold = 50; // pixels from bottom
+      return container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+    }
+    return true;
+  }
+
+  /**
+   * Auto-scroll to bottom if user is already at bottom
+   */
+  _autoScrollIfAtBottom() {
+    if (this._isAtBottom()) {
+      this._scrollToBottom();
+    }
+  }
+
+  /**
+   * Scroll to bottom on new message (always)
+   */
+  _scrollToBottomOnNewMessage() {
+    // Always scroll to bottom when a new message is added
+    setTimeout(() => {
+      this._scrollToBottom();
+    }, 100);
+  }
+
+  /**
+   * Handle form submission
+   */
+  async _updateObject(event, formData) {
+    // Handle any form updates if needed
+    console.log("Chat conversation form updated:", formData);
+  }
+}
+
 console.log("Cyberpunk Agent | agent-home.js loaded successfully");
 console.log("Cyberpunk Agent | AgentHomeApplication defined:", typeof AgentHomeApplication);
 console.log("Cyberpunk Agent | Chat7Application defined:", typeof Chat7Application);
+console.log("Cyberpunk Agent | ChatConversationApplication defined:", typeof ChatConversationApplication);
 
 // Make classes globally available
 window.AgentHomeApplication = AgentHomeApplication;
 window.Chat7Application = Chat7Application;
+window.ChatConversationApplication = ChatConversationApplication;
 
 console.log("Cyberpunk Agent | Classes made globally available"); 

@@ -630,9 +630,7 @@
   font-size: 0.8em;
 }
 
-.cp-contact-manager .cp-contact-card .cp-contact-status.online {
-  color: #00ff00;
-}
+/* Removed online status styles from contact manager */
 
 .cp-contact-manager .cp-contact-card .cp-contact-actions {
   display: flex;
@@ -825,16 +823,22 @@
   background: none;
   border: none;
   color: #000;
-  font-size: 1.2em;
+  font-size: 1em;
   cursor: pointer;
-  padding: 5px;
-  border-radius: 5px;
+  padding: 6px;
+  border-radius: 50%;
   transition: all 0.3s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .cp-back-button:hover {
   background: rgba(0, 0, 0, 0.2);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .cp-chat-title h3 {
@@ -962,7 +966,8 @@
 
 .cp-message {
   display: flex;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  width: 100%;
 }
 
 .cp-message-own {
@@ -974,16 +979,22 @@
 }
 
 .cp-message-content {
-  max-width: 70%;
+  max-width: 80%;
+  min-width: 120px;
   padding: 12px 16px;
   border-radius: 15px;
   position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: inline-block;
+  box-sizing: border-box;
 }
 
 .cp-message-own .cp-message-content {
   background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
   color: #000;
   border-bottom-right-radius: 5px;
+  margin-left: auto;
 }
 
 .cp-message-other .cp-message-content {
@@ -991,17 +1002,27 @@
   color: #00ff00;
   border: 1px solid rgba(0, 255, 0, 0.3);
   border-bottom-left-radius: 5px;
+  margin-right: auto;
 }
 
 .cp-message-text {
   margin-bottom: 5px;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .cp-message-time {
   font-size: 0.8em;
   opacity: 0.7;
   text-align: right;
+  margin-top: 4px;
+}
+
+/* Remove avatar styles since we're not using them anymore */
+.cp-message-avatar {
+  display: none;
 }
 
 /* Message Input */
@@ -1514,21 +1535,7 @@
   opacity: 0.8;
 }
 
-.cp-app-menu {
-  background: none;
-  border: none;
-  color: #000;
-  font-size: 1.2em;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.cp-app-menu:hover {
-  background: rgba(0, 0, 0, 0.2);
-  transform: scale(1.1);
-}
+/* Removed app menu styles since we're not using the menu button */
 
 /* Contacts Container */
 .cp-contacts-container {
@@ -1595,9 +1602,9 @@
   font-size: 0.9em;
 }
 
-.cp-contact-status.online {
-  color: #00ff00;
-  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+.cp-contact-status.anonymous {
+  color: #ffaa00;
+  font-style: italic;
 }
 
 .cp-contact-actions {
@@ -1656,11 +1663,568 @@
   opacity: 0.7;
 }
 
+/* ===== CHAT CONVERSATION STYLES ===== */
+
+.cp-chat-conversation-phone {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+  color: #00ff00;
+  font-family: 'Orbitron', monospace;
+  border-radius: 25px;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+}
+
+/* Chat Header */
+.cp-chat-header {
+  background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #00ff00;
+}
+
+.cp-chat-contact-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.cp-chat-contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #000;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.cp-chat-contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-chat-contact-details h3 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Removed chat status styles since we're not using online status */
+
+
+
+/* Options Modal */
+.cp-options-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cp-options-content {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border: 2px solid #00ff00;
+  border-radius: 15px;
+  padding: 20px;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+}
+
+.cp-options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-options-header h3 {
+  margin: 0;
+  color: #00ff00;
+  font-size: 1.2em;
+}
+
+.cp-options-close {
+  background: none;
+  border: none;
+  color: #00ff00;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.cp-options-close:hover {
+  background: rgba(0, 255, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-option-item {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 255, 0, 0.2) 100%);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  color: #00ff00;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1em;
+}
+
+.cp-option-item:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.2) 0%, rgba(0, 255, 0, 0.3) 100%);
+  border-color: #00ff00;
+  transform: translateX(5px);
+}
+
+.cp-option-item i {
+  font-size: 1.1em;
+}
+
+/* Delete Messages Modal */
+.cp-delete-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.cp-delete-content {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border: 2px solid #ff6b35;
+  border-radius: 15px;
+  padding: 20px;
+  min-width: 500px;
+  max-width: 700px;
+  max-height: 80vh;
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-delete-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.cp-delete-header h3 {
+  margin: 0;
+  color: #ff6b35;
+  font-size: 1.3em;
+}
+
+.cp-delete-close {
+  background: none;
+  border: none;
+  color: #ff6b35;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.cp-delete-close:hover {
+  background: rgba(255, 107, 53, 0.2);
+  transform: scale(1.1);
+}
+
+.cp-delete-body {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.cp-delete-body p {
+  color: #ccc;
+  margin-bottom: 15px;
+  font-size: 0.95em;
+}
+
+.cp-messages-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.cp-message-select-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.cp-message-select-item:hover {
+  background: rgba(255, 107, 53, 0.15);
+  border-color: rgba(255, 107, 53, 0.4);
+}
+
+.cp-message-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff6b35;
+  cursor: pointer;
+}
+
+.cp-message-label {
+  flex: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.cp-message-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.cp-message-sender {
+  font-size: 0.85em;
+  color: #ff6b35;
+  font-weight: bold;
+}
+
+.cp-message-text {
+  font-size: 0.9em;
+  color: #ccc;
+  word-wrap: break-word;
+  max-width: 400px;
+}
+
+.cp-message-time {
+  font-size: 0.75em;
+  color: #888;
+}
+
+.cp-delete-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.cp-delete-footer button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cp-select-all {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+}
+
+.cp-select-all:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-deselect-all {
+  background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
+  color: #000;
+}
+
+.cp-deselect-all:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+}
+
+.cp-delete-confirm {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff4500 100%);
+  color: #fff;
+}
+
+.cp-delete-confirm:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+}
+
+.cp-delete-confirm:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.cp-delete-cancel {
+  background: linear-gradient(135deg, #666 0%, #444 100%);
+  color: #fff;
+}
+
+.cp-delete-cancel:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(102, 102, 102, 0.3);
+}
+
+/* Messages Container */
+.cp-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+.cp-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-height: 100%;
+  padding-bottom: 20px;
+}
+
+.cp-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 80%;
+  position: relative;
+}
+
+
+
+.cp-message.own {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.cp-message.other {
+  align-self: flex-start;
+}
+
+.cp-message-content {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 15px;
+  padding: 12px 15px;
+  position: relative;
+}
+
+.cp-message.own .cp-message-content {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  color: #000;
+  border-color: #00ff00;
+}
+
+.cp-message-text {
+  font-size: 0.95em;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.cp-message-time {
+  font-size: 0.7em;
+  opacity: 0.7;
+  margin-top: 5px;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cp-message-delete {
+  color: rgba(255, 107, 53, 0.6);
+  font-size: 0.8em;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.cp-message:hover .cp-message-delete {
+  opacity: 1;
+  visibility: visible;
+}
+
+.cp-message-delete:hover {
+  color: #ff6b35;
+  background: rgba(255, 107, 53, 0.1);
+  transform: scale(1.1);
+}
+
+.cp-message.own .cp-message-time {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.cp-message-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #00ff00;
+  flex-shrink: 0;
+}
+
+.cp-message-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No Messages */
+.cp-no-messages {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(0, 255, 0, 0.6);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.cp-no-messages-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+  color: rgba(0, 255, 0, 0.4);
+}
+
+.cp-no-messages h3 {
+  margin: 0 0 10px 0;
+  color: #00ff00;
+  font-size: 1.3em;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.cp-no-messages p {
+  margin: 0;
+  font-size: 1em;
+}
+
+/* Message Input */
+.cp-message-input-container {
+  padding: 15px 20px;
+  background: rgba(0, 255, 0, 0.1);
+  border-top: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.cp-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 25px;
+  padding: 8px 15px;
+  width: 100%;
+}
+
+.cp-message-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #00ff00;
+  font-family: inherit;
+  font-size: 0.95em;
+  outline: none;
+  padding: 8px 0;
+}
+
+.cp-message-input::placeholder {
+  color: rgba(0, 255, 0, 0.5);
+}
+
+.cp-send-message {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: none;
+  color: #000;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+}
+
+.cp-send-message:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.cp-send-message:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+
+/* Anonymous Contact Styles */
+.cp-contact-item.anonymous {
+  opacity: 0.7;
+}
+
+.cp-contact-item.anonymous .cp-contact-name {
+  color: rgba(0, 255, 0, 0.7);
+  font-style: italic;
+}
+
+.cp-contact-item.anonymous .cp-contact-status {
+  color: rgba(0, 255, 0, 0.5);
+}
+
 /* ===== RESPONSIVE DESIGN FOR PHONE ===== */
 @media (max-width: 768px) {
 
   .cp-agent-phone,
-  .cp-chat7-phone {
+  .cp-chat7-phone,
+  .cp-chat-conversation-phone {
     border-radius: 20px;
   }
 
@@ -1682,6 +2246,14 @@
 
   .cp-contacts-container {
     padding: 15px;
+  }
+
+  .cp-messages-container {
+    padding: 15px;
+  }
+
+  .cp-message {
+    max-width: 90%;
   }
 }
 
@@ -2704,26 +3276,107 @@
   }
 }
 
-/* ===== INVISIBLE CHAT MESSAGES ===== */
+/* ===== FOUNDRYVTT CHAT INTEGRATION ===== */
 
-/* Hide cyberpunk agent system messages completely */
-.chat-message[data-flags*="cyberpunk-agent"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
+/* Style for cyberpunk agent chat messages in FoundryVTT chat */
+.cyberpunk-agent-chat-message {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  font-family: 'Courier New', monospace;
+  position: relative;
 }
 
-/* Hide the content of cyberpunk agent messages */
-.chat-message[data-flags*="cyberpunk-agent"] .message-content {
-  display: none !important;
+.cyberpunk-agent-chat-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #00ff00, #00cc00, #00ff00);
+  border-radius: 8px 8px 0 0;
 }
 
-/* Hide cyberpunk agent update divs */
-.cyberpunk-agent-update {
+/* Private message styling */
+.cyberpunk-agent-chat-message[data-private="true"] {
+  background: linear-gradient(135deg, rgba(255, 0, 255, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);
+  border: 1px solid rgba(255, 0, 255, 0.3);
+}
+
+.cyberpunk-agent-chat-message[data-private="true"]::before {
+  background: linear-gradient(90deg, #ff00ff, #cc00cc, #ff00ff);
+}
+
+.cyberpunk-agent-chat-message[data-private="true"] .cyberpunk-agent-chat-header::after {
+  content: ' 🔒';
+  color: #ff00ff;
+  font-size: 0.8em;
+  margin-left: 5px;
+}
+
+.cyberpunk-agent-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  color: #00ff00;
+}
+
+.cyberpunk-agent-chat-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 0, 0.5);
+}
+
+.cyberpunk-agent-chat-sender {
+  font-weight: bold;
+  color: #00ff00;
+}
+
+.cyberpunk-agent-chat-arrow {
+  color: rgba(0, 255, 0, 0.7);
+  font-weight: bold;
+}
+
+.cyberpunk-agent-chat-receiver {
+  font-weight: bold;
+  color: #00cc00;
+}
+
+.cyberpunk-agent-chat-content {
+  color: #00ff00;
+  font-size: 1em;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  word-wrap: break-word;
+}
+
+.cyberpunk-agent-chat-time {
+  font-size: 0.8em;
+  color: rgba(0, 255, 0, 0.6);
+  text-align: right;
+  font-style: italic;
+}
+
+/* Special styling for system messages (updates) */
+.cyberpunk-agent-chat-message[data-update] {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);
+  border-color: rgba(255, 107, 53, 0.3);
+}
+
+.cyberpunk-agent-chat-message[data-update]::before {
+  background: linear-gradient(90deg, #ff6b35, #ff8c42, #ff6b35);
+}
+
+/* ===== INVISIBLE SYSTEM MESSAGES ===== */
+
+/* Hide cyberpunk agent system update messages completely */
+.chat-message[data-flags*="cyberpunk-agent"] .cyberpunk-agent-update {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -2733,4 +3386,37 @@
   width: 1px !important;
   height: 1px !important;
   pointer-events: none !important;
+}
+
+/* Hide system update messages but keep agent chat messages and events visible */
+.chat-message[data-flags*="cyberpunk-agent"]:not(.cyberpunk-agent-chat-message):not(.cyberpunk-agent-event) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Style for cyberpunk agent events in chat */
+.cyberpunk-agent-event {
+  margin: 8px 0;
+  font-family: 'Courier New', monospace;
+}
+
+.cyberpunk-agent-event .cyberpunk-agent-event-content {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

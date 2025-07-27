@@ -13,6 +13,15 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 - **[QUICK-START.md](QUICK-START.md)** - Quick start guide for your specific environment
 - **[MODULE-COMPARISON.md](MODULE-COMPARISON.md)** - Comparison with functional modules and validation
 
+### **Features & Functionality**
+- **[SOCKETLIB-MESSAGING.md](SOCKETLIB-MESSAGING.md)** - Real-time messaging with SocketLib
+- **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - Integration with FoundryVTT native chat
+- **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
+- **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
+- **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
+- **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates system
+- **[COMPACT-UI.md](COMPACT-UI.md)** - Compact UI implementation
+
 ### **Troubleshooting & Maintenance**
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Complete troubleshooting guide for common issues
 
@@ -21,6 +30,14 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 ### **Getting Started**
 1. **[QUICK-START.md](QUICK-START.md)** - Set up your development environment
 2. **[TESTING.md](TESTING.md)** - Learn how to test the module
+
+### **Features**
+1. **[SOCKETLIB-MESSAGING.md](SOCKETLIB-MESSAGING.md)** - Real-time messaging system
+2. **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - FoundryVTT chat integration
+3. **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
+4. **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
+5. **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
+6. **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates
 
 ### **Development**
 1. **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development workflow
