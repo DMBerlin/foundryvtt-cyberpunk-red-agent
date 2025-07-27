@@ -103,6 +103,11 @@ class CyberpunkAgent {
                         return;
                     }
 
+                    // Play opening sound effect
+                    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+                        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+                    }
+
                     const ContactClass = ContactManagerApplication || window.ContactManagerApplication;
                     if (typeof ContactClass !== 'undefined') {
                         const contactManager = new ContactClass();
@@ -166,6 +171,29 @@ class CyberpunkAgent {
                         },
                         default: 'cancel'
                     }).render(true);
+                }
+            }
+        });
+
+        // Register sound effects test button
+        game.settings.register('cyberpunk-agent', 'test-sound-effects', {
+            name: 'Testar Efeitos Sonoros',
+            hint: 'Clique para testar os efeitos sonoros de abertura e fechamento',
+            scope: 'world',
+            config: true,
+            type: Boolean,
+            default: false,
+            onChange: (value) => {
+                if (value) {
+                    // Reset the setting immediately
+                    game.settings.set('cyberpunk-agent', 'test-sound-effects', false);
+
+                    // Test sound effects
+                    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+                        window.CyberpunkAgent.instance.testSoundEffects();
+                    } else {
+                        ui.notifications.error("Cyberpunk Agent não está disponível!");
+                    }
                 }
             }
         });
@@ -498,6 +526,9 @@ class CyberpunkAgent {
             const AgentClass = AgentHomeApplication || window.AgentHomeApplication;
             const agentHome = new AgentClass(actor);
             console.log("Cyberpunk Agent | AgentHomeApplication instance created successfully");
+
+            // Play opening sound effect
+            this.playSoundEffect('opening-window');
 
             // Render the application
             agentHome.render(true);
@@ -2679,6 +2710,34 @@ class CyberpunkAgent {
                 window.constructor.name === 'ContactManagerApplication'
             )
         ).length;
+    }
+
+    /**
+     * Play sound effect
+     * @param {string} soundName - Name of the sound file (without extension)
+     */
+    playSoundEffect(soundName) {
+        try {
+            const audio = new Audio(`modules/cyberpunk-agent/assets/sfx/${soundName}.sfx.mp3`);
+            audio.volume = 0.3; // Set volume to 30%
+            audio.play().catch(error => {
+                console.warn("Cyberpunk Agent | Error playing sound effect:", error);
+            });
+        } catch (error) {
+            console.warn("Cyberpunk Agent | Error creating audio element:", error);
+        }
+    }
+
+    /**
+     * Test sound effects
+     */
+    testSoundEffects() {
+        console.log("Cyberpunk Agent | Testing sound effects...");
+        this.playSoundEffect('opening-window');
+        setTimeout(() => {
+            this.playSoundEffect('closing-window');
+        }, 1000);
+        ui.notifications.info("Testando efeitos sonoros...");
     }
 
     /**

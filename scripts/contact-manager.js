@@ -60,6 +60,11 @@ class ContactManagerMenu extends FormApplication {
       return;
     }
 
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
     const ContactClass = ContactManagerApplication || window.ContactManagerApplication;
     if (typeof ContactClass !== 'undefined') {
       const contactManager = new ContactClass();
@@ -424,6 +429,11 @@ class ContactManagerApplication extends FormApplication {
    * Show contact search modal
    */
   _showContactSearchModal(actorId) {
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
     const modal = new ContactSearchModal(actorId, this);
     modal.render(true);
   }
@@ -576,6 +586,11 @@ class ContactSearchModal extends FormApplication {
       // Show success notification
       ui.notifications.info(`Contato "${actorName}" adicionado com sucesso!`);
 
+      // Play closing sound effect
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+      }
+
       this.close();
 
       // The real-time update system will handle the refresh automatically
@@ -598,6 +613,12 @@ class ContactSearchModal extends FormApplication {
    */
   _onCancel(event) {
     event.preventDefault();
+
+    // Play closing sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+    }
+
     this.close();
   }
 

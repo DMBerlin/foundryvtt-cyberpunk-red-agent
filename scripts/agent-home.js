@@ -72,6 +72,11 @@ class AgentHomeApplication extends FormApplication {
     // Close the current application
     this.close();
 
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
     // Open Chat7 application
     const ChatClass = Chat7Application || window.Chat7Application;
     if (typeof ChatClass !== 'undefined') {
@@ -175,6 +180,11 @@ class Chat7Application extends FormApplication {
     event.preventDefault();
     console.log("Back button clicked");
 
+    // Play closing sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+    }
+
     // Close the current application
     this.close();
 
@@ -211,6 +221,11 @@ class Chat7Application extends FormApplication {
 
     // Close the current application
     this.close();
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
 
     // Open Chat Conversation application
     const ChatConversationClass = ChatConversationApplication || window.ChatConversationApplication;
@@ -408,6 +423,11 @@ class ChatConversationApplication extends FormApplication {
   _onBackClick(event) {
     event.preventDefault();
     console.log("Back button clicked");
+
+    // Play closing sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+    }
 
     // Close the current application
     this.close();
