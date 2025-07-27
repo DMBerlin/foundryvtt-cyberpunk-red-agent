@@ -84,6 +84,147 @@ class CyberpunkAgent {
             restricted: true
         });
 
+        // Register direct Contact Manager button
+        game.settings.register('cyberpunk-agent', 'contact-manager-button', {
+            name: 'Gerenciador de Contatos',
+            hint: 'Clique para abrir diretamente o Gerenciador de Contatos',
+            scope: 'world',
+            config: true,
+            type: Boolean,
+            default: false,
+            onChange: (value) => {
+                if (value) {
+                    // Reset the setting immediately
+                    game.settings.set('cyberpunk-agent', 'contact-manager-button', false);
+
+                    // Open Contact Manager directly
+                    if (!game.user.isGM) {
+                        ui.notifications.warn('Apenas GMs podem acessar o Gerenciador de Contatos');
+                        return;
+                    }
+
+                    const ContactClass = ContactManagerApplication || window.ContactManagerApplication;
+                    if (typeof ContactClass !== 'undefined') {
+                        const contactManager = new ContactClass();
+                        contactManager.render(true);
+                    } else {
+                        console.error("Cyberpunk Agent | ContactManagerApplication not loaded!");
+                        ui.notifications.error("Erro ao carregar o Gerenciador de Contatos. Tente recarregar a página (F5).");
+                    }
+                }
+            }
+        });
+
+        // Register data cleanup setting
+        game.settings.register('cyberpunk-agent', 'clear-all-data', {
+            name: 'Limpar Todos os Dados',
+            hint: 'Remove todas as conexões entre contatos e todas as mensagens salvas. ATENÇÃO: Esta ação não pode ser desfeita!',
+            scope: 'world',
+            config: true,
+            type: Boolean,
+            default: false,
+            onChange: (value) => {
+                if (value) {
+                    // Reset the setting immediately
+                    game.settings.set('cyberpunk-agent', 'clear-all-data', false);
+
+                    // Show confirmation dialog
+                    new Dialog({
+                        title: 'Confirmar Limpeza de Dados',
+                        content: `
+                            <div style="padding: 20px;">
+                                <h3 style="color: #ff0033; margin-bottom: 15px;">⚠️ ATENÇÃO ⚠️</h3>
+                                <p style="margin-bottom: 15px;">Você está prestes a <strong>DELETAR PERMANENTEMENTE</strong>:</p>
+                                <ul style="margin-bottom: 20px; padding-left: 20px;">
+                                    <li>Todas as conexões entre contatos</li>
+                                    <li>Todas as mensagens salvas</li>
+                                    <li>Todos os dados do Agent</li>
+                                </ul>
+                                <p style="color: #ff0033; font-weight: bold;">Esta ação NÃO pode ser desfeita!</p>
+                                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
+                                <input type="text" id="confirmText" style="width: 100%; margin-top: 10px; padding: 8px; border: 2px solid #ff0033; border-radius: 4px;">
+                            </div>
+                        `,
+                        buttons: {
+                            confirm: {
+                                label: 'Limpar Dados',
+                                icon: '<i class="fas fa-trash"></i>',
+                                callback: (html) => {
+                                    const confirmText = html.find('#confirmText').val();
+                                    if (confirmText === 'CONFIRMAR') {
+                                        CyberpunkAgent.instance.clearAllData();
+                                        ui.notifications.info('Todos os dados foram limpos com sucesso!');
+                                    } else {
+                                        ui.notifications.warn('Texto de confirmação incorreto. Operação cancelada.');
+                                    }
+                                }
+                            },
+                            cancel: {
+                                label: 'Cancelar',
+                                icon: '<i class="fas fa-times"></i>'
+                            }
+                        },
+                        default: 'cancel'
+                    }).render(true);
+                }
+            }
+        });
+
+        // Register data cleanup button setting
+        game.settings.register('cyberpunk-agent', 'clear-all-data-button', {
+            name: 'Limpar Todos os Dados',
+            hint: 'Clique para abrir o diálogo de confirmação para limpar todos os dados',
+            scope: 'world',
+            config: true,
+            type: Boolean,
+            default: false,
+            onChange: (value) => {
+                if (value) {
+                    // Reset the setting immediately
+                    game.settings.set('cyberpunk-agent', 'clear-all-data-button', false);
+
+                    // Show confirmation dialog
+                    new Dialog({
+                        title: 'Confirmar Limpeza de Dados',
+                        content: `
+                            <div style="padding: 20px;">
+                                <h3 style="color: #ff0033; margin-bottom: 15px;">⚠️ ATENÇÃO ⚠️</h3>
+                                <p style="margin-bottom: 15px;">Você está prestes a <strong>DELETAR PERMANENTEMENTE</strong>:</p>
+                                <ul style="margin-bottom: 20px; padding-left: 20px;">
+                                    <li>Todas as conexões entre contatos</li>
+                                    <li>Todas as mensagens salvas</li>
+                                    <li>Todos os dados do Agent</li>
+                                </ul>
+                                <p style="color: #ff0033; font-weight: bold;">Esta ação NÃO pode ser desfeita!</p>
+                                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
+                                <input type="text" id="confirmText" style="width: 100%; margin-top: 10px; padding: 8px; border: 2px solid #ff0033; border-radius: 4px;">
+                            </div>
+                        `,
+                        buttons: {
+                            confirm: {
+                                label: 'Limpar Dados',
+                                icon: '<i class="fas fa-trash"></i>',
+                                callback: (html) => {
+                                    const confirmText = html.find('#confirmText').val();
+                                    if (confirmText === 'CONFIRMAR') {
+                                        CyberpunkAgent.instance.clearAllData();
+                                        ui.notifications.info('Todos os dados foram limpos com sucesso!');
+                                    } else {
+                                        ui.notifications.warn('Texto de confirmação incorreto. Operação cancelada.');
+                                    }
+                                }
+                            },
+                            cancel: {
+                                label: 'Cancelar',
+                                icon: '<i class="fas fa-times"></i>'
+                            }
+                        },
+                        default: 'cancel'
+                    }).render(true);
+                }
+            }
+        });
+
         console.log("Cyberpunk Agent | Settings registered successfully");
     }
 
@@ -573,9 +714,6 @@ class CyberpunkAgent {
         conversation.push(message);
         await this.saveMessages();
 
-        // Update local interfaces immediately for better UX
-        this._updateChatInterfacesImmediately();
-
         // Create FoundryVTT chat message for real chat integration
         this._createFoundryChatMessage(senderId, receiverId, text.trim(), messageId);
 
@@ -600,6 +738,9 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Using fallback message notification methods");
             this.notifyMessageUpdate(senderId, receiverId, message);
         }
+
+        // Update local interfaces immediately for better UX (only once)
+        this._updateChatInterfacesImmediately();
 
         console.log("Cyberpunk Agent | Message sent:", message);
         return true;
@@ -1621,6 +1762,37 @@ class CyberpunkAgent {
             this._updateContactManagerImmediately();
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving contact networks:", error);
+        }
+    }
+
+    /**
+     * Clear all data (contacts and messages)
+     */
+    clearAllData() {
+        try {
+            console.log("Cyberpunk Agent | Clearing all data...");
+
+            // Clear contact networks
+            this.contactNetworks.clear();
+            game.settings.set('cyberpunk-agent', 'contact-networks', {});
+
+            // Clear messages
+            this.messages.clear();
+            game.settings.set('cyberpunk-agent', 'messages', {});
+
+            // Clear agent data
+            this.agentData.clear();
+            game.settings.set('cyberpunk-agent', 'agent-data', {});
+
+            // Update all open interfaces
+            this._updateChatInterfacesImmediately();
+            this._updateContactManagerImmediately();
+            this.updateOpenInterfaces();
+
+            console.log("Cyberpunk Agent | All data cleared successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing data:", error);
+            ui.notifications.error("Erro ao limpar dados: " + error.message);
         }
     }
 

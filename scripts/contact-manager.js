@@ -547,9 +547,13 @@ class ContactSearchModal extends FormApplication {
 
     const resultsHtml = results.map(actor => `
       <div class="cp-search-result" data-actor-id="${actor.id}">
-        <img src="${actor.img}" alt="${actor.name}" class="cp-result-avatar" />
-        <span class="cp-result-name">${actor.name}</span>
-        <span class="cp-result-type">${actor.type}</span>
+        <div class="cp-result-avatar">
+          <img src="${actor.img}" alt="${actor.name}" />
+        </div>
+        <div class="cp-result-info">
+          <div class="cp-result-name">${actor.name}</div>
+          <div class="cp-result-type">${actor.type}</div>
+        </div>
       </div>
     `).join('');
 
