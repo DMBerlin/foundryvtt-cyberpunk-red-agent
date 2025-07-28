@@ -277,10 +277,14 @@ class CyberpunkAgent {
         // Sync messages when module loads
         this.syncMessagesWithFoundryChat();
 
-        // Listen for new chat messages
-        Hooks.on('createChatMessage', (message) => {
-            this._handleNewChatMessage(message);
-        });
+        // Listen for new chat messages (only if not already set up)
+        if (!this._chatMessageHookSet) {
+            Hooks.on('createChatMessage', (message) => {
+                this._handleNewChatMessage(message);
+            });
+            this._chatMessageHookSet = true;
+            console.log("Cyberpunk Agent | Chat message hook set up");
+        }
 
         console.log("Cyberpunk Agent | FoundryVTT chat integration setup complete");
     }
@@ -293,9 +297,8 @@ class CyberpunkAgent {
         if (message.flags && message.flags['cyberpunk-agent'] && message.flags['cyberpunk-agent'].isAgentMessage) {
             console.log("Cyberpunk Agent | New agent chat message detected:", message);
 
-            // Update our interfaces
+            // Update our interfaces (avoid duplicate updates)
             this._updateChatInterfacesImmediately();
-            this.updateOpenInterfaces();
         }
     }
 
@@ -303,6 +306,12 @@ class CyberpunkAgent {
      * Internal setup method
      */
     _setupAgentSystemInternal() {
+        // Only set up if not already done
+        if (this._agentSystemSetupComplete) {
+            console.log("Cyberpunk Agent | Agent system already set up, skipping");
+            return;
+        }
+
         // Check if required classes are loaded
         console.log("Cyberpunk Agent | Checking required classes:");
         console.log("  - AgentHomeApplication:", typeof AgentHomeApplication);
@@ -328,6 +337,9 @@ class CyberpunkAgent {
         // Setup SocketLib integration if available
         this.setupSocketLibIntegration();
 
+        // Setup SocketLib when it's ready
+        this.setupSocketLibWhenReady();
+
         // Setup socket communication for real-time updates (fallback)
         this.setupSocketCommunication();
 
@@ -339,6 +351,7 @@ class CyberpunkAgent {
             Hooks.on('updateActor', this.handleActorUpdate.bind(this));
         }
 
+        this._agentSystemSetupComplete = true;
         console.log("Cyberpunk Agent | Agent system setup complete");
     }
 
@@ -767,7 +780,7 @@ class CyberpunkAgent {
         // If SocketLib failed or is not available, use fallback methods
         if (!socketLibSuccess) {
             console.log("Cyberpunk Agent | Using fallback message notification methods");
-            this.notifyMessageUpdate(senderId, receiverId, message);
+            await this.notifyMessageUpdate(senderId, receiverId, message);
         }
 
         // Update local interfaces immediately for better UX (only once)
@@ -1138,6 +1151,20 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Single user session, skipping message notification");
             return;
         }
+
+        // Prevent duplicate notifications for the same message
+        const messageKey = `${senderId}-${receiverId}-${message.id}`;
+        const now = Date.now();
+        if (this._lastMessageNotifications && this._lastMessageNotifications[messageKey] &&
+            (now - this._lastMessageNotifications[messageKey]) < 2000) {
+            console.log("Cyberpunk Agent | Skipping duplicate message notification");
+            return;
+        }
+
+        if (!this._lastMessageNotifications) {
+            this._lastMessageNotifications = {};
+        }
+        this._lastMessageNotifications[messageKey] = now;
 
         const communicationMethod = this._getCommunicationMethod();
         console.log("Cyberpunk Agent | Using communication method for message:", communicationMethod);
@@ -1709,6 +1736,14 @@ class CyberpunkAgent {
     _updateChatInterfacesImmediately() {
         console.log("Cyberpunk Agent | Starting immediate chat interface update");
 
+        // Prevent duplicate updates within a short time window
+        const now = Date.now();
+        if (this._lastChatUpdateTime && (now - this._lastChatUpdateTime) < 500) {
+            console.log("Cyberpunk Agent | Skipping duplicate chat interface update (too soon)");
+            return;
+        }
+        this._lastChatUpdateTime = now;
+
         // Find and update any open ChatConversationApplication
         const openWindows = Object.values(ui.windows);
         let updatedCount = 0;
@@ -1855,6 +1890,12 @@ class CyberpunkAgent {
      * Setup SocketLib integration
      */
     setupSocketLibIntegration() {
+        // Only set up if not already done
+        if (this._socketLibIntegrationSet) {
+            console.log("Cyberpunk Agent | SocketLib integration already set up, skipping");
+            return;
+        }
+
         try {
             // Check if SocketLib integration is available
             if (typeof window.SocketLibIntegration !== 'undefined') {
@@ -1863,9 +1904,50 @@ class CyberpunkAgent {
             } else {
                 console.log("Cyberpunk Agent | SocketLib integration not available");
             }
+
+            this._socketLibIntegrationSet = true;
         } catch (error) {
             console.warn("Cyberpunk Agent | Error setting up SocketLib integration:", error);
         }
+    }
+
+    /**
+     * Setup SocketLib when it's ready
+     */
+    setupSocketLibWhenReady() {
+        // Only set up the hook once
+        if (this._socketLibReadyHookSet) {
+            return;
+        }
+
+        // Hook for when SocketLib is ready - THIS IS MANDATORY according to documentation
+        Hooks.once("socketlib.ready", () => {
+            console.log("Cyberpunk Agent | SocketLib ready, initializing integration...");
+
+            try {
+                // Initialize SocketLib integration
+                if (typeof window.initializeSocketLib === 'function') {
+                    const success = window.initializeSocketLib();
+                    if (success) {
+                        console.log("Cyberpunk Agent | SocketLib integration initialized successfully");
+
+                        // Update the SocketLibIntegration instance with the socket
+                        if (this.socketLibIntegration) {
+                            this.socketLibIntegration.updateSocket(window.socket);
+                        }
+                    } else {
+                        console.warn("Cyberpunk Agent | SocketLib integration initialization failed");
+                    }
+                } else {
+                    console.error("Cyberpunk Agent | initializeSocketLib function not available");
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error initializing SocketLib integration:", error);
+            }
+        });
+
+        this._socketLibReadyHookSet = true;
+        console.log("Cyberpunk Agent | SocketLib ready hook set up");
     }
 
     /**
@@ -2370,6 +2452,14 @@ class CyberpunkAgent {
     updateOpenInterfaces() {
         console.log("Cyberpunk Agent | Updating open interfaces...");
 
+        // Prevent duplicate updates within a short time window
+        const now = Date.now();
+        if (this._lastUpdateTime && (now - this._lastUpdateTime) < 500) {
+            console.log("Cyberpunk Agent | Skipping duplicate interface update (too soon)");
+            return;
+        }
+        this._lastUpdateTime = now;
+
         // Check if there are any open interfaces first
         if (!this.hasOpenInterfaces()) {
             console.log("Cyberpunk Agent | No open interfaces to update");
@@ -2421,9 +2511,10 @@ class CyberpunkAgent {
 
         console.log(`Cyberpunk Agent | Updated ${updatedCount} interfaces`);
 
-        // Show a subtle notification if interfaces were updated
-        if (updatedCount > 0) {
+        // Show a subtle notification if interfaces were updated (only once per update cycle)
+        if (updatedCount > 0 && !this._lastInterfaceUpdateTime || (Date.now() - this._lastInterfaceUpdateTime) > 1000) {
             ui.notifications.info(`Atualizadas ${updatedCount} interface(s) do Agent`);
+            this._lastInterfaceUpdateTime = Date.now();
         }
     }
 
@@ -2432,6 +2523,14 @@ class CyberpunkAgent {
     */
     updateOpenChatInterfaces() {
         console.log("Cyberpunk Agent | Updating open chat interfaces...");
+
+        // Prevent duplicate updates within a short time window
+        const now = Date.now();
+        if (this._lastChatInterfaceUpdateTime && (now - this._lastChatInterfaceUpdateTime) < 500) {
+            console.log("Cyberpunk Agent | Skipping duplicate chat interface update (too soon)");
+            return;
+        }
+        this._lastChatInterfaceUpdateTime = now;
 
         const openWindows = Object.values(ui.windows);
         let updatedCount = 0;
@@ -2473,6 +2572,12 @@ class CyberpunkAgent {
         if (game.socket) {
             console.log("Cyberpunk Agent | Setting up socket communication");
 
+            // Only set up if not already done
+            if (this._socketListenerSet) {
+                console.log("Cyberpunk Agent | Socket listener already set up, skipping");
+                return;
+            }
+
             game.socket.on('module.cyberpunk-agent', (data) => {
                 if (data.type === 'contactUpdate') {
                     console.log("Cyberpunk Agent | Received socket notification:", data);
@@ -2503,6 +2608,7 @@ class CyberpunkAgent {
         // Setup chat message listener for fallback communication
         this.setupChatMessageListener();
 
+        this._socketListenerSet = true;
         console.log("Cyberpunk Agent | Socket communication setup complete");
     }
 
@@ -2510,6 +2616,11 @@ class CyberpunkAgent {
     * Setup chat message listener for fallback communication
     */
     setupChatMessageListener() {
+        // Only set up if not already done
+        if (this._chatMessageListenerSet) {
+            return;
+        }
+
         Hooks.on('createChatMessage', (message) => {
             try {
                 // Check if this is a cyberpunk agent update message
@@ -2583,6 +2694,7 @@ class CyberpunkAgent {
             }
         });
 
+        this._chatMessageListenerSet = true;
         console.log("Cyberpunk Agent | Chat message listener setup complete");
     }
 

@@ -8,13 +8,28 @@ console.log("Cyberpunk Agent | Loading SocketLib integration...");
 
 let socket;
 
-// Hook for when SocketLib is ready - THIS IS MANDATORY according to documentation
-Hooks.once("socketlib.ready", () => {
-  console.log("Cyberpunk Agent | SocketLib ready, registering module...");
+// SocketLib integration will be initialized by the main module
+// This file only contains the handler functions and the SocketLibIntegration class
+
+/**
+ * Initialize SocketLib integration
+ * This function should be called by the main module when SocketLib is ready
+ */
+function initializeSocketLib() {
+  console.log("Cyberpunk Agent | Initializing SocketLib integration...");
 
   try {
+    // Check if socketlib is available
+    if (typeof socketlib === 'undefined') {
+      console.error("Cyberpunk Agent | SocketLib is undefined, cannot register module");
+      return false;
+    }
+
     // Register our module with SocketLib - THIS IS THE CORRECT WAY
     socket = socketlib.registerModule("cyberpunk-agent");
+
+    // Make socket globally available
+    window.socket = socket;
 
     // Register our functions that can be called remotely
     socket.register("contactUpdate", handleContactUpdate);
@@ -32,10 +47,12 @@ Hooks.once("socketlib.ready", () => {
     // Test the setup
     testSocketLibSetup();
 
+    return true;
   } catch (error) {
     console.error("Cyberpunk Agent | Error registering module with SocketLib:", error);
+    return false;
   }
-});
+}
 
 /**
  * Test SocketLib setup
@@ -421,8 +438,21 @@ async function handleTestConnection(data) {
 class SocketLibIntegration {
   constructor() {
     this.socketlib = socket;
-    this.isAvailable = !!socket;
+    this.isAvailable = !!socket && typeof socketlib !== 'undefined';
     console.log("Cyberpunk Agent | SocketLib integration initialized, available:", this.isAvailable);
+
+    if (!this.isAvailable) {
+      console.warn("Cyberpunk Agent | SocketLib integration not available - socket:", !!socket, "socketlib:", typeof socketlib);
+    }
+  }
+
+  /**
+   * Update socket reference (called after SocketLib is ready)
+   */
+  updateSocket(newSocket) {
+    this.socketlib = newSocket;
+    this.isAvailable = !!newSocket && typeof socketlib !== 'undefined';
+    console.log("Cyberpunk Agent | SocketLib integration updated, available:", this.isAvailable);
   }
 
   /**
@@ -826,6 +856,9 @@ class SocketLibIntegration {
 
 // Create global instance
 window.SocketLibIntegration = SocketLibIntegration;
+
+// Make initialization function globally available
+window.initializeSocketLib = initializeSocketLib;
 
 // Test functions
 window.testSocketLib = async () => {
