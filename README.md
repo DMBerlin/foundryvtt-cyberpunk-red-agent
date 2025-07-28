@@ -19,7 +19,7 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 - **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
 - **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
 - **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
-- **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates system
+- **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
 - **[COMPACT-UI.md](COMPACT-UI.md)** - Compact UI implementation
 
 ### **Troubleshooting & Maintenance**
@@ -37,7 +37,7 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 3. **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
 4. **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
 5. **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
-6. **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates
+6. **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
 
 ### **Development**
 1. **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development workflow

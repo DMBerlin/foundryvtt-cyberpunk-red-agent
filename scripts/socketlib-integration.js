@@ -176,6 +176,15 @@ async function handleMessageUpdate(data) {
   const message = `Nova mensagem de ${senderName} para ${receiverName}`;
   ui.notifications.info(message);
 
+  // Play notification sound if the current user is the receiver
+  if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    const userActors = window.CyberpunkAgent.instance.getUserActors();
+    const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+    if (isReceiver) {
+      window.CyberpunkAgent.instance.playNotificationSound();
+    }
+  }
+
   console.log("Cyberpunk Agent | Message update processed via SocketLib successfully");
 }
 
@@ -297,6 +306,15 @@ async function handleSendMessage(data) {
   const senderName = sender ? sender.name : "Desconhecido";
   const message = `Nova mensagem de ${senderName}`;
   ui.notifications.info(message);
+
+  // Play notification sound if the current user is the receiver
+  if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    const userActors = window.CyberpunkAgent.instance.getUserActors();
+    const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+    if (isReceiver) {
+      window.CyberpunkAgent.instance.playNotificationSound();
+    }
+  }
 
   console.log("Cyberpunk Agent | Message processed via SocketLib successfully");
 }

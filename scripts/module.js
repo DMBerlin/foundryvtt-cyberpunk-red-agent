@@ -74,6 +74,15 @@ class CyberpunkAgent {
             default: true
         });
 
+        game.settings.register('cyberpunk-agent', 'notification-sound', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND_HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
         // Register a custom settings menu for Cyberpunk Agent
         game.settings.registerMenu('cyberpunk-agent', 'contact-manager-menu', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_BUTTON'),
@@ -2285,6 +2294,15 @@ class CyberpunkAgent {
         const message = `Nova mensagem de ${senderName} para ${receiverName}`;
         ui.notifications.info(message);
 
+        // Play notification sound if the current user is the receiver
+        if (data.receiverId) {
+            const userActors = this.getUserActors();
+            const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+            if (isReceiver) {
+                this.playNotificationSound();
+            }
+        }
+
         console.log("Cyberpunk Agent | Message update processed successfully");
     }
 
@@ -2837,6 +2855,16 @@ class CyberpunkAgent {
             });
         } catch (error) {
             console.warn("Cyberpunk Agent | Error creating audio element:", error);
+        }
+    }
+
+    /**
+     * Play notification sound if enabled
+     */
+    playNotificationSound() {
+        const soundEnabled = game.settings.get('cyberpunk-agent', 'notification-sound');
+        if (soundEnabled) {
+            this.playSoundEffect('notification-message');
         }
     }
 

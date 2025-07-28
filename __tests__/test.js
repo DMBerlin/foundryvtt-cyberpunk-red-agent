@@ -14,6 +14,7 @@ function runAllTests() {
   testClassAvailability();
   testSettings();
   testActorAccess();
+  testNotificationSound();
 
   console.log("=== All Tests Complete ===");
 }
@@ -189,6 +190,7 @@ window.testSettings = testSettings;
 window.testActorAccess = testActorAccess;
 window.testCreateAgentHome = testCreateAgentHome;
 window.testCreateContactManager = testCreateContactManager;
+window.testNotificationSound = testNotificationSound;
 
 console.log("Cyberpunk Agent | test.js loaded successfully");
 console.log("Test functions available:");
@@ -199,5 +201,6 @@ console.log("- testSettings()");
 console.log("- testActorAccess()");
 console.log("- testCreateAgentHome()");
 console.log("- testCreateContactManager()");
+console.log("- testNotificationSound()");
 console.log("Note: Use checkModuleStatus() for automatic status checking");
 console.log("Note: Use runAllTests() manually when needed"); 

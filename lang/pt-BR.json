@@ -59,7 +59,9 @@
       "CONTACT_NETWORKS_HINT": "Configure as redes de contatos para cada Actor",
       "MANAGE_CONTACTS": "Gerenciar Contatos",
       "CONTACT_MANAGER_BUTTON": "Gerenciamento de Contatos",
-      "CONTACT_MANAGER_HINT": "Abra o gerenciador de contatos para configurar as redes de cada personagem"
+      "CONTACT_MANAGER_HINT": "Abra o gerenciador de contatos para configurar as redes de cada personagem",
+      "NOTIFICATION_SOUND": "Som de Notificação",
+      "NOTIFICATION_SOUND_HINT": "Toca um som quando você recebe uma nova mensagem"
     }
   }
 }

@@ -1,264 +1,145 @@
-# Sistema de Atualização em Tempo Real - Cyberpunk Agent
+# Realtime Updates - Cyberpunk Agent
 
 ## Visão Geral
 
-O Cyberpunk Agent agora possui um sistema de atualização em tempo real que permite que as mudanças feitas pelo gamemaster na lista de contatos sejam refletidas automaticamente para todos os jogadores, sem necessidade de recarregar a página (F5).
+O Cyberpunk Agent oferece atualizações em tempo real para mensagens e contatos, garantindo que todos os usuários vejam as mudanças instantaneamente. O sistema também inclui notificações sonoras para alertar sobre novas mensagens.
+
+## Funcionalidades
+
+### ✅ Atualizações em Tempo Real
+- **Mensagens**: Novas mensagens aparecem instantaneamente para todos os usuários
+- **Contatos**: Adição/remoção de contatos é sincronizada automaticamente
+- **Interfaces**: Todas as janelas abertas são atualizadas automaticamente
+
+### 🔊 Notificações Sonoras
+- **Som de Notificação**: Toca um som quando você recebe uma nova mensagem
+- **Configurável**: Pode ser habilitado/desabilitado nas configurações do módulo
+- **Inteligente**: Só toca para o destinatário da mensagem
+
+## Configuração
+
+### Som de Notificação
+
+1. Vá para **Configurações do Módulo** > **Cyberpunk Agent**
+2. Encontre a opção **"Som de Notificação"**
+3. Marque/desmarque para habilitar/desabilitar o som
+4. A configuração é individual por usuário (scope: client)
+
+### Métodos de Comunicação
+
+O módulo suporta múltiplos métodos de comunicação:
+
+1. **Automático (Recomendado)**: SocketLib > Socket > Chat > Nenhum
+2. **Apenas SocketLib**: Usa apenas SocketLib para comunicação
+3. **Apenas Socket**: Usa socket nativo do FoundryVTT
+4. **Apenas Chat**: Usa mensagens de chat como fallback
+5. **Sem Comunicação**: Desabilita todas as comunicações
 
 ## Como Funciona
 
-### 1. Sistema de Notificação via Socket
+### Fluxo de Mensagem com Som
 
-Quando o gamemaster adiciona ou remove contatos através do Contact Manager, o sistema:
+```
+1. Usuário A envia mensagem
+   ↓
+2. Mensagem é salva localmente
+   ↓
+3. SocketLib/Socket envia para todos os clientes
+   ↓
+4. Usuário B recebe a mensagem
+   ↓
+5. Interface é atualizada automaticamente
+   ↓
+6. Se Usuário B é o destinatário E som está habilitado
+   ↓
+7. Som de notificação é tocado
+```
 
-1. **Salva as alterações** nas configurações do FoundryVTT
-2. **Envia uma notificação** via socket para todos os clientes conectados
-3. **Atualiza automaticamente** todas as interfaces abertas dos jogadores
+### Verificação de Destinatário
 
-### 2. Detecção de Mudanças
-
-O sistema utiliza dois métodos para detectar mudanças:
-
-- **Socket Communication**: Notificações diretas entre clientes
-- **Settings Hooks**: Detecção automática de mudanças nas configurações
-
-### 3. Atualização de Interfaces
-
-Quando uma mudança é detectada, o sistema:
-
-1. **Recarrega os dados** de contatos das configurações
-2. **Identifica interfaces abertas** (AgentHome, Chat7, ContactManager)
-3. **Re-renderiza** automaticamente todas as interfaces afetadas
-4. **Mostra notificação** para o usuário
-
-## Funcionalidades Implementadas
-
-### Para o Gamemaster
-
-- ✅ Adicionar contatos através do Contact Manager
-- ✅ Remover contatos através do Contact Manager
-- ✅ Ver atualizações em tempo real em suas próprias interfaces
-- ✅ Notificações automáticas enviadas para todos os jogadores
-- ✅ Feedback visual quando interfaces são atualizadas
-
-### Para os Jogadores
-
-- ✅ Receber notificações quando contatos são atualizados
-- ✅ Ver mudanças em tempo real nas interfaces abertas
-- ✅ Não precisar recarregar a página (F5)
-- ✅ Manter o estado das interfaces abertas
-- ✅ Notificações informativas sobre quem fez as mudanças
-
-## Arquivos Modificados
-
-### `scripts/module.js`
-
-- ✅ Adicionado método `notifyContactUpdate()` para enviar notificações
-- ✅ Adicionado método `handleContactUpdate()` para processar notificações
-- ✅ Adicionado método `updateOpenInterfaces()` para atualizar interfaces
-- ✅ Adicionado método `setupSocketCommunication()` para configurar comunicação
-- ✅ Adicionado método `hasOpenInterfaces()` para verificar interfaces abertas
-- ✅ Adicionado método `getOpenInterfacesCount()` para contar interfaces
-- ✅ Modificado método `saveContactNetworks()` para incluir notificações
-- ✅ Adicionado hook para mudanças de configurações como backup
-
-### `scripts/contact-manager.js`
-
-- ✅ Removido `render(true)` manual após adicionar/remover contatos
-- ✅ As atualizações agora são feitas automaticamente pelo sistema
-
-### `__tests__/test-realtime.js` (Atualizado)
-
-- ✅ Script de teste completo para verificar o funcionamento do sistema
-- ✅ Funções para monitorar atualizações em tempo real
-- ✅ Testes automatizados para validar a funcionalidade
-- ✅ Verificação de status rápido do sistema
-
-## Como Testar
-
-### 1. Teste Básico
+O sistema verifica se o usuário atual é o destinatário da mensagem antes de tocar o som:
 
 ```javascript
-// No console do navegador
-testRealtimeUpdates()
+// Verifica se o usuário atual possui o personagem destinatário
+const userActors = this.getUserActors();
+const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+if (isReceiver) {
+    this.playNotificationSound();
+}
 ```
 
-### 2. Teste de Adição de Contato
+## Arquivos de Som
+
+O som de notificação está localizado em:
+```
+assets/sfx/notification-message.sfx.mp3
+```
+
+## Testando a Funcionalidade
+
+### Teste Manual
+
+1. Abra o console do navegador (F12)
+2. Execute: `testNotificationSoundFeature()`
+3. Verifique se o som toca quando habilitado
+4. Desabilite a configuração e teste novamente
+
+### Teste de Mensagens
+
+1. Abra o console do navegador (F12)
+2. Execute: `testMessageHandlers()`
+3. Verifique se os handlers processam corretamente as mensagens
+
+## Solução de Problemas
+
+### Som Não Toca
+
+1. **Verifique a configuração**: Certifique-se de que "Som de Notificação" está habilitado
+2. **Verifique o volume**: O som é tocado com 30% do volume
+3. **Verifique o navegador**: Alguns navegadores bloqueiam autoplay de áudio
+4. **Verifique o arquivo**: Certifique-se de que `notification-message.sfx.mp3` existe
+
+### Som Toca Para Mensagens Próprias
+
+Isso não deveria acontecer. O sistema verifica se:
+- A mensagem não é do próprio usuário
+- O usuário atual é o destinatário da mensagem
+
+### Som Toca Para Todas as Mensagens
+
+O som só deve tocar quando:
+- A configuração está habilitada
+- O usuário atual possui o personagem destinatário
+- A mensagem não é do próprio usuário
+
+## Desenvolvimento
+
+### Adicionando Novos Sons
+
+Para adicionar novos sons de notificação:
+
+1. Adicione o arquivo de som em `assets/sfx/`
+2. Use o método `playSoundEffect('nome-do-arquivo')`
+3. O arquivo deve ter extensão `.sfx.mp3`
+
+### Modificando o Comportamento
+
+Para modificar quando o som toca:
 
 ```javascript
-// No console do navegador (apenas GM)
-testAddContactRealtime()
+// No método handleMessageUpdate ou handleSendMessage
+if (data.receiverId) {
+    const userActors = this.getUserActors();
+    const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+    if (isReceiver) {
+        this.playNotificationSound();
+    }
+}
 ```
-
-### 3. Teste de Fluxo Completo
-
-```javascript
-// No console do navegador
-testCompleteRealtimeFlow()
-```
-
-### 4. Verificação de Status
-
-```javascript
-// No console do navegador
-quickStatusCheck()
-```
-
-### 5. Monitoramento Contínuo
-
-```javascript
-// Iniciar monitoramento
-monitorRealtimeUpdates()
-
-// Parar monitoramento
-stopRealtimeMonitor()
-```
-
-### 6. Funções Globais Disponíveis
-
-```javascript
-// Testar atualização em tempo real
-testRealtimeUpdate()
-
-// Testar comunicação entre clientes
-testCrossClientCommunication()
-
-// Testar broadcasting via chat
-testChatBroadcasting()
-
-// Verificar interfaces abertas
-checkOpenInterfaces()
-
-// Forçar atualização de interfaces
-forceUpdateInterfaces()
-
-// Verificação segura de status
-safeStatusCheck()
-
-// Verificar carregamento do módulo
-checkModuleLoading()
-
-// Monitorar notificações
-monitorNotifications()
-stopNotificationMonitor()
-
-// Verificar conectividade de rede
-checkNetworkConnectivity()
-
-// Teste completo entre clientes
-comprehensiveCrossClientTest()
-```
-
-## Fluxo de Funcionamento
-
-```
-GM adiciona/remove contato
-        ↓
-ContactManager salva dados
-        ↓
-saveContactNetworks() é chamado
-        ↓
-notifyContactUpdate() é chamado
-        ↓
-Socket notification enviada
-        ↓
-Todos os clientes recebem notificação
-        ↓
-handleContactUpdate() processa
-        ↓
-Dados são recarregados
-        ↓
-updateOpenInterfaces() atualiza interfaces
-        ↓
-Jogadores veem mudanças em tempo real
-```
-
-## Configurações
-
-O sistema utiliza as seguintes configurações do FoundryVTT:
-
-- `cyberpunk-agent.contact-networks`: Dados das redes de contatos
-- `cyberpunk-agent.agent-data`: Dados internos do agente
-
-## Troubleshooting
-
-### Problemas Comuns
-
-1. **Interfaces não atualizam**
-   - Verifique se as interfaces estão realmente abertas
-   - Use `checkOpenInterfaces()` para diagnosticar
-   - Execute `forceUpdateInterfaces()` para forçar atualização
-
-2. **Notificações não aparecem**
-   - Verifique se o socket está funcionando
-   - Confirme se o GM está fazendo as alterações
-   - Use `quickStatusCheck()` para verificar o status
-
-3. **Erros no console**
-   - Verifique se todos os scripts estão carregados
-   - Use `monitorRealtimeUpdates()` para monitorar
-   - Execute `testRealtimeUpdates()` para diagnóstico completo
-
-4. **"Instance not available" errors**
-   - Use `checkModuleLoading()` para verificar o status de carregamento
-   - Use `safeStatusCheck()` para verificação segura
-   - Aguarde alguns segundos e tente novamente
-   - Recarregue a página se o problema persistir
-
-5. **Comunicação entre clientes não funciona**
-   - Use `checkNetworkConnectivity()` para verificar conectividade
-   - Use `testCrossClientCommunication()` para testar comunicação
-   - Use `testChatBroadcasting()` para testar fallback via chat
-   - Use `monitorNotifications()` para monitorar notificações
-   - Verifique se ambos os clientes estão na mesma sessão
-   - Confirme se o socket está funcionando em ambos os lados
-
-6. **Erros de "querySelector is not a function"**
-   - Este erro foi corrigido na versão atual
-   - O sistema agora trata corretamente o conteúdo das mensagens
-   - Use `testChatBroadcasting()` para verificar se está funcionando
-
-### Logs de Debug
-
-O sistema gera logs detalhados no console:
-
-```
-Cyberpunk Agent | Sending contact update notification to all clients
-Cyberpunk Agent | Received contact update notification from: GM Name
-Cyberpunk Agent | Updating open interfaces...
-Cyberpunk Agent | Found X AgentHomeApplication instances
-Cyberpunk Agent | Updated AgentHomeApplication
-Cyberpunk Agent | Updated X interfaces
-```
-
-### Verificação de Status
-
-Use `quickStatusCheck()` para verificar rapidamente:
-
-- ✅ Socket disponível
-- ✅ Métodos de atualização disponíveis
-- ✅ Interfaces abertas
-- ✅ Permissões de usuário
 
 ## Compatibilidade
 
-- ✅ FoundryVTT v11
-- ✅ Cyberpunk RED Core System
-- ✅ Múltiplos jogadores simultâneos
-- ✅ Interfaces múltiplas abertas
-- ✅ Modo online e offline (com limitações)
-
-## Limitações
-
-- As notificações socket só funcionam quando o FoundryVTT está online
-- Interfaces fechadas não são atualizadas automaticamente
-- Mudanças offline não são sincronizadas até a próxima conexão
-- Algumas interfaces podem não atualizar se estiverem em estado de erro
-
-## Próximas Melhorias
-
-- [ ] Notificações mais detalhadas (quem adicionou/removeu)
-- [ ] Histórico de mudanças
-- [ ] Sincronização offline melhorada
-- [ ] Interface de configuração para o sistema
-- [ ] Notificações sonoras opcionais
-- [ ] Log de atividades para auditagem 
+- ✅ FoundryVTT v10+
+- ✅ SocketLib (opcional, mas recomendado)
+- ✅ Todos os navegadores modernos
+- ✅ Sistemas de áudio funcionais 

@@ -59,7 +59,9 @@
       "CONTACT_NETWORKS_HINT": "Configure contact networks for each Actor",
       "MANAGE_CONTACTS": "Manage Contacts",
       "CONTACT_MANAGER_BUTTON": "Contact Management",
-      "CONTACT_MANAGER_HINT": "Open the contact manager to configure contact networks for each character"
+      "CONTACT_MANAGER_HINT": "Open the contact manager to configure contact networks for each character",
+      "NOTIFICATION_SOUND": "Notification Sound",
+      "NOTIFICATION_SOUND_HINT": "Play a sound when you receive a new message"
     }
   }
 }
