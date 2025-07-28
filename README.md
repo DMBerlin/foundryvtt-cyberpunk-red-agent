@@ -18,6 +18,7 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 - **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - Integration with FoundryVTT native chat
 - **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
 - **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
+- **[MESSAGE-SPACING.md](MESSAGE-SPACING.md)** - Intelligent message spacing system
 - **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
 - **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
 - **[COMPACT-UI.md](COMPACT-UI.md)** - Compact UI implementation
@@ -36,7 +37,8 @@ This folder contains all the documentation for the Cyberpunk Agent module.
 2. **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - FoundryVTT chat integration
 3. **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
 4. **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
-5. **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
+5. **[MESSAGE-SPACING.md](MESSAGE-SPACING.md)** - Intelligent message spacing system
+6. **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
 6. **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
 
 ### **Development**

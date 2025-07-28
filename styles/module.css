@@ -2396,6 +2396,24 @@
   gap: 12px;
 }
 
+/* Reduced spacing between messages of the same type */
+.cp-message + .cp-message.own {
+  margin-top: 4px;
+}
+
+.cp-message + .cp-message.other {
+  margin-top: 4px;
+}
+
+/* Maintain normal spacing when message types change */
+.cp-message.own + .cp-message.other {
+  margin-top: 12px;
+}
+
+.cp-message.other + .cp-message.own {
+  margin-top: 12px;
+}
+
 /* Avatar styling */
 .cp-chat-contact-avatar {
   border: 2px solid var(--cp-border);

@@ -3324,30 +3324,38 @@ window.testMessageLayout = () => {
 
             console.log(`📱 Testing message layout between ${actor1.name} and ${actor2.name}`);
 
-            // Test messages with different lengths
+            // Test messages with different lengths and alternating senders
             const testMessages = [
-                "Oi!",
-                "Esta é uma mensagem de teste com tamanho médio para verificar o layout.",
-                "Esta é uma mensagem muito longa que deve ocupar mais espaço horizontal e quebrar linhas adequadamente para testar como o sistema de layout funciona com textos extensos.",
-                "Mensagem curta",
-                "Outra mensagem com tamanho médio para testar o comportamento do layout responsivo."
+                { sender: actor1, text: "Oi!" },
+                { sender: actor1, text: "Como você está?" },
+                { sender: actor1, text: "Tudo bem?" },
+                { sender: actor2, text: "Oi! Tudo bem sim!" },
+                { sender: actor2, text: "E você?" },
+                { sender: actor1, text: "Ótimo!" },
+                { sender: actor1, text: "Vamos conversar mais?" },
+                { sender: actor2, text: "Claro!" },
+                { sender: actor2, text: "Adoraria!" },
+                { sender: actor2, text: "O que você tem em mente?" }
             ];
 
             let sentCount = 0;
-            testMessages.forEach((msg, index) => {
+            testMessages.forEach((msgData, index) => {
                 setTimeout(() => {
-                    CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, msg).then((success) => {
-                        if (success) {
-                            sentCount++;
-                            console.log(`✅ Test message ${index + 1} sent successfully`);
-                            ui.notifications.info(`Mensagem de teste ${index + 1} enviada!`);
+                    CyberpunkAgent.instance.sendMessage(msgData.sender.id,
+                        msgData.sender.id === actor1.id ? actor2.id : actor1.id,
+                        msgData.text).then((success) => {
+                            if (success) {
+                                sentCount++;
+                                console.log(`✅ Test message ${index + 1} sent successfully`);
+                                ui.notifications.info(`Mensagem de teste ${index + 1} enviada!`);
 
-                            if (sentCount === testMessages.length) {
-                                console.log("✅ All layout test messages sent!");
-                                ui.notifications.success("Todas as mensagens de teste de layout enviadas!");
+                                if (sentCount === testMessages.length) {
+                                    console.log("✅ All layout test messages sent!");
+                                    ui.notifications.success("Todas as mensagens de teste de layout enviadas!");
+                                    console.log("📱 Verifique o espaçamento entre mensagens do mesmo tipo (menor) vs tipos diferentes (normal)");
+                                }
                             }
-                        }
-                    });
+                        });
                 }, index * 1000); // Send each message 1 second apart
             });
 
@@ -3952,6 +3960,62 @@ window.testRealTimeDeletion = () => {
     }
 };
 
+// Test function specifically for message spacing
+window.testMessageSpacing = () => {
+    if (CyberpunkAgent.instance) {
+        console.log("=== Testing Message Spacing ===");
+
+        const characterActors = game.actors.filter(actor => actor.type === 'character');
+        if (characterActors.length >= 2) {
+            const actor1 = characterActors[0];
+            const actor2 = characterActors[1];
+
+            console.log(`📱 Testing message spacing between ${actor1.name} and ${actor2.name}`);
+
+            // Test sequence: own-own-other-other-own-other-own-own-other
+            const testSequence = [
+                { sender: actor1, text: "Primeira mensagem minha" },
+                { sender: actor1, text: "Segunda mensagem minha (espaçamento reduzido)" },
+                { sender: actor2, text: "Primeira mensagem dele" },
+                { sender: actor2, text: "Segunda mensagem dele (espaçamento reduzido)" },
+                { sender: actor1, text: "Minha resposta (espaçamento normal)" },
+                { sender: actor2, text: "Resposta dele (espaçamento normal)" },
+                { sender: actor1, text: "Outra minha" },
+                { sender: actor1, text: "E mais uma minha (espaçamento reduzido)" },
+                { sender: actor2, text: "Última dele (espaçamento normal)" }
+            ];
+
+            let sentCount = 0;
+            testSequence.forEach((msgData, index) => {
+                setTimeout(() => {
+                    CyberpunkAgent.instance.sendMessage(msgData.sender.id,
+                        msgData.sender.id === actor1.id ? actor2.id : actor1.id,
+                        msgData.text).then((success) => {
+                            if (success) {
+                                sentCount++;
+                                console.log(`✅ Spacing test message ${index + 1} sent`);
+
+                                if (sentCount === testSequence.length) {
+                                    console.log("✅ All spacing test messages sent!");
+                                    ui.notifications.success("Teste de espaçamento concluído!");
+                                    console.log("📱 Verifique:");
+                                    console.log("  - Mensagens consecutivas do mesmo tipo: espaçamento reduzido (4px)");
+                                    console.log("  - Mensagens de tipos diferentes: espaçamento normal (12px)");
+                                }
+                            }
+                        });
+                }, index * 800); // Send each message 800ms apart
+            });
+        } else {
+            console.error("❌ Need at least 2 character actors to test message spacing");
+            ui.notifications.error("Precisa de pelo menos 2 personagens para testar o espaçamento!");
+        }
+    } else {
+        console.error("❌ CyberpunkAgent instance not found");
+        ui.notifications.error("Instância do CyberpunkAgent não encontrada!");
+    }
+};
+
 console.log("Cyberpunk Agent | CyberpunkAgent class and test functions made globally available");
 console.log("Cyberpunk Agent | New test functions:");
 console.log("  - testSystemMessage() - Test the new system message fallback");
@@ -3974,5 +4038,6 @@ console.log("  - testDeleteMessages() - Test message deletion functionality");
 console.log("  - testSimpleDelete() - Test simple delete system");
 console.log("  - testMessageDeletionSync() - Test message deletion synchronization");
 console.log("  - testRealTimeDeletion() - Test real-time message deletion");
+console.log("  - testMessageSpacing() - Test message spacing between same/different types");
 console.log("  - syncFoundryChat() - Sync with FoundryVTT chat");
 console.log("  - forceUpdateChatInterfaces() - Force update all chat interfaces"); 
