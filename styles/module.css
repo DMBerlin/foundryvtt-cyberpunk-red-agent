@@ -577,6 +577,7 @@
 .cp-contact-item {
   display: flex;
   align-items: center;
+  gap: 15px;
   padding: 15px;
   background: var(--cp-gradient-card);
   border: 1px solid var(--cp-border-weak);
@@ -604,9 +605,9 @@
   height: 50px;
   border-radius: 50%;
   overflow: hidden;
-  margin-right: 15px;
   border: 2px solid var(--cp-border);
   box-shadow: 0 0 10px var(--cp-glow-weak);
+  flex-shrink: 0;
 }
 
 .cp-contact-avatar img {
@@ -617,6 +618,9 @@
 
 .cp-contact-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .cp-contact-name {
@@ -675,14 +679,26 @@
   opacity: 1;
 }
 
+.cp-contact-unread {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 30px;
+}
+
 .cp-unread-count {
-  background: var(--cp-primary);
-  color: var(--cp-text);
-  padding: 1px 6px;
-  border-radius: 2px;
-  font-size: 0.7em;
+  background: #FAFA00;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 0.8em;
   font-weight: bold;
-  margin-left: 10px;
+  min-width: 22px;
+  text-align: center;
+  border: 1px solid #FFA500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 /* No Contacts */

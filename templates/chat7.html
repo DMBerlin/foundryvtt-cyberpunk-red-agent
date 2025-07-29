@@ -47,6 +47,11 @@
           <span class="cp-contact-status muted">MUTADO</span>
           {{/if}}
         </div>
+        <div class="cp-contact-unread">
+          {{#if this.unreadCount}}
+          <span class="cp-unread-count">{{this.unreadCount}}</span>
+          {{/if}}
+        </div>
       </div>
       {{/each}}
     </div>

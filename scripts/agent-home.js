@@ -148,6 +148,14 @@ class Chat7Application extends FormApplication {
 
         // Combine regular contacts with anonymous contacts
         contacts = [...contacts, ...anonymousContacts];
+
+        // Add unread counts to each contact
+        contacts.forEach(contact => {
+          const unreadCount = window.CyberpunkAgent.instance.getUnreadCount(this.actor.id, contact.id);
+          if (unreadCount > 0) {
+            contact.unreadCount = unreadCount;
+          }
+        });
       }
     } catch (error) {
       console.warn("Cyberpunk Agent | Error getting contacts:", error);
@@ -223,6 +231,11 @@ class Chat7Application extends FormApplication {
     if (!contact) {
       ui.notifications.error("Contato não encontrado!");
       return;
+    }
+
+    // Mark conversation as read when opening chat
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, contact.id);
     }
 
     // Close the current application

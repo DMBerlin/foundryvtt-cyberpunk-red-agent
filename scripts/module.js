@@ -12,10 +12,21 @@ class CyberpunkAgent {
         this.version = "1.0.0";
         this.agentData = new Map(); // Store agent data per actor
         this.contactNetworks = new Map(); // Store contact networks per actor
-        this.messages = new Map(); // Store messages between actors
+        this.messages = new Map();
         this.socketLibIntegration = null; // SocketLib integration
         this._userMuteSettings = new Map(); // Store mute settings per user
         this._lastMessageNotifications = {};
+        this.contacts = new Map();
+        this.lastReadTimestamps = new Map(); // Novo: rastreia quando cada conversa foi lida pela última vez
+        this.unreadCounts = new Map(); // Novo: cache de contadores de mensagens não lidas
+        this._isInitialized = false;
+        this._socketLibReadyHookSet = false;
+        this._socketListenerSet = false;
+        this._chatMessageListenerSet = false;
+        this._openInterfaces = new Set();
+        this._openChatInterfaces = new Set();
+        this._muteSettings = new Map();
+        this._muteSystemInitialized = false;
     }
 
     /**
@@ -622,11 +633,15 @@ class CyberpunkAgent {
 
             const messages = game.settings.get('cyberpunk-agent', 'messages') || {};
             this.messages = new Map(Object.entries(messages));
+
+            // Load read timestamps
+            this._loadReadTimestamps();
         } catch (error) {
             console.warn("Cyberpunk Agent | Error loading data:", error);
             this.agentData = new Map();
             this.contactNetworks = new Map();
             this.messages = new Map();
+            this.lastReadTimestamps = new Map();
         }
     }
 
@@ -771,6 +786,111 @@ class CyberpunkAgent {
     }
 
     /**
+     * Mark a conversation as read (when user opens the chat)
+     */
+    markConversationAsRead(actorId1, actorId2) {
+        const conversationKey = this._getConversationKey(actorId1, actorId2);
+        const now = Date.now();
+
+        // Update the last read timestamp
+        this.lastReadTimestamps.set(conversationKey, now);
+
+        // Clear the unread count cache for this conversation
+        this.unreadCounts.delete(conversationKey);
+
+        // Save the read timestamps to settings
+        this._saveReadTimestamps();
+
+        console.log(`Cyberpunk Agent | Marked conversation ${conversationKey} as read at ${new Date(now).toISOString()}`);
+    }
+
+    /**
+     * Get unread message count for a conversation
+     */
+    getUnreadCount(actorId1, actorId2) {
+        const conversationKey = this._getConversationKey(actorId1, actorId2);
+
+        // Check cache first
+        if (this.unreadCounts.has(conversationKey)) {
+            return this.unreadCounts.get(conversationKey);
+        }
+
+        // Get the last read timestamp
+        const lastReadTimestamp = this.lastReadTimestamps.get(conversationKey) || 0;
+
+        // Get all messages for this conversation
+        const messages = this.getMessagesForConversation(actorId1, actorId2);
+
+        // Count messages that are newer than the last read timestamp and not from the current user
+        const unreadCount = messages.filter(message =>
+            message.timestamp > lastReadTimestamp &&
+            message.senderId !== actorId1
+        ).length;
+
+        // Cache the result
+        this.unreadCounts.set(conversationKey, unreadCount);
+
+        return unreadCount;
+    }
+
+    /**
+     * Get unread counts for all contacts of an actor
+     */
+    getUnreadCountsForActor(actorId) {
+        const unreadCounts = {};
+
+        // Get all contacts for this actor
+        const contacts = this.getContactsForActor(actorId);
+        const anonymousContacts = this.getAnonymousContactsForActor(actorId);
+        const allContacts = [...contacts, ...anonymousContacts];
+
+        // Calculate unread count for each contact
+        allContacts.forEach(contact => {
+            const unreadCount = this.getUnreadCount(actorId, contact.id);
+            if (unreadCount > 0) {
+                unreadCounts[contact.id] = unreadCount;
+            }
+        });
+
+        return unreadCounts;
+    }
+
+    /**
+     * Save read timestamps to settings
+     */
+    _saveReadTimestamps() {
+        try {
+            const timestampsData = {};
+            this.lastReadTimestamps.forEach((timestamp, conversationKey) => {
+                timestampsData[conversationKey] = timestamp;
+            });
+
+            game.settings.set('cyberpunk-agent', 'last-read-timestamps', timestampsData);
+            console.log("Cyberpunk Agent | Read timestamps saved to settings");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving read timestamps:", error);
+        }
+    }
+
+    /**
+     * Load read timestamps from settings
+     */
+    _loadReadTimestamps() {
+        try {
+            const timestampsData = game.settings.get('cyberpunk-agent', 'last-read-timestamps') || {};
+
+            this.lastReadTimestamps.clear();
+            Object.entries(timestampsData).forEach(([conversationKey, timestamp]) => {
+                this.lastReadTimestamps.set(conversationKey, timestamp);
+            });
+
+            console.log("Cyberpunk Agent | Read timestamps loaded from settings");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading read timestamps:", error);
+        }
+    }
+
+    /**
  * Send a message from one actor to another
  */
     async sendMessage(senderId, receiverId, text) {
@@ -800,6 +920,9 @@ class CyberpunkAgent {
 
         conversation.push(message);
         await this.saveMessages();
+
+        // Clear unread count cache for this conversation
+        this.unreadCounts.delete(this._getConversationKey(senderId, receiverId));
 
         // Create FoundryVTT chat message for real chat integration
         this._createFoundryChatMessage(senderId, receiverId, text.trim(), messageId);
@@ -1998,11 +2121,74 @@ class CyberpunkAgent {
         // Also try to update any other chat-related interfaces
         this.updateOpenChatInterfaces();
 
+        // Update Chat7 interfaces (contact lists) to refresh unread counts
+        this._updateChat7Interfaces();
+
         // Force a small delay to ensure DOM updates are processed
         setTimeout(() => {
             console.log("Cyberpunk Agent | Final check - forcing any remaining interface updates");
             this.updateOpenInterfaces();
         }, 100);
+    }
+
+    /**
+     * Update Chat7 interfaces (contact lists) to refresh unread counts
+     */
+    _updateChat7Interfaces() {
+        console.log("Cyberpunk Agent | Updating Chat7 interfaces for unread counts");
+
+        // Find and update any open Chat7Application
+        const openWindows = Object.values(ui.windows);
+        let updatedCount = 0;
+
+        openWindows.forEach(window => {
+            if (window && window.rendered && window.constructor.name === 'Chat7Application') {
+                console.log("Cyberpunk Agent | Found Chat7Application, updating unread counts...");
+                try {
+                    // Update unread counts for each contact in the list
+                    const contactItems = window.element?.find('.cp-contact-item');
+                    if (contactItems.length > 0) {
+                        contactItems.each((index, element) => {
+                            const contactId = element.dataset.contactId;
+                            if (contactId && window.actor) {
+                                const unreadCount = this.getUnreadCount(window.actor.id, contactId);
+
+                                // Find or create unread count element
+                                let unreadElement = $(element).find('.cp-unread-count');
+
+                                if (unreadCount > 0) {
+                                    if (unreadElement.length === 0) {
+                                        // Create new unread count element
+                                        unreadElement = $('<span class="cp-unread-count"></span>');
+                                        let unreadContainer = $(element).find('.cp-contact-unread');
+                                        if (unreadContainer.length === 0) {
+                                            unreadContainer = $('<div class="cp-contact-unread"></div>');
+                                            $(element).append(unreadContainer);
+                                        }
+                                        unreadContainer.append(unreadElement);
+                                    }
+                                    unreadElement.text(unreadCount);
+                                } else {
+                                    // Remove unread count element if count is 0
+                                    unreadElement.remove();
+                                    // Also remove the container if it's empty
+                                    const unreadContainer = $(element).find('.cp-contact-unread');
+                                    if (unreadContainer.length > 0 && unreadContainer.children().length === 0) {
+                                        unreadContainer.remove();
+                                    }
+                                }
+                            }
+                        });
+                        updatedCount++;
+                        console.log("Cyberpunk Agent | Chat7Application unread counts updated successfully");
+                    }
+                } catch (error) {
+                    console.warn("Cyberpunk Agent | Error updating Chat7Application unread counts:", error);
+                }
+            }
+        });
+
+        console.log(`Cyberpunk Agent | Updated unread counts for ${updatedCount} Chat7 interfaces`);
     }
 
     /**
@@ -2533,6 +2719,9 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | No message data provided, reloading from settings");
             this.loadAgentData();
         }
+
+        // Clear unread count cache for this conversation
+        this.unreadCounts.delete(this._getConversationKey(data.senderId, data.receiverId));
 
         // Update all open chat interfaces immediately
         this._updateChatInterfacesImmediately();

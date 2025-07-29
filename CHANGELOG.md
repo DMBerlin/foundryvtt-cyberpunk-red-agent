@@ -5,6 +5,30 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.0.6] - 2024-01-XX
+
+### Adicionado
+- **Sistema de contador de mensagens não lidas**: Contador visual que mostra quantas mensagens novas cada contato tem
+- **Chip de contador**: Exibido ao lado do nome do contato na lista do Chat7
+- **Atualização em tempo real**: Contador atualiza automaticamente quando novas mensagens chegam
+- **Marcação de leitura**: Contador é zerado quando o usuário abre o chat com o contato
+- **Persistência**: Estado de leitura é salvo e mantido entre sessões
+- **Cache inteligente**: Sistema de cache para performance otimizada
+
+### Alterado
+- **Template do Chat7**: Adicionado suporte para exibir contadores de mensagens não lidas
+- **Interface visual**: Contador com estilo quadrado amarelo no canto inferior direito
+- **Métodos de mensagem**: Adicionados métodos para gerenciar estado de leitura
+- **Atualização de interfaces**: Sistema atualiza contadores em tempo real
+
+### Adicionado
+- Script de teste `test-unread-count.js` para verificar sistema de contador
+- Documentação detalhada em `docs/UNREAD-MESSAGE-COUNT.md`
+- Métodos `getUnreadCount()`, `markConversationAsRead()`, `getUnreadCountsForActor()`
+- Sistema de timestamps de leitura persistente
+
+---
+
 ## [1.0.5] - 2024-01-XX
 
 ### Removido
