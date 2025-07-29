@@ -462,8 +462,6 @@ class ChatConversationApplication extends FormApplication {
       console.warn("Cyberpunk Agent | Error getting messages:", error);
     }
 
-
-
     return {
       ...data,
       actor: this.actor,
@@ -504,7 +502,7 @@ class ChatConversationApplication extends FormApplication {
     // Listen for custom events from the module
     document.addEventListener('cyberpunk-agent-update', (event) => {
       if (event.detail && event.detail.type === 'messageUpdate') {
-        // Always scroll to bottom on new message
+        // Scroll to bottom on new message
         this._scrollToBottomOnNewMessage();
       }
     });
@@ -512,14 +510,14 @@ class ChatConversationApplication extends FormApplication {
     // Also listen for window focus to scroll to bottom
     window.addEventListener('focus', () => {
       setTimeout(() => {
-        this._autoScrollIfAtBottom();
+        this._scrollToBottom();
       }, 100);
     });
   }
 
   /**
- * Handle delete message button click
- */
+   * Handle delete message button click
+   */
   async _onDeleteMessage(event) {
     event.preventDefault();
 
@@ -573,13 +571,8 @@ class ChatConversationApplication extends FormApplication {
         }
       },
       default: "no"
-    }).render(true);
-
-    // The deletion is now handled inside the dialog callback
-    // No need to check confirmed here anymore
+    });
   }
-
-
 
   /**
    * Handle back button click
@@ -613,7 +606,7 @@ class ChatConversationApplication extends FormApplication {
   }
 
   /**
-   * Handle message input keypress (Enter to send)
+   * Handle message input keypress
    */
   _onMessageInputKeypress(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -623,8 +616,8 @@ class ChatConversationApplication extends FormApplication {
   }
 
   /**
- * Send message
- */
+   * Send message
+   */
   async _sendMessage() {
     const input = this.element.find('.cp-message-input');
     const text = input.val().trim();
@@ -641,6 +634,9 @@ class ChatConversationApplication extends FormApplication {
       try {
         await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.contact.id, text);
         console.log("Cyberpunk Agent | Message sent successfully");
+
+        // Scroll to bottom after sending message
+        this._scrollToBottom();
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);
         ui.notifications.error("Erro ao enviar mensagem: " + error.message);

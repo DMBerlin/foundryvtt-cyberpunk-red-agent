@@ -150,17 +150,53 @@ async function handleMessageUpdate(data) {
 
   console.log("Cyberpunk Agent | Processing message update from:", data.userName);
 
-  // Reload message data from settings
-  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-    console.log("Cyberpunk Agent | Reloading agent data...");
-    window.CyberpunkAgent.instance.loadAgentData();
+  // If we have message data, add it to the conversation locally
+  if (data.message && data.senderId && data.receiverId) {
+    console.log("Cyberpunk Agent | Adding message to local conversation via SocketLib:", data.message);
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      try {
+        // Get the conversation key
+        const conversationKey = window.CyberpunkAgent.instance._getConversationKey(data.senderId, data.receiverId);
+
+        // Get or create conversation
+        if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+          window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+        }
+
+        const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+
+        // Check if message already exists to avoid duplicates
+        const messageExists = conversation.some(msg => msg.id === data.message.id);
+        if (!messageExists) {
+          // Add the message
+          conversation.push(data.message);
+
+          // Save messages
+          await window.CyberpunkAgent.instance.saveMessages();
+          console.log("Cyberpunk Agent | Message added to local conversation via SocketLib successfully");
+        } else {
+          console.log("Cyberpunk Agent | Message already exists in conversation via SocketLib, skipping");
+        }
+      } catch (error) {
+        console.error("Cyberpunk Agent | Error adding message to local conversation via SocketLib:", error);
+      }
+    } else {
+      console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for message addition");
+    }
   } else {
-    console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for data reload");
+    // Fallback: reload message data from settings
+    console.log("Cyberpunk Agent | No message data provided via SocketLib, reloading from settings");
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.loadAgentData();
+    } else {
+      console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for data reload");
+    }
   }
 
   // Update all open chat interfaces immediately
   if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-    console.log("Cyberpunk Agent | Updating chat interfaces...");
+    console.log("Cyberpunk Agent | Updating chat interfaces via SocketLib...");
     window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
     window.CyberpunkAgent.instance.updateOpenInterfaces();
   } else {

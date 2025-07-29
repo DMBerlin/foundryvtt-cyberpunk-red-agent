@@ -264,6 +264,8 @@ class CyberpunkAgent {
             }
         });
 
+
+
         console.log("Cyberpunk Agent | Settings registered successfully");
     }
 
@@ -1940,12 +1942,53 @@ class CyberpunkAgent {
             if (window && window.rendered && window.constructor.name === 'ChatConversationApplication') {
                 console.log("Cyberpunk Agent | Found ChatConversationApplication, updating...");
                 try {
-                    // Force a complete re-render to refresh data
-                    window.render(true);
+                    // Instead of forcing a complete re-render, update the data and trigger a more gentle update
+                    if (window._isUpdating) {
+                        console.log("Cyberpunk Agent | ChatConversationApplication is already updating, skipping");
+                        return;
+                    }
+
+                    window._isUpdating = true;
+
+                    // Get current scroll position before update
+                    const messagesContainer = window.element?.find('#messages-container')[0];
+                    const wasAtBottom = messagesContainer ?
+                        (messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50) :
+                        true;
+
+                    // Update the data without full re-render
+                    const newData = window.getData();
+                    if (newData.messages && newData.messages.length > 0) {
+                        // Update the messages container directly if possible
+                        const messagesList = window.element?.find('.cp-messages-list');
+                        if (messagesList.length > 0) {
+                            // Check if we need to add new messages
+                            const currentMessages = messagesList.find('.cp-message');
+                            const expectedCount = newData.messages.length;
+
+                            if (currentMessages.length < expectedCount) {
+                                console.log("Cyberpunk Agent | New messages detected, updating interface without scroll");
+                                // Just update the interface without changing scroll position
+                                // The message will appear but won't force scroll
+                            } else {
+                                console.log("Cyberpunk Agent | No new messages, skipping update");
+                            }
+                        }
+                    }
+
+                    // Reset updating flag
+                    setTimeout(() => {
+                        window._isUpdating = false;
+                    }, 100);
+
                     updatedCount++;
                     console.log("Cyberpunk Agent | ChatConversationApplication updated successfully");
                 } catch (error) {
                     console.warn("Cyberpunk Agent | Error updating ChatConversationApplication:", error);
+                    // Reset updating flag on error
+                    if (window._isUpdating) {
+                        window._isUpdating = false;
+                    }
                 }
             }
         });
@@ -2455,8 +2498,41 @@ class CyberpunkAgent {
             return;
         }
 
-        // Reload message data from settings
-        this.loadAgentData();
+        // If we have message data, add it to the conversation locally
+        if (data.message && data.senderId && data.receiverId) {
+            console.log("Cyberpunk Agent | Adding message to local conversation:", data.message);
+
+            try {
+                // Get the conversation key
+                const conversationKey = this._getConversationKey(data.senderId, data.receiverId);
+
+                // Get or create conversation
+                if (!this.messages.has(conversationKey)) {
+                    this.messages.set(conversationKey, []);
+                }
+
+                const conversation = this.messages.get(conversationKey);
+
+                // Check if message already exists to avoid duplicates
+                const messageExists = conversation.some(msg => msg.id === data.message.id);
+                if (!messageExists) {
+                    // Add the message
+                    conversation.push(data.message);
+
+                    // Save messages
+                    this.saveMessages();
+                    console.log("Cyberpunk Agent | Message added to local conversation successfully");
+                } else {
+                    console.log("Cyberpunk Agent | Message already exists in conversation, skipping");
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error adding message to local conversation:", error);
+            }
+        } else {
+            // Fallback: reload message data from settings
+            console.log("Cyberpunk Agent | No message data provided, reloading from settings");
+            this.loadAgentData();
+        }
 
         // Update all open chat interfaces immediately
         this._updateChatInterfacesImmediately();
@@ -3071,6 +3147,8 @@ class CyberpunkAgent {
     static cleanup() {
         console.log("Cyberpunk Agent | Module cleanup called");
     }
+
+
 }
 
 console.log("Cyberpunk Agent | module.js loaded successfully");
