@@ -171,6 +171,12 @@ class Chat7Application extends FormApplication {
     // Add custom event listeners
     html.find('.cp-back-button').click(this._onBackClick.bind(this));
     html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
+
+    // Add context menu for contact items
+    html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
+
+    // Close context menu when clicking outside
+    $(document).on('click', this._onDocumentClick.bind(this));
   }
 
   /**
@@ -235,6 +241,164 @@ class Chat7Application extends FormApplication {
     } else {
       console.error("Cyberpunk Agent | ChatConversationApplication not loaded!");
       ui.notifications.error("Erro ao carregar o chat. Tente recarregar a página (F5).");
+    }
+  }
+
+  /**
+   * Handle contact context menu
+   */
+  _onContactContextMenu(event) {
+    event.preventDefault();
+
+    const contactId = event.currentTarget.dataset.contactId;
+
+    // Get contact data from regular contacts
+    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    let contact = contacts.find(c => c.id === contactId);
+
+    // If not found in regular contacts, check anonymous contacts
+    if (!contact) {
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      contact = anonymousContacts.find(c => c.id === contactId);
+    }
+
+    if (contact) {
+      this._showContextMenu(event, contact);
+    }
+  }
+
+  /**
+ * Show context menu for contact
+ */
+  _showContextMenu(event, contact) {
+    // Remove any existing context menu
+    $('.cp-context-menu').remove();
+
+    // Check if contact is muted
+    const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+
+    // Check if user has access to this actor
+    const userActors = window.CyberpunkAgent?.instance?.getUserActors() || [];
+    const hasAccess = userActors.some(actor => actor.id === this.actor.id);
+
+    // Create context menu
+    const menu = $(`
+      <div class="cp-context-menu">
+        <button class="cp-context-menu-item ${isMuted ? 'muted' : ''} ${!hasAccess ? 'disabled' : ''}" data-action="mute" data-contact-id="${contact.id}">
+          <i class="fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}"></i>
+          ${isMuted ? 'Desmutar Notificações' : 'Mutar Notificações'}
+          ${!hasAccess ? ' (Sem Acesso)' : ''}
+        </button>
+        <div class="cp-context-menu-separator"></div>
+        <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
+          <i class="fas fa-info-circle"></i>
+          Informações do Contato
+        </button>
+      </div>
+    `);
+
+    // Position menu
+    menu.css({
+      left: event.pageX + 5,
+      top: event.pageY - 5
+    });
+
+    // Add to document
+    $('body').append(menu);
+
+    // Add event listeners
+    menu.find('.cp-context-menu-item').click((e) => {
+      e.stopPropagation();
+      const action = e.currentTarget.dataset.action;
+      const contactId = e.currentTarget.dataset.contactId;
+
+      // Check if item is disabled
+      if (e.currentTarget.classList.contains('disabled')) {
+        return; // Don't process disabled items
+      }
+
+      if (action === 'mute') {
+        this._toggleContactMute(contactId);
+      } else if (action === 'info') {
+        this._showContactInfo(contactId);
+      }
+
+      menu.remove();
+    });
+
+    // Store reference to close on document click
+    this.currentContextMenu = menu;
+  }
+
+  /**
+ * Toggle contact mute status
+ */
+  _toggleContactMute(contactId) {
+    if (window.CyberpunkAgent?.instance) {
+      const isMuted = window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
+
+      // Check if the operation was successful (not blocked by permissions)
+      if (isMuted !== false) {
+        // Show notification
+        const contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
+        const contact = contacts.find(c => c.id === contactId);
+        const contactName = contact ? contact.name : 'Contato';
+
+        if (isMuted) {
+          ui.notifications.info(`🔇 Notificações de ${contactName} mutadas`);
+        } else {
+          ui.notifications.info(`🔊 Notificações de ${contactName} desmutadas`);
+        }
+
+        // Play sound effect
+        window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+      }
+      // If isMuted is false, the function already showed a warning notification
+    }
+  }
+
+  /**
+   * Show contact information
+   */
+  _showContactInfo(contactId) {
+    const contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
+    const contact = contacts.find(c => c.id === contactId);
+
+    if (contact) {
+      const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+
+      const info = `
+        <div style="padding: 10px;">
+          <h3 style="margin: 0 0 10px 0; color: var(--cp-text);">${contact.name}</h3>
+          <p style="margin: 5px 0; color: var(--cp-text-dim);">
+            <strong>Status:</strong> ${isMuted ? '🔇 Mutado' : '🔊 Ativo'}
+          </p>
+          <p style="margin: 5px 0; color: var(--cp-text-dim);">
+            <strong>Tipo:</strong> ${contact.isAnonymous ? 'Anônimo' : 'Contato Regular'}
+          </p>
+        </div>
+      `;
+
+      new Dialog({
+        title: `Informações de ${contact.name}`,
+        content: info,
+        buttons: {
+          close: {
+            label: "Fechar",
+            callback: () => { }
+          }
+        }
+      }).render(true);
+    }
+  }
+
+  /**
+   * Handle document click to close context menu
+   */
+  _onDocumentClick(event) {
+    if (this.currentContextMenu && !$(event.target).closest('.cp-context-menu').length) {
+      this.currentContextMenu.remove();
+      this.currentContextMenu = null;
     }
   }
 

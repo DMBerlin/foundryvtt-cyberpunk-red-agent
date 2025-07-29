@@ -14,6 +14,8 @@ class CyberpunkAgent {
         this.contactNetworks = new Map(); // Store contact networks per actor
         this.messages = new Map(); // Store messages between actors
         this.socketLibIntegration = null; // SocketLib integration
+        this._userMuteSettings = new Map(); // Store mute settings per user
+        this._lastMessageNotifications = {};
     }
 
     /**
@@ -343,6 +345,9 @@ class CyberpunkAgent {
         // Load agent data
         this.loadAgentData();
 
+        // Load user's mute settings
+        this._loadUserMuteSettings(game.user.id);
+
         // Setup SocketLib integration if available
         this.setupSocketLibIntegration();
 
@@ -388,15 +393,26 @@ class CyberpunkAgent {
      * Get user's accessible actors
      */
     getUserActors() {
+        // Ensure game.user exists
+        if (!game.user) {
+            console.log("Cyberpunk Agent | No user data available");
+            return [];
+        }
+
         console.log("Cyberpunk Agent | Checking actors for user:", game.user.name);
         console.log("Cyberpunk Agent | User ID:", game.user.id);
         console.log("Cyberpunk Agent | Is GM:", game.user.isGM);
 
         // If user is GM, return all character actors
         if (game.user.isGM) {
-            const allCharacterActors = game.actors.filter(actor => actor.type === 'character');
-            console.log(`Cyberpunk Agent | GM access - returning all ${allCharacterActors.length} character actors`);
-            return allCharacterActors;
+            if (game.actors) {
+                const allCharacterActors = game.actors.filter(actor => actor.type === 'character');
+                console.log(`Cyberpunk Agent | GM access - returning all ${allCharacterActors.length} character actors`);
+                return allCharacterActors;
+            } else {
+                console.log("Cyberpunk Agent | GM access - no actors collection available");
+                return [];
+            }
         }
 
         // For regular users, get character actors they have access to
@@ -404,39 +420,55 @@ class CyberpunkAgent {
 
         // Method 1: Get character actors from the user's owned tokens
         try {
-            const ownedTokens = game.scenes.active.tokens.filter(token =>
-                token.actor &&
-                token.actor.type === 'character' &&
-                token.actor.ownership[game.user.id] === 1
-            );
-            userActors = ownedTokens.map(token => token.actor);
-            console.log(`Cyberpunk Agent | Found ${userActors.length} character actors from owned tokens`);
+            if (game.scenes && game.scenes.active && game.scenes.active.tokens) {
+                const ownedTokens = game.scenes.active.tokens.filter(token =>
+                    token.actor &&
+                    token.actor.type === 'character' &&
+                    token.actor.ownership &&
+                    game.user.id &&
+                    token.actor.ownership[game.user.id] === 1
+                );
+                userActors = ownedTokens.map(token => token.actor);
+                console.log(`Cyberpunk Agent | Found ${userActors.length} character actors from owned tokens`);
+            } else {
+                console.log("Cyberpunk Agent | No active scene or tokens available");
+            }
         } catch (error) {
             console.log("Cyberpunk Agent | Error getting owned tokens:", error);
         }
 
         // Method 2: Get character actors from the user's character list
         try {
-            const characterActors = game.actors.filter(actor =>
-                actor.type === 'character' &&
-                actor.ownership &&
-                actor.ownership[game.user.id] === 1
-            );
-            console.log(`Cyberpunk Agent | Found ${characterActors.length} character actors from character list`);
-            userActors = [...userActors, ...characterActors];
+            if (game.actors) {
+                const characterActors = game.actors.filter(actor =>
+                    actor.type === 'character' &&
+                    actor.ownership &&
+                    game.user.id &&
+                    actor.ownership[game.user.id] === 1
+                );
+                console.log(`Cyberpunk Agent | Found ${characterActors.length} character actors from character list`);
+                userActors = [...userActors, ...characterActors];
+            } else {
+                console.log("Cyberpunk Agent | No actors collection available");
+            }
         } catch (error) {
             console.log("Cyberpunk Agent | Error getting character actors:", error);
         }
 
         // Method 3: Get all character actors that the user has any permission to
         try {
-            const accessibleActors = game.actors.filter(actor => {
-                if (actor.type !== 'character') return false;
-                if (!actor.ownership) return false;
-                return actor.ownership[game.user.id] !== undefined;
-            });
-            console.log(`Cyberpunk Agent | Found ${accessibleActors.length} accessible character actors`);
-            userActors = [...userActors, ...accessibleActors];
+            if (game.actors) {
+                const accessibleActors = game.actors.filter(actor => {
+                    if (actor.type !== 'character') return false;
+                    if (!actor.ownership) return false;
+                    if (!game.user.id) return false;
+                    return actor.ownership[game.user.id] !== undefined;
+                });
+                console.log(`Cyberpunk Agent | Found ${accessibleActors.length} accessible character actors`);
+                userActors = [...userActors, ...accessibleActors];
+            } else {
+                console.log("Cyberpunk Agent | No actors collection available");
+            }
         } catch (error) {
             console.log("Cyberpunk Agent | Error getting accessible actors:", error);
         }
@@ -1488,7 +1520,154 @@ class CyberpunkAgent {
      * Get contacts for an actor
      */
     getContactsForActor(actorId) {
-        return this.contactNetworks.get(actorId) || [];
+        // Ensure mute system is initialized
+        this._initializeMuteSystem();
+
+        const contacts = this.contactNetworks.get(actorId) || [];
+
+        // Add mute status to contacts based on current user's settings
+        return contacts.map(contact => ({
+            ...contact,
+            isMuted: this.isContactMuted(actorId, contact.id)
+        }));
+    }
+
+    /**
+ * Toggle mute status for a contact
+ */
+    toggleContactMute(actorId, contactId) {
+        try {
+            // Ensure _userMuteSettings exists
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+            }
+
+            // Check if user has access to this actor
+            const userActors = this.getUserActors();
+            const hasAccess = userActors.some(actor => actor.id === actorId);
+
+            if (!hasAccess) {
+                console.warn("Cyberpunk Agent | User attempted to toggle contact mute for actor they don't have access to.");
+                ui.notifications.warn("Você não tem acesso a este personagem.");
+                return false;
+            }
+
+            // Get user's mute settings
+            const userId = game.user.id;
+            if (!this._userMuteSettings.has(userId)) {
+                this._userMuteSettings.set(userId, new Map());
+            }
+
+            const userMutes = this._userMuteSettings.get(userId);
+            const muteKey = `${actorId}-${contactId}`;
+            const currentMuteStatus = userMutes.get(muteKey) || false;
+            const newMuteStatus = !currentMuteStatus;
+
+            // Update user's mute settings
+            userMutes.set(muteKey, newMuteStatus);
+            this._userMuteSettings.set(userId, userMutes);
+
+            // Save user's mute settings to localStorage (client-side only)
+            this._saveUserMuteSettings(userId);
+
+            console.log(`Cyberpunk Agent | Contact ${contactId} mute ${newMuteStatus ? 'enabled' : 'disabled'} for actor ${actorId} by user ${game.user.name}`);
+
+            // Update open interfaces
+            this.updateOpenInterfaces();
+
+            return newMuteStatus;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error toggling contact mute:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Save user's mute settings to localStorage
+     */
+    _saveUserMuteSettings(userId) {
+        try {
+            // Ensure _userMuteSettings exists
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+            }
+
+            const userMutes = this._userMuteSettings.get(userId);
+            if (userMutes) {
+                const muteData = Object.fromEntries(userMutes);
+                localStorage.setItem(`cyberpunk-agent-mutes-${userId}`, JSON.stringify(muteData));
+            }
+        } catch (error) {
+            console.warn("Cyberpunk Agent | Error saving user mute settings:", error);
+        }
+    }
+
+    /**
+     * Load user's mute settings from localStorage
+     */
+    _loadUserMuteSettings(userId) {
+        try {
+            // Ensure _userMuteSettings exists
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+            }
+
+            const muteData = localStorage.getItem(`cyberpunk-agent-mutes-${userId}`);
+            if (muteData) {
+                const mutes = new Map(Object.entries(JSON.parse(muteData)));
+                this._userMuteSettings.set(userId, mutes);
+            }
+        } catch (error) {
+            console.warn("Cyberpunk Agent | Error loading user mute settings:", error);
+        }
+    }
+
+    /**
+     * Initialize mute system (fallback method)
+     */
+    _initializeMuteSystem() {
+        try {
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+                console.log("Cyberpunk Agent | Mute system initialized");
+            }
+
+            // Load current user's settings
+            this._loadUserMuteSettings(game.user.id);
+
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error initializing mute system:", error);
+            return false;
+        }
+    }
+
+    /**
+ * Check if a contact is muted for the current user
+ */
+    isContactMuted(actorId, contactId) {
+        try {
+            // Ensure _userMuteSettings exists
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+            }
+
+            const userId = game.user.id;
+            if (!this._userMuteSettings.has(userId)) {
+                this._loadUserMuteSettings(userId);
+            }
+
+            const userMutes = this._userMuteSettings.get(userId);
+            if (userMutes) {
+                const muteKey = `${actorId}-${contactId}`;
+                return userMutes.get(muteKey) || false;
+            }
+
+            return false;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error checking contact mute status:", error);
+            return false;
+        }
     }
 
     /**
@@ -2294,12 +2473,18 @@ class CyberpunkAgent {
         const message = `Nova mensagem de ${senderName} para ${receiverName}`;
         ui.notifications.info(message);
 
-        // Play notification sound if the current user is the receiver
+        // Play notification sound if the current user is the receiver and sender is not muted
         if (data.receiverId) {
             const userActors = this.getUserActors();
             const isReceiver = userActors.some(actor => actor.id === data.receiverId);
             if (isReceiver) {
-                this.playNotificationSound();
+                // Check if the sender is muted for this receiver
+                const isSenderMuted = this.isContactMuted(data.receiverId, data.senderId);
+                if (!isSenderMuted) {
+                    this.playNotificationSound();
+                } else {
+                    console.log(`Cyberpunk Agent | Notification sound skipped - contact ${data.senderId} is muted for ${data.receiverId}`);
+                }
             }
         }
 
@@ -4016,6 +4201,100 @@ window.testMessageSpacing = () => {
     }
 };
 
+// Test function for contact mute functionality
+window.testContactMute = () => {
+    if (CyberpunkAgent.instance) {
+        console.log("=== Testing Contact Mute Functionality ===");
+
+        // Force initialize mute system
+        console.log("0. Forcing mute system initialization...");
+        CyberpunkAgent.instance._initializeMuteSystem();
+
+        // Test _userMuteSettings initialization
+        console.log("1. Testing _userMuteSettings initialization...");
+        console.log(`✅ _userMuteSettings exists: ${!!CyberpunkAgent.instance._userMuteSettings}`);
+        console.log(`✅ _userMuteSettings type: ${typeof CyberpunkAgent.instance._userMuteSettings}`);
+        console.log(`✅ _userMuteSettings instanceof Map: ${CyberpunkAgent.instance._userMuteSettings instanceof Map}`);
+
+        // Test game objects availability
+        console.log("2. Testing game objects availability...");
+        console.log(`✅ game exists: ${!!game}`);
+        console.log(`✅ game.user exists: ${!!game.user}`);
+        console.log(`✅ game.actors exists: ${!!game.actors}`);
+        console.log(`✅ game.scenes exists: ${!!game.scenes}`);
+        console.log(`✅ game.scenes.active exists: ${!!(game.scenes && game.scenes.active)}`);
+
+        const characterActors = game.actors ? game.actors.filter(actor => actor.type === 'character') : [];
+        const userActors = CyberpunkAgent.instance.getUserActors();
+
+        console.log(`👤 Current user: ${game.user ? game.user.name : 'Unknown'} (GM: ${game.user ? game.user.isGM : 'Unknown'})`);
+        console.log(`🎭 User actors: ${userActors.map(a => a.name).join(', ')}`);
+        console.log(`🎭 All character actors: ${characterActors.map(a => a.name).join(', ')}`);
+
+        if (characterActors.length >= 2) {
+            const actor1 = characterActors[0];
+            const actor2 = characterActors[1];
+
+            console.log(`📱 Testing contact mute between ${actor1.name} and ${actor2.name}`);
+
+            // Test access permissions
+            console.log("3. Testing access permissions...");
+            const hasAccess1 = userActors.some(actor => actor.id === actor1.id);
+            const hasAccess2 = userActors.some(actor => actor.id === actor2.id);
+            console.log(`✅ Access to ${actor1.name}: ${hasAccess1 ? 'YES' : 'NO'}`);
+            console.log(`✅ Access to ${actor2.name}: ${hasAccess2 ? 'YES' : 'NO'}`);
+
+            // Test mute functionality for accessible actor
+            if (hasAccess1) {
+                console.log("4. Testing mute toggle for accessible actor...");
+                const isMuted1 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
+                console.log(`✅ Contact ${actor2.name} mute status: ${isMuted1 ? 'MUTED' : 'UNMUTED'}`);
+
+                // Test mute check
+                console.log("5. Testing mute check...");
+                const isMutedCheck = CyberpunkAgent.instance.isContactMuted(actor1.id, actor2.id);
+                console.log(`✅ Mute check result: ${isMutedCheck ? 'MUTED' : 'UNMUTED'}`);
+
+                // Test localStorage persistence
+                console.log("6. Testing localStorage persistence...");
+                const muteKey = `cyberpunk-agent-mutes-${game.user.id}`;
+                const storedData = localStorage.getItem(muteKey);
+                console.log(`✅ localStorage data: ${storedData}`);
+
+                // Test toggle back
+                console.log("7. Testing mute toggle back...");
+                const isMuted2 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
+                console.log(`✅ Contact ${actor2.name} mute status: ${isMuted2 ? 'MUTED' : 'UNMUTED'}`);
+
+                console.log("✅ Contact mute test completed!");
+                ui.notifications.success("Teste de mute de contatos concluído!");
+            } else {
+                console.log("4. Testing mute toggle for inaccessible actor...");
+                const isMuted1 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
+                console.log(`❌ Expected failure for inaccessible actor: ${isMuted1 === false ? 'SUCCESS' : 'FAILED'}`);
+            }
+
+            // Test sending a message to verify sound is muted
+            if (hasAccess1) {
+                console.log("8. Testing message with muted contact...");
+                setTimeout(() => {
+                    CyberpunkAgent.instance.sendMessage(actor2.id, actor1.id, "Teste de mensagem com contato mutado").then(() => {
+                        console.log("✅ Message sent to muted contact - sound should be suppressed");
+                        ui.notifications.info("Mensagem enviada para contato mutado - som deve estar suprimido");
+                    });
+                }, 1000);
+            }
+
+        } else {
+            console.error("❌ Need at least 2 character actors to test contact mute");
+            ui.notifications.error("Precisa de pelo menos 2 personagens para testar o mute de contatos!");
+        }
+    } else {
+        console.error("❌ CyberpunkAgent instance not found");
+        ui.notifications.error("Instância do CyberpunkAgent não encontrada!");
+    }
+};
+
 console.log("Cyberpunk Agent | CyberpunkAgent class and test functions made globally available");
 console.log("Cyberpunk Agent | New test functions:");
 console.log("  - testSystemMessage() - Test the new system message fallback");
@@ -4039,5 +4318,6 @@ console.log("  - testSimpleDelete() - Test simple delete system");
 console.log("  - testMessageDeletionSync() - Test message deletion synchronization");
 console.log("  - testRealTimeDeletion() - Test real-time message deletion");
 console.log("  - testMessageSpacing() - Test message spacing between same/different types");
+console.log("  - testContactMute() - Test contact mute functionality");
 console.log("  - syncFoundryChat() - Sync with FoundryVTT chat");
 console.log("  - forceUpdateChatInterfaces() - Force update all chat interfaces"); 

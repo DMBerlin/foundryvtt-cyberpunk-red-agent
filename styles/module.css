@@ -639,6 +639,42 @@
   font-style: italic;
 }
 
+.cp-contact-status.muted {
+  color: var(--cp-error);
+  font-style: italic;
+}
+
+/* Mute indicator on avatar */
+.cp-contact-avatar {
+  position: relative;
+}
+
+.cp-mute-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  background: var(--cp-error);
+  border: 2px solid var(--cp-dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cp-text);
+  font-size: 0.7em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Muted contact item styling */
+.cp-contact-item.muted {
+  opacity: 0.7;
+}
+
+.cp-contact-item.muted:hover {
+  opacity: 1;
+}
+
 .cp-unread-count {
   background: var(--cp-primary);
   color: var(--cp-text);
@@ -2389,6 +2425,97 @@
   opacity: 0.3;
 }
 
+/* ===== CONTEXT MENU STYLES ===== */
+
+/* Context menu container */
+.cp-context-menu {
+  position: fixed;
+  background: var(--cp-gradient-card);
+  border: 2px solid var(--cp-border);
+  border-radius: 8px;
+  padding: 8px 0;
+  box-shadow: var(--cp-shadow-strong);
+  z-index: 10000;
+  min-width: 180px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.2s ease;
+}
+
+/* Ensure no white shadows on context menu items */
+.cp-context-menu-item,
+.cp-context-menu-item:hover,
+.cp-context-menu-item:focus {
+  box-shadow: none !important;
+}
+
+/* Override any white shadows that might be inherited */
+.cp-context-menu button:hover,
+.cp-context-menu button:focus {
+  box-shadow: none !important;
+}
+
+/* Context menu items */
+.cp-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  color: var(--cp-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9em;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.cp-context-menu-item:hover {
+  background: rgba(255, 0, 51, 0.2);
+  color: var(--cp-text);
+  transform: translateX(5px);
+  box-shadow: none !important;
+}
+
+.cp-context-menu-item i {
+  width: 16px;
+  text-align: center;
+  font-size: 0.8em;
+}
+
+.cp-context-menu-item.muted {
+  color: var(--cp-warning);
+}
+
+.cp-context-menu-item.muted i {
+  color: var(--cp-warning);
+}
+
+.cp-context-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--cp-text-dim);
+}
+
+.cp-context-menu-item.disabled:hover {
+  background: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.cp-context-menu-item.disabled i {
+  color: var(--cp-text-dim);
+}
+
+/* Context menu separator */
+.cp-context-menu-separator {
+  height: 1px;
+  background: var(--cp-border-weak);
+  margin: 4px 0;
+}
+
 /* ===== ENHANCED STYLES ===== */
 
 /* Message spacing and layout */
@@ -2397,20 +2524,20 @@
 }
 
 /* Reduced spacing between messages of the same type */
-.cp-message + .cp-message.own {
+.cp-message+.cp-message.own {
   margin-top: 4px;
 }
 
-.cp-message + .cp-message.other {
+.cp-message+.cp-message.other {
   margin-top: 4px;
 }
 
 /* Maintain normal spacing when message types change */
-.cp-message.own + .cp-message.other {
+.cp-message.own+.cp-message.other {
   margin-top: 12px;
 }
 
-.cp-message.other + .cp-message.own {
+.cp-message.other+.cp-message.own {
   margin-top: 12px;
 }
 

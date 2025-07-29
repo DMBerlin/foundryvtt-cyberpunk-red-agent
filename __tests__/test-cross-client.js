@@ -182,7 +182,7 @@ function checkNetworkConnectivity() {
   const foundrySocket = !!game.socket;
   console.log(`FoundryVTT socket: ${foundrySocket ? '✓' : '✗'}`);
 
-  if (foundrySocket) {
+  if (foundrySocket && game.socket) {
     console.log("Socket details:", {
       connected: game.socket.connected,
       readyState: game.socket.readyState
@@ -190,13 +190,17 @@ function checkNetworkConnectivity() {
   }
 
   // Check user count
-  const userCount = Object.keys(game.users).length;
+  const userCount = game.users ? Object.keys(game.users).length : 0;
   console.log(`Connected users: ${userCount}`);
 
   // List connected users
-  Object.values(game.users).forEach(user => {
-    console.log(`  - ${user.name} (${user.id}) - ${user.active ? 'Active' : 'Inactive'}`);
-  });
+  if (game.users) {
+    Object.values(game.users).forEach(user => {
+      console.log(`  - ${user.name} (${user.id}) - ${user.active ? 'Active' : 'Inactive'}`);
+    });
+  } else {
+    console.log("  - No users data available yet");
+  }
 
   console.log("=== Network Check Complete ===");
 }
@@ -243,5 +247,10 @@ console.log("Cyberpunk Agent | Cross-client test functions made globally availab
 // Auto-run basic test on load
 setTimeout(() => {
   console.log("Cyberpunk Agent | Running auto cross-client test...");
-  checkNetworkConnectivity();
+  // Only run if game is fully loaded
+  if (game && game.users && game.socket) {
+    checkNetworkConnectivity();
+  } else {
+    console.log("Cyberpunk Agent | Game not fully loaded yet, skipping auto test");
+  }
 }, 3000); 
