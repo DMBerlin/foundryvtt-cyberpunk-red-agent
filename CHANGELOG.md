@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.42] - 2024-12-29
+
+### Fixed
+- **Fixed Notification Sound Error**: Resolved "This is not a registered game setting" error for notification sounds:
+  - **Root Cause**: `playNotificationSound` was attempting to access removed `notification-sound` setting
+  - **Solution**: Updated to use localStorage for notification sound preferences
+  - **Impact**: Notification sounds now work properly without errors
+
+### Added
+- **Enhanced Notification Sound System**: Improved notification sound functionality:
+  - **Contact Mute Integration**: Notification sounds respect individual contact mute settings
+  - **User Preference Control**: Users can toggle notification sounds on/off via `window.toggleNotificationSounds()`
+  - **Smart Sound Logic**: Sounds only play when enabled AND contact is not muted
+  - **localStorage Persistence**: Notification sound preferences stored in localStorage
+
+### Changed
+- **Notification Sound Logic**: Enhanced notification sound behavior:
+  - Updated `playNotificationSound()` to accept sender and receiver IDs for mute checking
+  - Added contact mute status verification before playing sounds
+  - Improved error handling and logging for notification sound operations
+
 ## [1.0.41] - 2024-12-29
 
 ### Fixed

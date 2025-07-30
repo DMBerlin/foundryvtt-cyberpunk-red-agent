@@ -2979,12 +2979,52 @@ class CyberpunkAgent {
     }
 
     /**
-     * Play notification sound if enabled
+     * Play notification sound if enabled and contact is not muted
      */
-    playNotificationSound() {
-        const soundEnabled = game.settings.get('cyberpunk-agent', 'notification-sound');
-        if (soundEnabled) {
+    playNotificationSound(senderId = null, receiverId = null) {
+        try {
+            // Check if notification sounds are enabled in localStorage (default to true)
+            const soundEnabled = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+
+            if (!soundEnabled) {
+                console.log("Cyberpunk Agent | Notification sounds disabled by user");
+                return;
+            }
+
+            // If we have sender and receiver IDs, check if the contact is muted
+            if (senderId && receiverId) {
+                const isMuted = this.isContactMuted(receiverId, senderId);
+                if (isMuted) {
+                    console.log("Cyberpunk Agent | Contact is muted, skipping notification sound");
+                    return;
+                }
+            }
+
+            // Play the notification sound
             this.playSoundEffect('notification-message');
+            console.log("Cyberpunk Agent | Notification sound played");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error playing notification sound:", error);
+        }
+    }
+
+    /**
+     * Toggle notification sounds on/off
+     */
+    toggleNotificationSounds() {
+        try {
+            const currentSetting = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+            const newSetting = !currentSetting;
+
+            localStorage.setItem('cyberpunk-agent-notification-sound', newSetting.toString());
+
+            console.log(`Cyberpunk Agent | Notification sounds ${newSetting ? 'enabled' : 'disabled'}`);
+            ui.notifications.info(`Notificações sonoras ${newSetting ? 'ativadas' : 'desativadas'}!`);
+
+            return newSetting;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error toggling notification sounds:", error);
+            return false;
         }
     }
 
@@ -3223,6 +3263,19 @@ window.testContactManagerSave = function () {
         CyberpunkAgent.instance.testContactManagerSave();
     } else {
         console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+/**
+ * Toggle notification sounds on/off
+ * Run this in console: window.toggleNotificationSounds()
+ */
+window.toggleNotificationSounds = function () {
+    if (CyberpunkAgent.instance) {
+        return CyberpunkAgent.instance.toggleNotificationSounds();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+        return false;
     }
 };
 

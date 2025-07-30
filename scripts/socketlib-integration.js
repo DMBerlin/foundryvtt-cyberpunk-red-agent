@@ -453,7 +453,7 @@ async function handleSendMessage(data) {
         const userActors = window.CyberpunkAgent.instance.getUserActors();
         const isReceiver = userActors.some(actor => actor.id === data.receiverId);
         if (isReceiver) {
-          window.CyberpunkAgent.instance.playNotificationSound();
+          window.CyberpunkAgent.instance.playNotificationSound(data.senderId, data.receiverId);
         }
       }
 
