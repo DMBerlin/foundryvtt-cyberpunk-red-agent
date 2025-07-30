@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.20] - 2024-12-29
+
+### 🚀 Added - Flutter-like UI Update System
+
+#### 🔧 Changed
+- **UI CONTROLLER ARCHITECTURE**: Implementado sistema de controle de UI inspirado no Flutter com marcação de componentes "dirty" e rebuild
+- **REAL-TIME UPDATES**: Refatorado completamente sistema de atualizações em tempo real para usar o novo controlador de UI
+- **AGENTAPPLICATION INTEGRATION**: AgentApplication agora se registra com o controlador de UI e gerencia atualizações via callbacks
+- **PERFORMANCE**: Melhorada performance através de batch updates e redução de re-renders desnecessários
+
+#### ✨ Added
+- **UICONTROLLER CLASS**: Controlador global que gerencia componentes de UI e seus estados de atualização
+- **COMPONENT REGISTRATION**: Componentes podem se registrar com o controlador e fornecer callbacks de atualização
+- **DIRTY MARKING**: Componentes podem ser marcados como "dirty" quando precisam ser rebuildados
+- **UPDATE CYCLES**: Usa `requestAnimationFrame` para atualizações suaves e em lote da UI
+- **TREE STRUCTURE**: Componentes organizados em estrutura tipo árvore com callbacks para mudanças de estado
+
+#### 🐛 Fixed
+- **REAL-TIME MESSAGE DISPLAY**: Mensagens agora aparecem imediatamente em conversas abertas sem necessidade de refresh manual
+- **UI SYNCHRONIZATION**: Todos os componentes de UI relacionados (conversa, lista de contatos) atualizam simultaneamente quando o estado muda
+- **PERFORMANCE**: Reduzidas manipulações desnecessárias do DOM e melhorada eficiência de atualizações
+
+#### 📚 Documentation
+- Scripts de teste para verificar sistema de UI tipo Flutter
+- Documentação sobre arquitetura de controlador de UI
+- Testes para fluxo completo de mensagens e atualizações em tempo real
+
+#### 🔧 Technical Details
+- **UIController Architecture**: 
+  - `registerComponent(componentId, component, updateCallback)`: Registra componente para atualizações
+  - `markDirty(componentId)`: Marca componente como precisando de rebuild
+  - `markDirtyMultiple(componentIds)`: Marca múltiplos componentes como dirty
+  - `performUpdate()`: Executa ciclo de atualização para todos os componentes dirty
+- **Component IDs**: Sistema estruturado de identificação de componentes:
+  - `agent-conversation-{actorId}-{contactId}`: Para views de conversa
+  - `agent-chat7-{actorId}`: Para views de lista de contatos
+- **Update Flow**: 
+  1. Mensagem enviada/recebida → controlador de UI marca componentes relevantes como dirty
+  2. Ciclo de atualização agendado via `requestAnimationFrame`
+  3. Componentes dirty são rebuildados com dados frescos
+  4. UI reflete mudanças imediatamente sem intervenção manual
+
+#### 🧪 Testing
+- **NEW TEST SCRIPT**: Adicionado `test-flutter-ui-system.js` com testes abrangentes para:
+  - Funcionalidade do UI Controller
+  - Registro de componentes e marcação dirty
+  - Execução do ciclo de atualização
+  - Integração com AgentApplication
+  - Teste de fluxo completo de mensagens
+  - Verificação de atualizações em tempo real
+
+---
+
 ## [1.0.19] - 2024-12-29
 
 ### 🐛 Fixed - Message Sending and Display Issues

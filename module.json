@@ -1,7 +1,7 @@
 {
   "title": "Cyberpunk Agent",
   "description": "A FoundryVTT module that adds a cyberpunk-style messaging system for players to communicate through their characters' agents",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "authors": [
     {
       "name": "Daniel Marinho Goncalves",
@@ -45,7 +45,8 @@
     "scripts/test-chat7-rendering.js",
     "scripts/test-single-instance.js",
     "scripts/test-contacts-display.js",
-    "scripts/test-message-sending.js"
+    "scripts/test-message-sending.js",
+    "scripts/test-flutter-ui-system.js"
   ],
   "languages": [
     {

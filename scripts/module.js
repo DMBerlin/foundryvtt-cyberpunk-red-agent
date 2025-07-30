@@ -1,9 +1,153 @@
 /**
  * Cyberpunk Agent Module
- * A FoundryVTT module for cyberpunk-style messaging
+ * Real-time chat and communication system for FoundryVTT
  */
 
 console.log("Cyberpunk Agent | Loading module.js...");
+
+/**
+ * Global UI Controller - Flutter-like state management
+ * Manages UI components and their update states
+ */
+class UIController {
+    constructor() {
+        this.components = new Map(); // componentId -> component
+        this.dirtyComponents = new Set(); // componentIds that need rebuild
+        this.updateCallbacks = new Map(); // componentId -> update callbacks
+        this.isUpdating = false;
+        this.updateQueue = [];
+
+        console.log("UIController | Initialized");
+    }
+
+    /**
+     * Register a UI component
+     */
+    registerComponent(componentId, component, updateCallback) {
+        this.components.set(componentId, component);
+        this.updateCallbacks.set(componentId, updateCallback);
+        console.log(`UIController | Registered component: ${componentId}`);
+    }
+
+    /**
+     * Unregister a UI component
+     */
+    unregisterComponent(componentId) {
+        this.components.delete(componentId);
+        this.updateCallbacks.delete(componentId);
+        this.dirtyComponents.delete(componentId);
+        console.log(`UIController | Unregistered component: ${componentId}`);
+    }
+
+    /**
+     * Mark a component as dirty (needs rebuild)
+     */
+    markDirty(componentId) {
+        this.dirtyComponents.add(componentId);
+        console.log(`UIController | Marked component as dirty: ${componentId}`);
+        this.scheduleUpdate();
+    }
+
+    /**
+     * Mark multiple components as dirty
+     */
+    markDirtyMultiple(componentIds) {
+        componentIds.forEach(id => this.dirtyComponents.add(id));
+        console.log(`UIController | Marked multiple components as dirty:`, componentIds);
+        this.scheduleUpdate();
+    }
+
+    /**
+     * Mark all components as dirty
+     */
+    markAllDirty() {
+        this.components.forEach((_, componentId) => {
+            this.dirtyComponents.add(componentId);
+        });
+        console.log(`UIController | Marked all components as dirty`);
+        this.scheduleUpdate();
+    }
+
+    /**
+     * Schedule an update cycle
+     */
+    scheduleUpdate() {
+        if (this.isUpdating) {
+            return; // Already updating
+        }
+
+        // Use requestAnimationFrame for smooth updates
+        requestAnimationFrame(() => {
+            this.performUpdate();
+        });
+    }
+
+    /**
+     * Perform the actual update cycle
+     */
+    performUpdate() {
+        if (this.isUpdating || this.dirtyComponents.size === 0) {
+            return;
+        }
+
+        this.isUpdating = true;
+        console.log(`UIController | Starting update cycle for ${this.dirtyComponents.size} components`);
+
+        const componentsToUpdate = Array.from(this.dirtyComponents);
+        this.dirtyComponents.clear();
+
+        // Update each dirty component
+        componentsToUpdate.forEach(componentId => {
+            const component = this.components.get(componentId);
+            const updateCallback = this.updateCallbacks.get(componentId);
+
+            if (component && updateCallback) {
+                try {
+                    console.log(`UIController | Updating component: ${componentId}`);
+                    updateCallback(component);
+                } catch (error) {
+                    console.error(`UIController | Error updating component ${componentId}:`, error);
+                }
+            } else {
+                console.warn(`UIController | Component or callback not found for: ${componentId}`);
+            }
+        });
+
+        this.isUpdating = false;
+        console.log(`UIController | Update cycle completed`);
+
+        // Check if more updates were queued during this cycle
+        if (this.dirtyComponents.size > 0) {
+            this.scheduleUpdate();
+        }
+    }
+
+    /**
+     * Get all registered component IDs
+     */
+    getComponentIds() {
+        return Array.from(this.components.keys());
+    }
+
+    /**
+     * Check if a component is registered
+     */
+    hasComponent(componentId) {
+        return this.components.has(componentId);
+    }
+
+    /**
+     * Get component by ID
+     */
+    getComponent(componentId) {
+        return this.components.get(componentId);
+    }
+}
+
+/**
+ * Global UI Controller instance
+ */
+window.CyberpunkAgentUIController = new UIController();
 
 class CyberpunkAgent {
     constructor() {
@@ -1891,10 +2035,11 @@ class CyberpunkAgent {
 
 
     /**
-     * Update chat interfaces immediately for better UX
+     * Update chat interfaces immediately when new messages arrive
+     * Now uses the Flutter-like UI controller for better performance
      */
     _updateChatInterfacesImmediately() {
-        console.log("Cyberpunk Agent | Starting immediate chat interface update");
+        console.log("Cyberpunk Agent | Starting immediate chat interface update using UI Controller");
 
         // Prevent duplicate updates within a short time window
         const now = Date.now();
@@ -1904,58 +2049,83 @@ class CyberpunkAgent {
         }
         this._lastChatUpdateTime = now;
 
-        // Find and update any open ChatConversationApplication
+        // Use the UI Controller to mark relevant components as dirty
+        const componentsToUpdate = [];
+
+        // Find and mark conversation components as dirty
+        const openWindows = Object.values(ui.windows);
+        openWindows.forEach(window => {
+            if (window && window.rendered) {
+                if (window.constructor.name === 'ChatConversationApplication') {
+                    const componentId = `conversation-${window.actor?.id}-${window.currentContact?.id}`;
+                    componentsToUpdate.push(componentId);
+                    console.log("Cyberpunk Agent | Marking conversation component as dirty:", componentId);
+                } else if (window.constructor.name === 'Chat7Application') {
+                    const componentId = `chat7-${window.actor?.id}`;
+                    componentsToUpdate.push(componentId);
+                    console.log("Cyberpunk Agent | Marking Chat7 component as dirty:", componentId);
+                } else if (window.constructor.name === 'AgentApplication') {
+                    // Handle unified AgentApplication
+                    if (window.currentView === 'conversation' && window.currentContact) {
+                        const componentId = `agent-conversation-${window.actor?.id}-${window.currentContact.id}`;
+                        componentsToUpdate.push(componentId);
+                        console.log("Cyberpunk Agent | Marking agent conversation component as dirty:", componentId);
+                    } else if (window.currentView === 'chat7') {
+                        const componentId = `agent-chat7-${window.actor?.id}`;
+                        componentsToUpdate.push(componentId);
+                        console.log("Cyberpunk Agent | Marking agent Chat7 component as dirty:", componentId);
+                    }
+                }
+            }
+        });
+
+        // Mark components as dirty using the UI Controller
+        if (componentsToUpdate.length > 0) {
+            if (window.CyberpunkAgentUIController) {
+                window.CyberpunkAgentUIController.markDirtyMultiple(componentsToUpdate);
+            } else {
+                console.warn("Cyberpunk Agent | UI Controller not available, falling back to manual updates");
+                this._fallbackUpdateChatInterfaces();
+            }
+        } else {
+            console.log("Cyberpunk Agent | No chat components found to update");
+        }
+
+        // Also dispatch the custom event for backward compatibility
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                type: 'messageUpdate',
+                timestamp: Date.now()
+            }
+        }));
+    }
+
+    /**
+     * Fallback method for when UI Controller is not available
+     */
+    _fallbackUpdateChatInterfaces() {
+        console.log("Cyberpunk Agent | Using fallback chat interface update");
+
         const openWindows = Object.values(ui.windows);
         let updatedCount = 0;
 
         openWindows.forEach(window => {
             if (window && window.rendered && window.constructor.name === 'ChatConversationApplication') {
-                console.log("Cyberpunk Agent | Found ChatConversationApplication, updating...");
                 try {
-                    // Instead of forcing a complete re-render, update the data and trigger a more gentle update
                     if (window._isUpdating) {
-                        console.log("Cyberpunk Agent | ChatConversationApplication is already updating, skipping");
                         return;
                     }
 
                     window._isUpdating = true;
+                    window.render(true);
 
-                    // Get current scroll position before update
-                    const messagesContainer = window.element?.find('#messages-container')[0];
-                    const wasAtBottom = messagesContainer ?
-                        (messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50) :
-                        true;
-
-                    // Update the data without full re-render
-                    const newData = window.getData();
-                    if (newData.messages && newData.messages.length > 0) {
-                        // Update the messages container directly if possible
-                        const messagesList = window.element?.find('.cp-messages-list');
-                        if (messagesList.length > 0) {
-                            // Check if we need to add new messages
-                            const currentMessages = messagesList.find('.cp-message');
-                            const expectedCount = newData.messages.length;
-
-                            if (currentMessages.length < expectedCount) {
-                                console.log("Cyberpunk Agent | New messages detected, updating interface without scroll");
-                                // Just update the interface without changing scroll position
-                                // The message will appear but won't force scroll
-                            } else {
-                                console.log("Cyberpunk Agent | No new messages, skipping update");
-                            }
-                        }
-                    }
-
-                    // Reset updating flag
                     setTimeout(() => {
                         window._isUpdating = false;
                     }, 100);
 
                     updatedCount++;
-                    console.log("Cyberpunk Agent | ChatConversationApplication updated successfully");
                 } catch (error) {
-                    console.warn("Cyberpunk Agent | Error updating ChatConversationApplication:", error);
-                    // Reset updating flag on error
+                    console.warn("Cyberpunk Agent | Error in fallback update:", error);
                     if (window._isUpdating) {
                         window._isUpdating = false;
                     }
@@ -1963,19 +2133,7 @@ class CyberpunkAgent {
             }
         });
 
-        console.log(`Cyberpunk Agent | Updated ${updatedCount} chat conversation interfaces`);
-
-        // Also try to update any other chat-related interfaces
-        this.updateOpenChatInterfaces();
-
-        // Update Chat7 interfaces (contact lists) to refresh unread counts
-        this._updateChat7Interfaces();
-
-        // Force a small delay to ensure DOM updates are processed
-        setTimeout(() => {
-            console.log("Cyberpunk Agent | Final check - forcing any remaining interface updates");
-            this.updateOpenInterfaces();
-        }, 100);
+        console.log(`Cyberpunk Agent | Fallback updated ${updatedCount} chat conversation interfaces`);
     }
 
     /**
@@ -2508,13 +2666,36 @@ class CyberpunkAgent {
         // Clear unread count cache for this conversation
         this.unreadCounts.delete(this._getConversationKey(data.senderId, data.receiverId));
 
-        // Update all open chat interfaces immediately
-        this._updateChatInterfacesImmediately();
+        // Use UI Controller to mark relevant components as dirty
+        if (window.CyberpunkAgentUIController) {
+            const conversationComponentId = `agent-conversation-${data.senderId}-${data.receiverId}`;
+            const reverseConversationComponentId = `agent-conversation-${data.receiverId}-${data.senderId}`;
+            const chat7ComponentIds = [
+                `agent-chat7-${data.senderId}`,
+                `agent-chat7-${data.receiverId}`
+            ];
+
+            // Mark conversation components as dirty
+            window.CyberpunkAgentUIController.markDirtyMultiple([
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+
+            console.log("Cyberpunk Agent | Marked components as dirty via UI Controller:", [
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+        } else {
+            // Fallback: Update all open chat interfaces immediately
+            this._updateChatInterfacesImmediately();
+        }
 
         // Also update other interfaces that might show contact lists
         this.updateOpenInterfaces();
 
-        // Dispatch custom event for real-time updates
+        // Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
                 timestamp: Date.now(),

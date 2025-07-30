@@ -20,6 +20,7 @@ class AgentApplication extends FormApplication {
       chat7: this._renderChat7View.bind(this),
       conversation: this._renderConversationView.bind(this)
     };
+    this.componentId = `agent-${actor.id}`;
     console.log("AgentApplication constructor called with:", actor);
   }
 
@@ -105,7 +106,76 @@ class AgentApplication extends FormApplication {
     // After rendering, update the content based on current view
     this._updateViewContent();
 
+    // Register with UI Controller for real-time updates
+    this._registerWithUIController();
+
     return result;
+  }
+
+  /**
+   * Register this application with the UI Controller
+   */
+  _registerWithUIController() {
+    if (window.CyberpunkAgentUIController) {
+      // Create component-specific IDs based on current view
+      const componentIds = this._getComponentIds();
+
+      componentIds.forEach(componentId => {
+        const updateCallback = (component) => {
+          console.log(`AgentApplication | UI Controller update callback for: ${componentId}`);
+          this._handleUIControllerUpdate(componentId);
+        };
+
+        window.CyberpunkAgentUIController.registerComponent(componentId, this, updateCallback);
+        console.log(`AgentApplication | Registered with UI Controller: ${componentId}`);
+      });
+    }
+  }
+
+  /**
+   * Get component IDs for the current view
+   */
+  _getComponentIds() {
+    const componentIds = [];
+
+    if (this.currentView === 'conversation' && this.currentContact) {
+      componentIds.push(`agent-conversation-${this.actor.id}-${this.currentContact.id}`);
+    } else if (this.currentView === 'chat7') {
+      componentIds.push(`agent-chat7-${this.actor.id}`);
+    }
+
+    return componentIds;
+  }
+
+  /**
+   * Handle UI Controller update
+   */
+  _handleUIControllerUpdate(componentId) {
+    console.log(`AgentApplication | Handling UI Controller update for: ${componentId}`);
+
+    if (componentId.includes('conversation')) {
+      // Update conversation view
+      this._renderConversationView();
+    } else if (componentId.includes('chat7')) {
+      // Update Chat7 view
+      this._renderChat7View();
+    }
+  }
+
+  /**
+   * Unregister from UI Controller when closing
+   */
+  close(options = {}) {
+    // Unregister from UI Controller
+    if (window.CyberpunkAgentUIController) {
+      const componentIds = this._getComponentIds();
+      componentIds.forEach(componentId => {
+        window.CyberpunkAgentUIController.unregisterComponent(componentId);
+        console.log(`AgentApplication | Unregistered from UI Controller: ${componentId}`);
+      });
+    }
+
+    return super.close(options);
   }
 
   /**
@@ -577,8 +647,15 @@ class AgentApplication extends FormApplication {
         await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.currentContact.id, text);
         console.log("Cyberpunk Agent | Message sent successfully");
 
-        // Update the conversation view immediately to show the new message
-        this._renderConversationView();
+        // Mark conversation component as dirty for immediate update
+        if (window.CyberpunkAgentUIController) {
+          const componentId = `agent-conversation-${this.actor.id}-${this.currentContact.id}`;
+          window.CyberpunkAgentUIController.markDirty(componentId);
+          console.log("AgentApplication | Marked conversation component as dirty after sending message");
+        } else {
+          // Fallback: immediately update the conversation view
+          this._renderConversationView();
+        }
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);
         ui.notifications.error("Erro ao enviar mensagem: " + error.message);
