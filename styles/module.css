@@ -90,10 +90,10 @@
   line-height: 1 !important;
   text-align: center !important;
   vertical-align: middle !important;
-  user-select: none !important;
+  -ms-user-select: none !important;
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
-  -ms-user-select: none !important;
+  user-select: none !important;
 }
 
 .cp-back-button:hover {
@@ -688,17 +688,18 @@
 }
 
 .cp-unread-count {
-  background: #FAFA00;
-  color: #000;
+  background: transparent;
+  color: #FFC90E;
   padding: 4px 8px;
   border-radius: 3px;
-  font-size: 0.8em;
+  font-size: 0.9em;
   font-weight: bold;
   min-width: 22px;
   text-align: center;
-  border: 1px solid #FFA500;
+  border: 1px solid #FFC90E;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 /* No Contacts */
