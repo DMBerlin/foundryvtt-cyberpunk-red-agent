@@ -6,14 +6,21 @@
 console.log("Cyberpunk Agent | Loading agent-home.js...");
 
 /**
- * Agent Home Application - Main interface for the Cyberpunk Agent
+ * Unified Agent Application - Single instance for all Agent screens
  * Extends FormApplication for proper FoundryVTT v11 compatibility
  */
-class AgentHomeApplication extends FormApplication {
+class AgentApplication extends FormApplication {
   constructor(actor, options = {}) {
     super(actor, options);
     this.actor = actor;
-    console.log("AgentHomeApplication constructor called with:", actor);
+    this.currentView = 'home'; // 'home', 'chat7', 'conversation'
+    this.currentContact = null;
+    this.views = {
+      home: this._renderHomeView.bind(this),
+      chat7: this._renderChat7View.bind(this),
+      conversation: this._renderConversationView.bind(this)
+    };
+    console.log("AgentApplication constructor called with:", actor);
   }
 
   /**
@@ -21,8 +28,8 @@ class AgentHomeApplication extends FormApplication {
    */
   static get defaultOptions() {
     return mergeObject(super.defaultOptions, {
-      id: "agent-home",
-      classes: ["cyberpunk-agent", "agent-home"],
+      id: "cyberpunk-agent",
+      classes: ["cyberpunk-agent", "agent-application"],
       template: "modules/cyberpunk-agent/templates/agent-home.html",
       width: 400,
       height: 700,
@@ -45,11 +52,250 @@ class AgentHomeApplication extends FormApplication {
       minute: '2-digit'
     });
 
-    return {
+    let templateData = {
       ...data,
       actor: this.actor,
-      currentTime: currentTime
+      currentTime: currentTime,
+      currentView: this.currentView,
+      currentContact: this.currentContact
     };
+
+    // Add view-specific data
+    if (this.currentView === 'chat7') {
+      // Get contacts for the actor
+      const contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      const allContacts = [...contacts, ...anonymousContacts];
+
+      // Add unread counts and mute status to contacts
+      const contactsWithData = allContacts.map(contact => {
+        const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCount(this.actor.id, contact.id) || 0;
+        const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+
+        return {
+          ...contact,
+          unreadCount: unreadCount > 0 ? unreadCount : null,
+          isMuted: isMuted
+        };
+      });
+
+      templateData.contacts = contactsWithData;
+      templateData.isGM = game.user.isGM;
+
+      console.log("AgentApplication | Template data for Chat7:", {
+        contactsCount: contactsWithData.length,
+        contacts: contactsWithData
+      });
+    } else if (this.currentView === 'conversation' && this.currentContact) {
+      // Add conversation-specific data
+      const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
+      templateData.messages = messages;
+      templateData.contact = this.currentContact;
+    }
+
+    return templateData;
+  }
+
+  /**
+   * Render the application with the current view
+   */
+  render(force = false, options = {}) {
+    const result = super.render(force, options);
+
+    // After rendering, update the content based on current view
+    this._updateViewContent();
+
+    return result;
+  }
+
+  /**
+   * Update the view content based on current view
+   */
+  _updateViewContent() {
+    if (this.views[this.currentView]) {
+      this.views[this.currentView]();
+    }
+  }
+
+  /**
+   * Navigate to a different view
+   */
+  navigateTo(view, contact = null) {
+    console.log(`AgentApplication | Navigating to view: ${view}`, contact);
+
+    this.currentView = view;
+    this.currentContact = contact;
+
+    // Update the template based on view
+    this._updateTemplate();
+
+    // Re-render with new data
+    this.render(true);
+  }
+
+  /**
+   * Update template based on current view
+   */
+  _updateTemplate() {
+    let templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
+
+    switch (this.currentView) {
+      case 'chat7':
+        templatePath = "modules/cyberpunk-agent/templates/chat7.html";
+        break;
+      case 'conversation':
+        templatePath = "modules/cyberpunk-agent/templates/chat-conversation.html";
+        break;
+      default:
+        templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
+    }
+
+    this.options.template = templatePath;
+  }
+
+  /**
+   * Render home view
+   */
+  _renderHomeView() {
+    // Home view is handled by the template
+    console.log("AgentApplication | Rendering home view");
+  }
+
+  /**
+   * Render Chat7 view
+   */
+  _renderChat7View() {
+    console.log("AgentApplication | Rendering Chat7 view for actor:", this.actor.name, this.actor.id);
+
+    // The contacts are now rendered by the template via getData()
+    // This method is called after the template is rendered, so we just need to setup listeners
+
+    // Setup real-time listener for Chat7
+    this._setupChat7RealtimeListener();
+  }
+
+  /**
+   * Render conversation view
+   */
+  _renderConversationView() {
+    console.log("AgentApplication | Rendering conversation view for contact:", this.currentContact);
+
+    if (!this.currentContact) {
+      console.error("AgentApplication | No contact specified for conversation view");
+      return;
+    }
+
+    // Mark conversation as read when opening
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, this.currentContact.id);
+    }
+
+    // Get messages for the conversation
+    const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
+    console.log("AgentApplication | Messages for conversation:", messages.length, messages);
+
+    // Update the messages container
+    const messagesContainer = this.element.find('#messages-container');
+    console.log("AgentApplication | Messages container found:", messagesContainer.length > 0);
+
+    if (messagesContainer.length) {
+      messagesContainer.empty();
+
+      if (messages.length > 0) {
+        // Create messages list container
+        const messagesList = $('<div class="cp-messages-list"></div>');
+
+        messages.forEach((message, index) => {
+          const isOwnMessage = message.senderId === this.actor.id;
+          const messageTime = new Date(message.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+          console.log(`AgentApplication | Rendering message ${index + 1}:`, {
+            id: message.id,
+            text: message.text,
+            senderId: message.senderId,
+            actorId: this.actor.id,
+            isOwn: isOwnMessage,
+            time: messageTime
+          });
+
+          const messageHtml = `
+            <div class="cp-message ${isOwnMessage ? 'own' : 'other'}" data-message-id="${message.id}">
+              <div class="cp-message-content">
+                <div class="cp-message-text">${message.text}</div>
+                <div class="cp-message-time">${messageTime}</div>
+              </div>
+            </div>
+          `;
+
+          messagesList.append(messageHtml);
+        });
+
+        messagesContainer.append(messagesList);
+      } else {
+        // Show no messages message
+        const noMessagesHtml = `
+          <div class="cp-no-messages">
+            <div class="cp-no-messages-icon">
+              <i class="fas fa-comments"></i>
+            </div>
+            <h3>NENHUMA MENSAGEM</h3>
+            <p>Inicie uma conversa com ${this.currentContact.name}</p>
+          </div>
+        `;
+        messagesContainer.append(noMessagesHtml);
+      }
+
+      console.log("AgentApplication | Conversation view rendered successfully");
+    } else {
+      console.error("AgentApplication | Messages container not found!");
+    }
+
+    // Setup real-time listener for conversation
+    this._setupConversationRealtimeListener();
+  }
+
+  /**
+   * Setup real-time listener for Chat7
+   */
+  _setupChat7RealtimeListener() {
+    // Remove existing listener
+    document.removeEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+
+    // Create new handler
+    this._chat7UpdateHandler = (event) => {
+      const { type, senderId, receiverId, message } = event.detail;
+
+      if (type === 'messageUpdate' || type === 'contactUpdate') {
+        console.log("AgentApplication | Chat7 received update:", type);
+        this._renderChat7View();
+      }
+    };
+
+    // Add listener
+    document.addEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+  }
+
+  /**
+   * Setup real-time listener for conversation
+   */
+  _setupConversationRealtimeListener() {
+    // Remove existing listener
+    document.removeEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+
+    // Create new handler
+    this._conversationUpdateHandler = (event) => {
+      const { type, senderId, receiverId, message } = event.detail;
+
+      if (type === 'messageUpdate' &&
+        ((senderId === this.actor.id && receiverId === this.currentContact.id) ||
+          (senderId === this.currentContact.id && receiverId === this.actor.id))) {
+        console.log("AgentApplication | Conversation received update");
+        this._renderConversationView();
+      }
+    };
+
+    // Add listener
+    document.addEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
   }
 
   /**
@@ -58,8 +304,48 @@ class AgentHomeApplication extends FormApplication {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add custom event listeners for app icons
+    // Add custom event listeners based on current view
+    switch (this.currentView) {
+      case 'home':
+        this._activateHomeListeners(html);
+        break;
+      case 'chat7':
+        this._activateChat7Listeners(html);
+        break;
+      case 'conversation':
+        this._activateConversationListeners(html);
+        break;
+    }
+  }
+
+  /**
+   * Activate home view listeners
+   */
+  _activateHomeListeners(html) {
     html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
+  }
+
+  /**
+ * Activate Chat7 listeners
+ */
+  _activateChat7Listeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+
+    // The template renders contact items, so we need to use event delegation
+    html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
+    html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
+
+    // Setup document click for context menu
+    $(document).off('click.cyberpunk-agent-context').on('click.cyberpunk-agent-context', this._onDocumentClick.bind(this));
+  }
+
+  /**
+   * Activate conversation listeners
+   */
+  _activateConversationListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-send-message').click(this._onSendMessage.bind(this));
+    html.find('.cp-message-input').keypress(this._onMessageInputKeypress.bind(this));
   }
 
   /**
@@ -69,122 +355,13 @@ class AgentHomeApplication extends FormApplication {
     event.preventDefault();
     console.log("Chat7 app clicked for actor:", this.actor.name);
 
-    // Close the current application
-    this.close();
-
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Open Chat7 application
-    const ChatClass = Chat7Application || window.Chat7Application;
-    if (typeof ChatClass !== 'undefined') {
-      const chat7 = new ChatClass(this.actor);
-      chat7.render(true);
-    } else {
-      console.error("Cyberpunk Agent | Chat7Application not loaded!");
-      ui.notifications.error("Erro ao carregar o Chat7. Tente recarregar a página (F5).");
-    }
-  }
-
-  /**
-   * Handle form submission
-   */
-  async _updateObject(event, formData) {
-    // Handle any form updates if needed
-    console.log("Agent home form updated:", formData);
-  }
-}
-
-/**
- * Chat7 Application - Chat interface for the Cyberpunk Agent
- * Extends FormApplication for proper FoundryVTT v11 compatibility
- */
-class Chat7Application extends FormApplication {
-  constructor(actor, options = {}) {
-    super(actor, options);
-    this.actor = actor;
-    console.log("Chat7Application constructor called with:", actor);
-  }
-
-  /**
-   * Default options for the application
-   */
-  static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
-      id: "chat7",
-      classes: ["cyberpunk-agent", "chat7"],
-      template: "modules/cyberpunk-agent/templates/chat7.html",
-      width: 400,
-      height: 700,
-      resizable: true,
-      minimizable: true,
-      title: "Chat7"
-    });
-  }
-
-  /**
- * Get data for the template
- */
-  getData(options = {}) {
-    const data = super.getData(options);
-
-    // Get current time
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    // Get contacts for this actor
-    let contacts = [];
-    try {
-      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
-
-        // Get anonymous contacts (people who sent messages but aren't in contact list)
-        const anonymousContacts = window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id) || [];
-
-        // Combine regular contacts with anonymous contacts
-        contacts = [...contacts, ...anonymousContacts];
-
-        // Add unread counts to each contact
-        contacts.forEach(contact => {
-          const unreadCount = window.CyberpunkAgent.instance.getUnreadCount(this.actor.id, contact.id);
-          if (unreadCount > 0) {
-            contact.unreadCount = unreadCount;
-          }
-        });
-      }
-    } catch (error) {
-      console.warn("Cyberpunk Agent | Error getting contacts:", error);
-    }
-
-    return {
-      ...data,
-      actor: this.actor,
-      currentTime: currentTime,
-      contacts: contacts,
-      isGM: game.user.isGM
-    };
-  }
-
-  /**
-   * Activate event listeners
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Add custom event listeners
-    html.find('.cp-back-button').click(this._onBackClick.bind(this));
-    html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
-
-    // Add context menu for contact items
-    html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
-
-    // Close context menu when clicking outside
-    $(document).on('click', this._onDocumentClick.bind(this));
+    // Navigate to Chat7 view
+    this.navigateTo('chat7');
   }
 
   /**
@@ -199,14 +376,16 @@ class Chat7Application extends FormApplication {
       window.CyberpunkAgent.instance.playSoundEffect('closing-window');
     }
 
-    // Close the current application
-    this.close();
-
-    // Reopen the Agent Home
-    const AgentClass = AgentHomeApplication || window.AgentHomeApplication;
-    if (typeof AgentClass !== 'undefined') {
-      const agentHome = new AgentClass(this.actor);
-      agentHome.render(true);
+    // Navigate back based on current view
+    switch (this.currentView) {
+      case 'chat7':
+        this.navigateTo('home');
+        break;
+      case 'conversation':
+        this.navigateTo('chat7');
+        break;
+      default:
+        this.navigateTo('home');
     }
   }
 
@@ -233,28 +412,13 @@ class Chat7Application extends FormApplication {
       return;
     }
 
-    // Mark conversation as read when opening chat
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, contact.id);
-    }
-
-    // Close the current application
-    this.close();
-
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Open Chat Conversation application
-    const ChatConversationClass = ChatConversationApplication || window.ChatConversationApplication;
-    if (typeof ChatConversationClass !== 'undefined') {
-      const chatConversation = new ChatConversationClass(this.actor, contact);
-      chatConversation.render(true);
-    } else {
-      console.error("Cyberpunk Agent | ChatConversationApplication not loaded!");
-      ui.notifications.error("Erro ao carregar o chat. Tente recarregar a página (F5).");
-    }
+    // Navigate to conversation view
+    this.navigateTo('conversation', contact);
   }
 
   /**
@@ -281,124 +445,74 @@ class Chat7Application extends FormApplication {
   }
 
   /**
- * Show context menu for contact
- */
+   * Show context menu for contact
+   */
   _showContextMenu(event, contact) {
     // Remove any existing context menu
     $('.cp-context-menu').remove();
 
-    // Check if contact is muted
     const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+    const muteIcon = isMuted ? 'fa-volume-mute' : 'fa-volume-up';
+    const muteText = isMuted ? 'Ativar Notificações' : 'Silenciar Contato';
 
-    // Check if user has access to this actor
-    const userActors = window.CyberpunkAgent?.instance?.getUserActors() || [];
-    const hasAccess = userActors.some(actor => actor.id === this.actor.id);
-
-    // Create context menu
-    const menu = $(`
-      <div class="cp-context-menu">
-        <button class="cp-context-menu-item ${isMuted ? 'muted' : ''} ${!hasAccess ? 'disabled' : ''}" data-action="mute" data-contact-id="${contact.id}">
-          <i class="fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}"></i>
-          ${isMuted ? 'Desmutar Notificações' : 'Mutar Notificações'}
-          ${!hasAccess ? ' (Sem Acesso)' : ''}
+    const contextMenu = $(`
+      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+        <button class="cp-context-menu-item" data-action="mute" data-contact-id="${contact.id}">
+          <i class="fas ${muteIcon}"></i>${muteText}
         </button>
-        <div class="cp-context-menu-separator"></div>
+        <button class="cp-context-menu-item" data-action="mark-read" data-contact-id="${contact.id}">
+          <i class="fas fa-check-double"></i>Marcar Todos como Lidos
+        </button>
         <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
-          <i class="fas fa-info-circle"></i>
-          Informações do Contato
+          <i class="fas fa-info-circle"></i>Informações do Contato
         </button>
       </div>
     `);
 
-    // Position menu
-    menu.css({
-      left: event.pageX + 5,
-      top: event.pageY - 5
-    });
-
-    // Add to document
-    $('body').append(menu);
-
     // Add event listeners
-    menu.find('.cp-context-menu-item').click((e) => {
-      e.stopPropagation();
-      const action = e.currentTarget.dataset.action;
-      const contactId = e.currentTarget.dataset.contactId;
+    contextMenu.find('[data-action="mute"]').click(() => this._toggleContactMute(contact.id));
+    contextMenu.find('[data-action="mark-read"]').click(() => this._markAllMessagesAsRead(contact.id));
+    contextMenu.find('[data-action="info"]').click(() => this._showContactInfo(contact.id));
 
-      // Check if item is disabled
-      if (e.currentTarget.classList.contains('disabled')) {
-        return; // Don't process disabled items
-      }
-
-      if (action === 'mute') {
-        this._toggleContactMute(contactId);
-      } else if (action === 'info') {
-        this._showContactInfo(contactId);
-      }
-
-      menu.remove();
-    });
-
-    // Store reference to close on document click
-    this.currentContextMenu = menu;
+    $('body').append(contextMenu);
   }
 
   /**
- * Toggle contact mute status
- */
+   * Toggle contact mute
+   */
   _toggleContactMute(contactId) {
-    if (window.CyberpunkAgent?.instance) {
-      const isMuted = window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
-
-      // Check if the operation was successful (not blocked by permissions)
-      if (isMuted !== false) {
-        // Show notification
-        const contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
-        const contact = contacts.find(c => c.id === contactId);
-        const contactName = contact ? contact.name : 'Contato';
-
-        if (isMuted) {
-          ui.notifications.info(`🔇 Notificações de ${contactName} mutadas`);
-        } else {
-          ui.notifications.info(`🔊 Notificações de ${contactName} desmutadas`);
-        }
-
-        // Play sound effect
-        window.CyberpunkAgent.instance.playSoundEffect('closing-window');
-      }
-      // If isMuted is false, the function already showed a warning notification
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
+      this._renderChat7View(); // Refresh the view
     }
   }
 
   /**
-   * Show contact information
+   * Show contact info
    */
   _showContactInfo(contactId) {
-    const contacts = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id) || [];
-    const contact = contacts.find(c => c.id === contactId);
+    // Get contact data
+    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    let contact = contacts.find(c => c.id === contactId);
+
+    if (!contact) {
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      contact = anonymousContacts.find(c => c.id === contactId);
+    }
 
     if (contact) {
-      const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
-
-      const info = `
-        <div style="padding: 10px;">
-          <h3 style="margin: 0 0 10px 0; color: var(--cp-text);">${contact.name}</h3>
-          <p style="margin: 5px 0; color: var(--cp-text-dim);">
-            <strong>Status:</strong> ${isMuted ? '🔇 Mutado' : '🔊 Ativo'}
-          </p>
-          <p style="margin: 5px 0; color: var(--cp-text-dim);">
-            <strong>Tipo:</strong> ${contact.isAnonymous ? 'Anônimo' : 'Contato Regular'}
-          </p>
-        </div>
-      `;
-
       new Dialog({
-        title: `Informações de ${contact.name}`,
-        content: info,
+        title: "Informações do Contato",
+        content: `
+          <div class="cp-contact-info-dialog">
+            <p><strong>Nome:</strong> ${contact.name}</p>
+            <p><strong>Telefone:</strong> ${contact.phoneNumber || 'N/A'}</p>
+            <p><strong>Tipo:</strong> ${contact.isAnonymous ? 'Contato Anônimo' : 'Contato Regular'}</p>
+          </div>
+        `,
         buttons: {
           close: {
-            label: "Fechar",
-            callback: () => { }
+            label: "Fechar"
           }
         }
       }).render(true);
@@ -406,204 +520,22 @@ class Chat7Application extends FormApplication {
   }
 
   /**
-   * Handle document click to close context menu
+   * Mark all messages as read for a contact
+   */
+  async _markAllMessagesAsRead(contactId) {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      await window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, contactId);
+      ui.notifications.info("Todas as mensagens foram marcadas como lidas!");
+      this._renderChat7View(); // Refresh the view
+    }
+  }
+
+  /**
+   * Handle document click for context menu
    */
   _onDocumentClick(event) {
-    if (this.currentContextMenu && !$(event.target).closest('.cp-context-menu').length) {
-      this.currentContextMenu.remove();
-      this.currentContextMenu = null;
-    }
-  }
-
-  /**
-   * Handle form submission
-   */
-  async _updateObject(event, formData) {
-    // Handle any form updates if needed
-    console.log("Chat7 form updated:", formData);
-  }
-}
-
-/**
- * Chat Conversation Application - Individual chat between two characters
- * Extends FormApplication for proper FoundryVTT v11 compatibility
- */
-class ChatConversationApplication extends FormApplication {
-  constructor(actor, contact, options = {}) {
-    super(actor, options);
-    this.actor = actor;
-    this.contact = contact;
-    console.log("ChatConversationApplication constructor called with:", actor.name, "and", contact.name);
-  }
-
-  /**
-   * Default options for the application
-   */
-  static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
-      id: "chat-conversation",
-      classes: ["cyberpunk-agent", "chat-conversation"],
-      template: "modules/cyberpunk-agent/templates/chat-conversation.html",
-      width: 400,
-      height: 700,
-      resizable: true,
-      minimizable: true,
-      title: "Chat"
-    });
-  }
-
-  /**
-   * Get data for the template
-   */
-  getData(options = {}) {
-    const data = super.getData(options);
-
-    // Get current time
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    // Get messages for this conversation
-    let messages = [];
-    try {
-      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        messages = window.CyberpunkAgent.instance.getMessagesForConversation(this.actor.id, this.contact.id) || [];
-      }
-    } catch (error) {
-      console.warn("Cyberpunk Agent | Error getting messages:", error);
-    }
-
-    return {
-      ...data,
-      actor: this.actor,
-      contact: this.contact,
-      currentTime: currentTime,
-      messages: messages,
-      isGM: game.user.isGM
-    };
-  }
-
-  /**
-   * Activate event listeners
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Add custom event listeners
-    html.find('.cp-back-button').click(this._onBackClick.bind(this));
-    html.find('.cp-send-message').click(this._onSendMessage.bind(this));
-    html.find('.cp-message-input').on('keypress', this._onMessageInputKeypress.bind(this));
-
-    // GM-only message delete
-    if (game.user.isGM) {
-      html.find('.cp-message-delete').click(this._onDeleteMessage.bind(this));
-    }
-
-    // Listen for real-time updates
-    this._setupRealtimeListener();
-  }
-
-  /**
-   * Setup real-time update listener
-   */
-  _setupRealtimeListener() {
-    // Listen for custom events from the module
-    document.addEventListener('cyberpunk-agent-update', (event) => {
-      if (event.detail && event.detail.type === 'messageUpdate') {
-        // Messages will appear immediately but no automatic scrolling
-        console.log("Cyberpunk Agent | New message received, interface updated without auto-scroll");
-      }
-    });
-
-    // Remove automatic scroll on window focus
-    // window.addEventListener('focus', () => {
-    //   setTimeout(() => {
-    //     this._scrollToBottom();
-    //   }, 100);
-    // });
-  }
-
-  /**
-   * Handle delete message button click
-   */
-  async _onDeleteMessage(event) {
-    event.preventDefault();
-
-    const messageId = event.currentTarget.dataset.messageId;
-    if (!messageId) {
-      console.error("Cyberpunk Agent | No message ID found");
-      return;
-    }
-
-    // Show confirmation dialog using Foundry's Dialog
-    const confirmed = await new Dialog({
-      title: "Confirmar Deleção",
-      content: "Tem certeza que deseja deletar esta mensagem? Esta ação não pode ser desfeita.",
-      buttons: {
-        yes: {
-          icon: '<i class="fas fa-trash"></i>',
-          label: "Deletar",
-          callback: async () => {
-            try {
-              // Delete message through CyberpunkAgent
-              if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-                const success = await window.CyberpunkAgent.instance.deleteMessages(
-                  this.actor.id,
-                  this.contact.id,
-                  [messageId]
-                );
-
-                if (success) {
-                  // Use the correct notification method
-                  ui.notifications.info("Mensagem deletada com sucesso!");
-
-                  // Don't re-render here - let the notification system handle it
-                  // The message will be removed when the deletion notification is processed
-                } else {
-                  ui.notifications.warn("Erro ao deletar mensagem!");
-                }
-              } else {
-                ui.notifications.warn("Sistema Cyberpunk Agent não disponível!");
-              }
-            } catch (error) {
-              console.error("Cyberpunk Agent | Error deleting message:", error);
-              ui.notifications.warn("Erro ao deletar mensagem: " + error.message);
-            }
-            return true;
-          }
-        },
-        no: {
-          icon: '<i class="fas fa-times"></i>',
-          label: "Cancelar",
-          callback: () => false
-        }
-      },
-      default: "no"
-    });
-  }
-
-  /**
-   * Handle back button click
-   */
-  _onBackClick(event) {
-    event.preventDefault();
-    console.log("Back button clicked");
-
-    // Play closing sound effect
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      window.CyberpunkAgent.instance.playSoundEffect('closing-window');
-    }
-
-    // Close the current application
-    this.close();
-
-    // Reopen the Chat7
-    const ChatClass = Chat7Application || window.Chat7Application;
-    if (typeof ChatClass !== 'undefined') {
-      const chat7 = new ChatClass(this.actor);
-      chat7.render(true);
+    if (!$(event.target).closest('.cp-context-menu').length) {
+      $('.cp-context-menu').remove();
     }
   }
 
@@ -632,7 +564,7 @@ class ChatConversationApplication extends FormApplication {
     const input = this.element.find('.cp-message-input');
     const text = input.val().trim();
 
-    if (!text) {
+    if (!text || !this.currentContact) {
       return;
     }
 
@@ -642,76 +574,16 @@ class ChatConversationApplication extends FormApplication {
     // Send message through CyberpunkAgent
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       try {
-        await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.contact.id, text);
+        await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.currentContact.id, text);
         console.log("Cyberpunk Agent | Message sent successfully");
 
-        // Don't auto-scroll after sending - let user control scroll position
+        // Update the conversation view immediately to show the new message
+        this._renderConversationView();
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);
         ui.notifications.error("Erro ao enviar mensagem: " + error.message);
       }
     }
-
-    // Note: The interface will be updated automatically via real-time updates
-    // No need to manually re-render here
-  }
-
-  /**
-   * Scroll to bottom of messages
-   */
-  _scrollToBottom() {
-    const messagesContainer = this.element.find('#messages-container');
-    if (messagesContainer.length) {
-      // Use smooth scrolling for better UX
-      messagesContainer[0].scrollTo({
-        top: messagesContainer[0].scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  }
-
-  /**
-   * Scroll to bottom immediately (without smooth animation)
-   */
-  _scrollToBottomImmediate() {
-    const messagesContainer = this.element.find('#messages-container');
-    if (messagesContainer.length) {
-      messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
-    }
-  }
-
-  /**
-   * Check if user is at bottom of messages
-   */
-  _isAtBottom() {
-    const messagesContainer = this.element.find('#messages-container');
-    if (messagesContainer.length) {
-      const container = messagesContainer[0];
-      const threshold = 50; // pixels from bottom
-      return container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
-    }
-    return true;
-  }
-
-  /**
-   * Auto-scroll to bottom if user is already at bottom
-   */
-  _autoScrollIfAtBottom() {
-    if (this._isAtBottom()) {
-      this._scrollToBottom();
-    }
-  }
-
-  /**
-   * Scroll to bottom on new message (manual only)
-   */
-  _scrollToBottomOnNewMessage() {
-    // Manual scroll only - no automatic scrolling
-    // This method is kept for potential manual scroll buttons or user actions
-    console.log("Cyberpunk Agent | Manual scroll to bottom requested");
-    setTimeout(() => {
-      this._scrollToBottom();
-    }, 100);
   }
 
   /**
@@ -719,18 +591,42 @@ class ChatConversationApplication extends FormApplication {
    */
   async _updateObject(event, formData) {
     // Handle any form updates if needed
-    console.log("Chat conversation form updated:", formData);
+    console.log("Agent form updated:", formData);
   }
 }
 
-console.log("Cyberpunk Agent | agent-home.js loaded successfully");
-console.log("Cyberpunk Agent | AgentHomeApplication defined:", typeof AgentHomeApplication);
-console.log("Cyberpunk Agent | Chat7Application defined:", typeof Chat7Application);
-console.log("Cyberpunk Agent | ChatConversationApplication defined:", typeof ChatConversationApplication);
+// Legacy classes for backward compatibility
+class AgentHomeApplication extends AgentApplication {
+  constructor(actor, options = {}) {
+    super(actor, options);
+    this.currentView = 'home';
+  }
+}
 
-// Make classes globally available
+class Chat7Application extends AgentApplication {
+  constructor(actor, options = {}) {
+    super(actor, options);
+    this.currentView = 'chat7';
+  }
+}
+
+class ChatConversationApplication extends AgentApplication {
+  constructor(actor, contact, options = {}) {
+    super(actor, options);
+    this.currentView = 'conversation';
+    this.currentContact = contact;
+  }
+}
+
+// Export classes for global access
+window.AgentApplication = AgentApplication;
 window.AgentHomeApplication = AgentHomeApplication;
 window.Chat7Application = Chat7Application;
 window.ChatConversationApplication = ChatConversationApplication;
 
+console.log("Cyberpunk Agent | agent-home.js loaded successfully");
+console.log("Cyberpunk Agent | AgentApplication defined:", typeof AgentApplication);
+console.log("Cyberpunk Agent | AgentHomeApplication defined:", typeof AgentHomeApplication);
+console.log("Cyberpunk Agent | Chat7Application defined:", typeof Chat7Application);
+console.log("Cyberpunk Agent | ChatConversationApplication defined:", typeof ChatConversationApplication);
 console.log("Cyberpunk Agent | Classes made globally available"); 

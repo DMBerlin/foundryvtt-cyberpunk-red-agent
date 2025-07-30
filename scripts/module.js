@@ -593,12 +593,12 @@ class CyberpunkAgent {
      */
     showAgentHome(actor) {
         console.log("Cyberpunk Agent | Attempting to show agent home for actor:", actor.name);
-        console.log("Cyberpunk Agent | AgentHomeApplication available:", typeof AgentHomeApplication);
-        console.log("Cyberpunk Agent | Window AgentHomeApplication:", typeof window.AgentHomeApplication);
+        console.log("Cyberpunk Agent | AgentApplication available:", typeof AgentApplication);
+        console.log("Cyberpunk Agent | Window AgentApplication:", typeof window.AgentApplication);
 
         // Check if classes are loaded
-        if (typeof AgentHomeApplication === 'undefined' && typeof window.AgentHomeApplication === 'undefined') {
-            console.error("Cyberpunk Agent | AgentHomeApplication is not defined!");
+        if (typeof AgentApplication === 'undefined' && typeof window.AgentApplication === 'undefined') {
+            console.error("Cyberpunk Agent | AgentApplication is not defined!");
             console.log("Cyberpunk Agent | Available global objects:", Object.keys(window).filter(key => key.includes('Agent')));
 
             // Try to reload the module
@@ -610,18 +610,18 @@ class CyberpunkAgent {
         }
 
         try {
-            console.log("Cyberpunk Agent | Creating AgentHomeApplication instance...");
-            const AgentClass = AgentHomeApplication || window.AgentHomeApplication;
-            const agentHome = new AgentClass(actor);
-            console.log("Cyberpunk Agent | AgentHomeApplication instance created successfully");
+            console.log("Cyberpunk Agent | Creating AgentApplication instance...");
+            const AgentClass = AgentApplication || window.AgentApplication;
+            const agentApp = new AgentClass(actor);
+            console.log("Cyberpunk Agent | AgentApplication instance created successfully");
 
             // Play opening sound effect
             this.playSoundEffect('opening-window');
 
             // Render the application
-            agentHome.render(true);
+            agentApp.render(true);
         } catch (error) {
-            console.error("Cyberpunk Agent | Error creating AgentHomeApplication:", error);
+            console.error("Cyberpunk Agent | Error creating AgentApplication:", error);
             ui.notifications.error("Erro ao criar a interface do Agent: " + error.message);
         }
     }
@@ -843,6 +843,8 @@ class CyberpunkAgent {
         const conversationKey = this._getConversationKey(actorId1, actorId2);
         const now = Date.now();
 
+        console.log(`Cyberpunk Agent | Marking conversation ${conversationKey} as read for actor ${actorId1}`);
+
         // Update the last read timestamp
         this.lastReadTimestamps.set(conversationKey, now);
 
@@ -856,6 +858,7 @@ class CyberpunkAgent {
                 if (message.receiverId === actorId1 && !message.read) {
                     message.read = true;
                     hasChanges = true;
+                    console.log(`Cyberpunk Agent | Marked message ${message.id} as read`);
                 }
             });
 
@@ -863,14 +866,22 @@ class CyberpunkAgent {
             if (hasChanges) {
                 this.saveMessages();
                 console.log(`Cyberpunk Agent | Marked messages in conversation ${conversationKey} as read`);
+            } else {
+                console.log(`Cyberpunk Agent | No messages to mark as read in conversation ${conversationKey}`);
             }
+        } else {
+            console.log(`Cyberpunk Agent | No conversation found for key ${conversationKey}`);
         }
 
         // Clear the unread count cache for this conversation
         this.unreadCounts.delete(conversationKey);
+        console.log(`Cyberpunk Agent | Cleared unread count cache for conversation ${conversationKey}`);
 
         // Save the read timestamps to settings
         this._saveReadTimestamps();
+
+        // Update all open interfaces to reflect the change immediately
+        this._updateChatInterfacesImmediately();
 
         console.log(`Cyberpunk Agent | Marked conversation ${conversationKey} as read at ${new Date(now).toISOString()}`);
     }
@@ -883,7 +894,9 @@ class CyberpunkAgent {
 
         // Check cache first
         if (this.unreadCounts.has(conversationKey)) {
-            return this.unreadCounts.get(conversationKey);
+            const cachedCount = this.unreadCounts.get(conversationKey);
+            console.log(`Cyberpunk Agent | Using cached unread count for ${conversationKey}: ${cachedCount}`);
+            return cachedCount;
         }
 
         // Get all messages for this conversation
@@ -897,6 +910,8 @@ class CyberpunkAgent {
 
         // Cache the result
         this.unreadCounts.set(conversationKey, unreadCount);
+
+        console.log(`Cyberpunk Agent | Calculated unread count for ${conversationKey}: ${unreadCount} (${messages.length} total messages)`);
 
         return unreadCount;
     }
@@ -1975,52 +1990,20 @@ class CyberpunkAgent {
 
         openWindows.forEach(window => {
             if (window && window.rendered && window.constructor.name === 'Chat7Application') {
-                console.log("Cyberpunk Agent | Found Chat7Application, updating unread counts...");
+                console.log("Cyberpunk Agent | Found Chat7Application, re-rendering for unread count updates...");
                 try {
-                    // Update unread counts for each contact in the list
-                    const contactItems = window.element?.find('.cp-contact-item');
-                    if (contactItems.length > 0) {
-                        contactItems.each((index, element) => {
-                            const contactId = element.dataset.contactId;
-                            if (contactId && window.actor) {
-                                const unreadCount = this.getUnreadCount(window.actor.id, contactId);
-
-                                // Find or create unread count element
-                                let unreadElement = $(element).find('.cp-unread-count');
-
-                                if (unreadCount > 0) {
-                                    if (unreadElement.length === 0) {
-                                        // Create new unread count element
-                                        unreadElement = $('<span class="cp-unread-count"></span>');
-                                        let unreadContainer = $(element).find('.cp-contact-unread');
-                                        if (unreadContainer.length === 0) {
-                                            unreadContainer = $('<div class="cp-contact-unread"></div>');
-                                            $(element).append(unreadContainer);
-                                        }
-                                        unreadContainer.append(unreadElement);
-                                    }
-                                    unreadElement.text(unreadCount);
-                                } else {
-                                    // Remove unread count element if count is 0
-                                    unreadElement.remove();
-                                    // Also remove the container if it's empty
-                                    const unreadContainer = $(element).find('.cp-contact-unread');
-                                    if (unreadContainer.length > 0 && unreadContainer.children().length === 0) {
-                                        unreadContainer.remove();
-                                    }
-                                }
-                            }
-                        });
-                        updatedCount++;
-                        console.log("Cyberpunk Agent | Chat7Application unread counts updated successfully");
-                    }
+                    // Force a re-render of the Chat7 interface to update unread counts
+                    // This is more reliable than manually updating DOM elements
+                    window.render(true);
+                    updatedCount++;
+                    console.log("Cyberpunk Agent | Chat7Application re-rendered successfully for unread count updates");
                 } catch (error) {
-                    console.warn("Cyberpunk Agent | Error updating Chat7Application unread counts:", error);
+                    console.warn("Cyberpunk Agent | Error re-rendering Chat7Application:", error);
                 }
             }
         });
 
-        console.log(`Cyberpunk Agent | Updated unread counts for ${updatedCount} Chat7 interfaces`);
+        console.log(`Cyberpunk Agent | Re-rendered ${updatedCount} Chat7 interfaces for unread count updates`);
     }
 
     /**
@@ -2531,6 +2514,17 @@ class CyberpunkAgent {
         // Also update other interfaces that might show contact lists
         this.updateOpenInterfaces();
 
+        // Dispatch custom event for real-time updates
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'messageUpdate',
+                senderId: data.senderId,
+                receiverId: data.receiverId,
+                message: data.message
+            }
+        }));
+
         // Show notification to user - only "Nova mensagem no Chat7"
         ui.notifications.info("Nova mensagem no Chat7");
 
@@ -2703,7 +2697,7 @@ class CyberpunkAgent {
 
         if (data.success) {
             console.log("Cyberpunk Agent | Messages saved successfully by GM");
-            ui.notifications.info("Mensagens salvas com sucesso!");
+            console.log("Cyberpunk Agent | Mensagens salvas com sucesso!");
         } else {
             console.error("Cyberpunk Agent | Failed to save messages:", data.error);
             ui.notifications.error("Erro ao salvar mensagens: " + data.error);
@@ -2775,9 +2769,9 @@ class CyberpunkAgent {
 
         console.log(`Cyberpunk Agent | Updated ${updatedCount} interfaces`);
 
-        // Show a subtle notification if interfaces were updated (only once per update cycle)
+        // Log interface updates to console (only once per update cycle)
         if (updatedCount > 0 && !this._lastInterfaceUpdateTime || (Date.now() - this._lastInterfaceUpdateTime) > 1000) {
-            ui.notifications.info(`Atualizadas ${updatedCount} interface(s) do Agent`);
+            console.log(`Cyberpunk Agent | Interface update: ${updatedCount} interface(s) do Agent atualizadas`);
             this._lastInterfaceUpdateTime = Date.now();
         }
     }
@@ -2826,7 +2820,7 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | Force updating all chat interfaces...");
         this._updateChatInterfacesImmediately();
         this.updateOpenChatInterfaces();
-        ui.notifications.info("Interfaces de chat atualizadas forçadamente");
+        console.log("Cyberpunk Agent | Interfaces de chat atualizadas forçadamente");
     }
 
     /**

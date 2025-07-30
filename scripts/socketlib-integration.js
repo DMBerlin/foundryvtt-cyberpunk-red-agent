@@ -463,7 +463,7 @@ async function handleSaveMessagesResponse(data) {
 
   if (data.success) {
     console.log("Cyberpunk Agent | Messages saved successfully by GM");
-    ui.notifications.info("Mensagens salvas com sucesso!");
+    console.log("Cyberpunk Agent | Mensagens salvas com sucesso!");
   } else {
     console.error("Cyberpunk Agent | Failed to save messages:", data.error);
     ui.notifications.error("Erro ao salvar mensagens: " + data.error);

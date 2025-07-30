@@ -2,6 +2,198 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.19] - 2024-12-29
+
+### 🐛 Fixed - Message Sending and Display Issues
+
+#### 🔧 Changed
+- **SEND BUTTON SELECTOR**: Corrigido seletor do botão de enviar de `.cp-send-button` para `.cp-send-message` para corresponder ao template
+- **IMMEDIATE DISPLAY**: Adicionada atualização imediata da interface após envio de mensagem
+- **MESSAGE RENDERING**: Melhorado método `_renderConversationView()` com logs detalhados e estrutura HTML correta
+- **DEBUG LOGGING**: Adicionados logs detalhados para rastrear problemas de envio e exibição de mensagens
+
+#### ✨ Added
+- **DIAGNOSTIC SCRIPT**: Adicionado `test-message-sending.js` para verificar funcionalidade de envio de mensagens
+- **MESSAGE VALIDATION**: Verificação completa de dados de mensagens com logs detalhados
+- **REAL-TIME TESTING**: Testes para atualizações em tempo real e exibição de mensagens
+
+#### 🐛 Fixed
+- **SEND BUTTON NOT WORKING**: Corrigido problema onde o botão de enviar não funcionava (apenas Enter funcionava)
+- **MESSAGES NOT APPEARING**: Corrigido problema onde mensagens não apareciam imediatamente após serem enviadas
+- **TEMPLATE MISMATCH**: Resolvido conflito entre seletores do template e listeners JavaScript
+- **MESSAGE STRUCTURE**: Corrigida estrutura HTML das mensagens para corresponder ao template
+
+#### 📚 Documentation
+- Scripts de teste para verificar envio de mensagens
+- Logs detalhados para debugging de problemas de mensagens
+- Testes para funcionalidade de botão de enviar e exibição imediata
+
+---
+
+## [1.0.18] - 2024-12-29
+
+### 🐛 Fixed - Contacts Display in Chat7
+
+#### 🔧 Changed
+- **TEMPLATE-BASED RENDERING**: Corrigido sistema de renderização de contatos para usar templates Handlebars em vez de manipulação manual do DOM
+- **DATA FLOW**: Melhorado fluxo de dados para passar contatos via `getData()` para o template
+- **EVENT LISTENERS**: Atualizados listeners para funcionar com estrutura do template Chat7
+- **DEBUG LOGGING**: Adicionados logs detalhados para diagnóstico de problemas de contatos
+
+#### ✨ Added
+- **DIAGNOSTIC SCRIPT**: Adicionado `test-contacts-display.js` para diagnosticar problemas de exibição de contatos
+- **TEMPLATE DATA**: Implementado sistema de dados específicos por view no método `getData()`
+- **CONTACT VALIDATION**: Verificação completa de dados de contatos com logs detalhados
+
+#### 🐛 Fixed
+- **CONTACTS NOT SHOWING**: Corrigido problema onde contatos não apareciam na lista do Chat7
+- **TEMPLATE MISMATCH**: Resolvido conflito entre renderização via template e manipulação manual do DOM
+- **DATA INTEGRATION**: Corrigida integração entre dados do módulo e template Handlebars
+
+#### 📚 Documentation
+- Scripts de teste para diagnosticar problemas de contatos
+- Logs detalhados para debugging de renderização
+- Documentação sobre fluxo de dados template-based
+
+---
+
+## [1.0.17] - 2024-12-29
+
+### 🔧 Changed - Single Instance Navigation
+
+#### 🔧 Changed
+- **UNIFIED APPLICATION**: Refatorado aplicações do Agent para usar classe unificada `AgentApplication` com navegação baseada em views
+- **SINGLE INSTANCE**: Todas as telas do Agent (Home, Chat7, Conversa) agora funcionam dentro da mesma instância
+- **NAVIGATION SYSTEM**: Implementado método `navigateTo()` para troca de views sem criar novas janelas
+- **TEMPLATE SWITCHING**: Troca dinâmica de templates baseada na view atual (home, chat7, conversation)
+- **LEGACY COMPATIBILITY**: Mantida compatibilidade com classes existentes `AgentHomeApplication`, `Chat7Application`, e `ChatConversationApplication`
+
+#### ✨ Added
+- **VIEW MANAGEMENT**: Adicionado gerenciamento de estado de views com propriedades `currentView` e `currentContact`
+- **REAL-TIME LISTENERS**: Integrados listeners de atualização em tempo real para cada tipo de view
+- **TEST SCRIPT**: Adicionado `test-single-instance.js` para verificar comportamento de navegação de instância única
+
+#### 🐛 Fixed
+- **NEW POPUPS**: Corrigido problema onde abrir chat do Agent Home criava novos popups em vez de navegar dentro da mesma instância
+- **APPLICATION ARCHITECTURE**: Eliminada criação de múltiplas janelas do Agent durante navegação entre telas
+- **POPUP PREVENTION**: Prevenida criação de novas janelas durante navegação entre screens
+
+#### 📚 Documentation
+- Scripts de teste para verificar navegação de instância única
+- Documentação sobre arquitetura unificada do Agent
+- Testes para prevenção de popups
+
+---
+
+## [1.0.16] - 2024-12-29
+
+### 🔧 Changed - Chat7 Contact List Rendering
+
+#### 🔧 Changed
+- **REAL-TIME LISTENER**: Chat7Application agora possui listener em tempo real similar ao ChatConversationApplication
+- **EVENT DISPATCHING**: `handleMessageUpdate()` agora dispara eventos DOM para atualizações em tempo real
+- **RENDER METHOD**: Adicionado override ao método render do Chat7Application para garantir dados frescos
+- **LISTENER SETUP**: Integrado setup de listener em tempo real no método `activateListeners` do Chat7Application
+
+#### ✨ Added
+- **REAL-TIME LISTENER**: Adicionado método `_setupRealtimeListener()` ao Chat7Application para lidar com atualizações em tempo real
+- **EVENT DISPATCHING**: Melhorado `handleMessageUpdate()` para disparar eventos DOM para atualizações de interface em tempo real
+- **TEST SCRIPT**: Adicionado script de teste abrangente para funcionalidade de renderização do Chat7
+
+#### 🐛 Fixed
+- **RENDERING ON OPEN**: Lista de contatos agora renderiza com dados frescos toda vez que é aberta
+- **REAL-TIME UPDATES**: Lista de contatos agora atualiza quando novas mensagens chegam, similar à tela de conversa
+- **MARK AS READ UPDATES**: Lista de contatos atualiza quando opção "marcar todas como lidas" é usada
+- **EVENT HANDLING**: Chat7Application agora escuta eventos `cyberpunk-agent-update` com tipos `messageUpdate` e `contactUpdate`
+
+#### 📚 Documentation
+- Scripts de teste para verificar renderização da lista de contatos
+- Testes para atualizações em tempo real
+- Documentação sobre sistema de eventos em tempo real
+
+---
+
+## [1.0.15] - 2024-12-28
+
+### 🔧 Changed - Save Success Notifications
+
+#### 🔧 Changed
+- **NOTIFICAÇÕES DE SALVAMENTO**: Notificação "Mensagens salvas com sucesso" movida para console log
+- **REDUÇÃO DE NOTIFICAÇÕES UI**: Menos notificações na interface, mais informações no console para debugging
+- **CONSISTÊNCIA**: Todas as notificações de sucesso do sistema agora vão para console log
+
+#### 🐛 Fixed
+- **NOTIFICAÇÕES DESNECESSÁRIAS**: Removida notificação "Mensagens salvas com sucesso" da UI
+- **EXPERIÊNCIA DO USUÁRIO**: Interface mais limpa, sem notificações de operações internas do sistema
+
+#### ✨ Added
+- Script de teste `test-notification-cleanup.js` para verificar limpeza das notificações
+
+#### 📚 Documentation
+- Notificações de salvamento agora aparecem apenas no console para debugging
+- Mantidas notificações de erro na UI para alertar usuários sobre problemas
+
+---
+
+## [1.0.14] - 2024-12-28
+
+### 🐛 Fixed - Unread Message Chip Issues & UI Notifications
+
+#### 🔧 Changed
+- **NOTIFICAÇÕES UI REMOVIDAS**: Notificações de interface atualizada movidas para console log
+- **ATUALIZAÇÃO DE INTERFACE**: Chat7 agora re-renderiza completamente quando contadores mudam
+- **ESTRATÉGIA DE ATUALIZAÇÃO**: `_updateChat7Interfaces()` agora força re-render em vez de manipulação manual do DOM
+- **LOGGING MELHORADO**: Logs detalhados em `markConversationAsRead()` e `getUnreadCount()` para debugging
+
+#### ✨ Added
+- Script de teste `test-unread-chip-fix.js` para verificar correções dos chips de mensagens não lidas
+- Logs de debug para rastrear marcação de mensagens como lidas
+- Verificação de cache de contadores não lidos
+
+#### 🐛 Fixed
+- **CHIPS NÃO ZERAM**: Corrigido problema dos chips de mensagens não lidas não zerarem quando chat é aberto
+- **ATUALIZAÇÃO EM TEMPO REAL**: Corrigido chips não atualizarem quando novas mensagens chegam com Agent aberto na lista de contatos
+- **NOTIFICAÇÕES UI**: Removidas notificações de interface atualizada da UI, movidas para console
+- **RE-RENDERIZAÇÃO**: Interface Chat7 agora re-renderiza corretamente quando contadores mudam
+
+#### 📚 Documentation
+- Scripts de teste para verificar correções dos chips
+- Logs de debug para rastrear problemas de contadores
+- Testes para atualizações em tempo real
+
+---
+
+## [1.0.13] - 2024-12-28
+
+### ✨ Added - Mark Messages as Read Functionality
+
+#### 🔧 Changed
+- **MARCAÇÃO AUTOMÁTICA**: Mensagens são marcadas como lidas automaticamente quando o chat é aberto
+- **ATUALIZAÇÃO EM TEMPO REAL**: Contadores de mensagens não lidas atualizam imediatamente
+- **MENU DE CONTEXTO EXPANDIDO**: Adicionada opção "Marcar Todos como Lidos" no menu de contexto
+- **INTERFACE RESPONSIVA**: Chat7 atualiza contadores em tempo real quando mensagens são marcadas como lidas
+
+#### ✨ Added
+- Script de teste `test-mark-as-read.js` para verificar funcionalidade completa
+- Função `_markAllMessagesAsRead()` para marcar mensagens via menu de contexto
+- Chamada automática de `markConversationAsRead()` quando ChatConversationApplication é aberto
+- Atualização automática de interfaces quando mensagens são marcadas como lidas
+- Opção "Marcar Todos como Lidos" no menu de contexto dos contatos
+
+#### 🐛 Fixed
+- **MARCAÇÃO AUTOMÁTICA**: Corrigido para marcar mensagens como lidas quando chat é aberto
+- **CONTADORES EM TEMPO REAL**: Contadores agora atualizam imediatamente quando mensagens são marcadas
+- **MENU DE CONTEXTO**: Adicionada funcionalidade completa para marcar mensagens como lidas
+- **SINCRONIZAÇÃO**: Interfaces atualizam corretamente após marcar mensagens como lidas
+
+#### 📚 Documentation
+- Scripts de teste para verificar marcação automática
+- Testes para menu de contexto e funcionalidade manual
+- Documentação sobre atualizações em tempo real
+- Testes para contadores de mensagens não lidas
+
+---
+
 ## [1.0.12] - 2024-12-28
 
 ### 🐛 Fixed - Scroll Bar Visibility for Players
