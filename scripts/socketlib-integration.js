@@ -25,13 +25,30 @@ function initializeSocketLib() {
       return false;
     }
 
-    // Register our module with SocketLib - THIS IS THE CORRECT WAY
+    // Register our module with SocketLib - FOLLOWING OFFICIAL DOCUMENTATION
     socket = socketlib.registerModule("cyberpunk-agent");
+    console.log("Cyberpunk Agent | Module registered with SocketLib:", socket);
+
+    // Check if socket was properly created
+    if (!socket) {
+      console.error("Cyberpunk Agent | Socket registration failed - socket is null/undefined");
+      return false;
+    }
 
     // Make socket globally available
     window.socket = socket;
 
-    // Register our functions that can be called remotely
+    // Register our functions that can be called remotely - IMMEDIATELY AFTER REGISTRATION
+    console.log("Cyberpunk Agent | Registering SocketLib functions...");
+
+    // Check if register method exists
+    if (typeof socket.register !== 'function') {
+      console.error("Cyberpunk Agent | Socket register method not available");
+      console.error("Socket object:", socket);
+      console.error("Socket methods:", Object.keys(socket).filter(key => typeof socket[key] === 'function'));
+      return false;
+    }
+
     socket.register("contactUpdate", handleContactUpdate);
     socket.register("messageUpdate", handleMessageUpdate);
     socket.register("messageDeletion", handleMessageDeletion);
@@ -42,7 +59,7 @@ function initializeSocketLib() {
     socket.register("testConnection", handleTestConnection);
     socket.register("broadcastUpdate", handleBroadcastUpdate);
 
-    console.log("Cyberpunk Agent | SocketLib module registered successfully");
+    console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
 
     // Test the setup
     testSocketLibSetup();
@@ -50,6 +67,13 @@ function initializeSocketLib() {
     return true;
   } catch (error) {
     console.error("Cyberpunk Agent | Error registering module with SocketLib:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      socketlibAvailable: typeof socketlib !== 'undefined',
+      socketlibVersion: socketlib ? socketlib.version : 'unknown',
+      socketlibMethods: socketlib ? Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function') : []
+    });
     return false;
   }
 }
@@ -60,13 +84,16 @@ function initializeSocketLib() {
 function testSocketLibSetup() {
   try {
     // Check if module is registered
-    const modules = socketlib.modules || [];
+    const modules = socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules : [];
     const isRegistered = modules.includes('cyberpunk-agent');
     console.log(`Cyberpunk Agent | Module registered with SocketLib: ${isRegistered}`);
 
     // Check connection status
-    const isConnected = socketlib.isConnected();
+    const isConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
     console.log(`Cyberpunk Agent | SocketLib connected: ${isConnected}`);
+
+    // Log available methods
+    console.log("Cyberpunk Agent | SocketLib methods:", Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function'));
 
     if (!isRegistered) {
       console.warn("Cyberpunk Agent | Module not properly registered with SocketLib");
@@ -530,7 +557,7 @@ class SocketLibIntegration {
       console.log("Cyberpunk Agent | Attempting to send contact update via SocketLib:", updateData);
 
       // Check if SocketLib is connected
-      if (!socketlib.isConnected()) {
+      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
         console.warn("Cyberpunk Agent | SocketLib not connected, cannot send update");
         return false;
       }
@@ -547,7 +574,7 @@ class SocketLibIntegration {
         stack: error.stack,
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket,
-        isConnected: socketlib ? socketlib.isConnected() : false
+        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
       });
       return false;
     }
@@ -574,7 +601,7 @@ class SocketLibIntegration {
       console.log("Cyberpunk Agent | Attempting to send message update via SocketLib:", updateData);
 
       // Check if SocketLib is connected
-      if (!socketlib.isConnected()) {
+      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
         console.warn("Cyberpunk Agent | SocketLib not connected, cannot send update");
         return false;
       }
@@ -591,7 +618,7 @@ class SocketLibIntegration {
         stack: error.stack,
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket,
-        isConnected: socketlib ? socketlib.isConnected() : false
+        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
       });
       return false;
     }
@@ -618,7 +645,7 @@ class SocketLibIntegration {
       console.log("Cyberpunk Agent | Attempting to send message deletion via SocketLib:", deletionData);
 
       // Check if SocketLib is connected
-      if (!socketlib.isConnected()) {
+      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
         console.warn("Cyberpunk Agent | SocketLib not connected, cannot send deletion");
         return false;
       }
@@ -635,7 +662,7 @@ class SocketLibIntegration {
         stack: error.stack,
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket,
-        isConnected: socketlib ? socketlib.isConnected() : false
+        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
       });
       return false;
     }
@@ -665,7 +692,7 @@ class SocketLibIntegration {
       console.log("Cyberpunk Agent | Attempting to send message via SocketLib:", messageData);
 
       // Check if SocketLib is connected
-      if (!socketlib.isConnected()) {
+      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
         console.warn("Cyberpunk Agent | SocketLib not connected, cannot send message");
         return false;
       }
@@ -682,7 +709,7 @@ class SocketLibIntegration {
         stack: error.stack,
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket,
-        isConnected: socketlib ? socketlib.isConnected() : false
+        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
       });
       return false;
     }
@@ -873,7 +900,7 @@ class SocketLibIntegration {
     return {
       available: true,
       method: 'socketlib',
-      connected: socketlib.isConnected(),
+      connected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false,
       users: game.users.size
     };
   }

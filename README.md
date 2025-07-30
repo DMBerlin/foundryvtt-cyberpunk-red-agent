@@ -1,113 +1,94 @@
-# Cyberpunk Agent - Documentation
+# Cyberpunk Agent
 
-This folder contains all the documentation for the Cyberpunk Agent module.
+Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk para que os jogadores se comuniquem através dos agentes de seus personagens.
 
-## 📚 Documentation Index
+## Características
 
-### **Development Guides**
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development guide with setup, testing, and best practices
-- **[ENVIRONMENT.md](ENVIRONMENT.md)** - Environment configuration and path management guide
-- **[TESTING.md](TESTING.md)** - Quick testing guide for development workflow
+- **Sistema de Mensagens em Tempo Real**: Comunicação instantânea entre jogadores usando SocketLib
+- **Interface Cyberpunk**: Design moderno e temático para o sistema de mensagens
+- **Gerenciamento de Contatos**: Adicione, remova e organize seus contatos
+- **Mensagens Privadas**: Opção para tornar as mensagens privadas entre participantes
+- **Notificações Sonoras**: Sons de notificação para novas mensagens
+- **Integração com FoundryVTT**: Sincronização com o chat do FoundryVTT
+- **Sistema de Mute**: Mute contatos específicos para controlar notificações
+- **Contatos Anônimos**: Receba mensagens de contatos não adicionados à sua lista
 
-### **Setup & Configuration**
-- **[QUICK-START.md](QUICK-START.md)** - Quick start guide for your specific environment
-- **[MODULE-COMPARISON.md](MODULE-COMPARISON.md)** - Comparison with functional modules and validation
+## Requisitos
 
-### **Features & Functionality**
-- **[SOCKETLIB-MESSAGING.md](SOCKETLIB-MESSAGING.md)** - Real-time messaging with SocketLib
-- **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - Integration with FoundryVTT native chat
-- **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
-- **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
-- **[MESSAGE-SPACING.md](MESSAGE-SPACING.md)** - Intelligent message spacing system
-- **[CONTACT-MUTE-SYSTEM.md](CONTACT-MUTE-SYSTEM.md)** - Contact mute and notification control
-- **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
-- **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
-- **[COMPACT-UI.md](COMPACT-UI.md)** - Compact UI implementation
+- **FoundryVTT v11** ou superior
+- **SocketLib** (obrigatório) - [Download aqui](https://github.com/farling42/foundryvtt-socketlib/releases)
+- **Sistema Cyberpunk RED Core** (recomendado)
 
-### **Troubleshooting & Maintenance**
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Complete troubleshooting guide for common issues
+## Instalação
 
-## 🚀 Quick Navigation
+1. **Instale o SocketLib primeiro**:
+   - Baixe o SocketLib do [GitHub](https://github.com/farling42/foundryvtt-socketlib/releases)
+   - Instale o módulo no FoundryVTT
 
-### **Getting Started**
-1. **[QUICK-START.md](QUICK-START.md)** - Set up your development environment
-2. **[TESTING.md](TESTING.md)** - Learn how to test the module
+2. **Instale o Cyberpunk Agent**:
+   - Baixe o módulo do [GitHub](https://github.com/dmberlin/cyberpunk-agent/releases)
+   - Instale o módulo no FoundryVTT
+   - Ative o módulo na sua campanha
 
-### **Features**
-1. **[SOCKETLIB-MESSAGING.md](SOCKETLIB-MESSAGING.md)** - Real-time messaging system
-2. **[FOUNDRY-CHAT-INTEGRATION.md](FOUNDRY-CHAT-INTEGRATION.md)** - FoundryVTT chat integration
-3. **[PRIVATE-MESSAGES.md](PRIVATE-MESSAGES.md)** - Private messaging system
-4. **[MESSAGE-LAYOUT.md](MESSAGE-LAYOUT.md)** - Responsive message layout
-5. **[MESSAGE-SPACING.md](MESSAGE-SPACING.md)** - Intelligent message spacing system
-6. **[CONTACT-MUTE-SYSTEM.md](CONTACT-MUTE-SYSTEM.md)** - Contact mute and notification control
-7. **[CHAT-EVENT-SYSTEM.md](CHAT-EVENT-SYSTEM.md)** - Chat-based event system
-6. **[REALTIME-UPDATES.md](REALTIME-UPDATES.md)** - Real-time updates and notification sounds
+## Uso
 
-### **Development**
-1. **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development workflow
-2. **[ENVIRONMENT.md](ENVIRONMENT.md)** - Manage environment configuration
+### Acessando o Agent
 
-### **Troubleshooting**
-1. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solve common issues
-2. **[MODULE-COMPARISON.md](MODULE-COMPARISON.md)** - Validate module structure
+1. Clique no botão "Agent" na barra de controles do token
+2. Ou use o comando `/agent` no chat
 
-## 📁 File Structure
+### Enviando Mensagens
 
-```
-cyberpunk-agent/
-├── README.md                    # Main project documentation
-├── CHANGELOG.md                 # Version history
-├── docs/                        # Documentation folder
-│   ├── README.md               # This file (documentation index)
-│   ├── DEVELOPMENT.md          # Development guide
-│   ├── ENVIRONMENT.md          # Environment configuration
-│   ├── MODULE-COMPARISON.md    # Module validation
-│   ├── QUICK-START.md          # Quick start guide
-│   ├── TESTING.md              # Testing guide
-│   └── TROUBLESHOOTING.md      # Troubleshooting guide
-├── scripts/                     # JavaScript files
-├── __tests__/                   # Test files
-├── styles/                      # CSS files
-├── lang/                        # Localization files
-├── assets/                      # Static resources
-├── module.json                  # Module manifest
-├── package.json                 # NPM configuration
-├── env.config.js                # Environment configuration
-└── dev-config.json             # Development settings
-```
+1. Abra o Agent
+2. Selecione um contato da sua lista
+3. Digite sua mensagem
+4. Pressione Enter para enviar
 
-## 🎯 Quick Commands
+### Gerenciando Contatos
 
-### **Development Setup**
-```bash
-npm run setup          # Setup development environment
-npm run dev:copy       # Copy files to FoundryVTT
-npm run diagnose       # Run module diagnosis
-```
+1. Abra o Agent
+2. Clique em "Gerenciar Contatos"
+3. Adicione ou remova contatos conforme necessário
 
-### **Testing**
-```bash
-npm run test           # Run tests
-npm run dev:watch      # Watch for changes
-```
+### Configurações
 
-### **Packaging**
-```bash
-npm run package        # Create distribution package
-npm run clean          # Clean build files
-```
+- **Mensagens Privadas**: Torna as mensagens visíveis apenas para os participantes
+- **Som de Notificação**: Ativa/desativa sons para novas mensagens
 
-## 📞 Need Help?
+## Comunicação
 
-1. **Start with** [QUICK-START.md](QUICK-START.md) for setup
-2. **Check** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for issues
-3. **Read** [DEVELOPMENT.md](DEVELOPMENT.md) for detailed workflow
-4. **Validate** with [MODULE-COMPARISON.md](MODULE-COMPARISON.md)
+Este módulo usa **exclusivamente o SocketLib** para comunicação em tempo real entre clientes. O SocketLib é obrigatório e deve ser instalado antes do Cyberpunk Agent.
 
-## 🔄 Recent Changes
+### Por que apenas SocketLib?
 
-See [../CHANGELOG.md](../CHANGELOG.md) for the complete version history.
+- **Confiabilidade**: SocketLib oferece comunicação WebSocket robusta
+- **Performance**: Melhor performance que métodos alternativos
+- **Simplicidade**: Um único método de comunicação elimina complexidade
+- **Manutenibilidade**: Código mais limpo e fácil de manter
 
----
+## Suporte
 
-**Happy coding! 🎉** 
+Para problemas ou dúvidas:
+- Abra uma issue no [GitHub](https://github.com/dmberlin/cyberpunk-agent/issues)
+- Consulte a documentação na pasta `docs/`
+
+## Licença
+
+MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+## Changelog
+
+### v1.0.6
+- **REFATORAÇÃO MAJOR**: Módulo agora usa exclusivamente SocketLib para comunicação
+- Removido suporte a socket nativo e chat como métodos de comunicação
+- SocketLib agora é obrigatório (dependência)
+- Melhorias na estabilidade e performance da comunicação
+- Código simplificado e mais fácil de manter
+
+### Versões Anteriores
+- Sistema de mensagens em tempo real
+- Interface cyberpunk
+- Gerenciamento de contatos
+- Integração com FoundryVTT
+- Sistema de mute
+- Contatos anônimos 

@@ -1,141 +1,161 @@
 # Changelog
 
-Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
+All notable changes to this project will be documented in this file.
 
-O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
-e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
+## [1.0.8] - 2024-12-19
 
-## [1.0.6] - 2024-01-XX
+### 🐛 Fixed - Permission Errors for Non-GM Users
 
-### Adicionado
-- **Sistema de contador de mensagens não lidas**: Contador visual que mostra quantas mensagens novas cada contato tem
-- **Chip de contador**: Exibido ao lado do nome do contato na lista do Chat7
-- **Atualização em tempo real**: Contador atualiza automaticamente quando novas mensagens chegam
-- **Marcação de leitura**: Contador é zerado quando o usuário abre o chat com o contato
-- **Persistência**: Estado de leitura é salvo e mantido entre sessões
-- **Cache inteligente**: Sistema de cache para performance otimizada
+#### 🔧 Changed
+- **ESCOPO DE CONFIGURAÇÃO ALTERADO**: Configuração `last-read-timestamps` mudou de `scope: 'world'` para `scope: 'client'`
+- **SISTEMA HÍBRIDO DE ARMAZENAMENTO**: GMs usam settings, Players usam localStorage
+- **FUNÇÕES ROBUSTAS**: `_saveReadTimestamps()` e `_loadReadTimestamps()` com fallback para localStorage
+- **VERIFICAÇÃO DE PERMISSÕES**: Sistema detecta automaticamente o papel do usuário
 
-### Alterado
-- **Template do Chat7**: Adicionado suporte para exibir contadores de mensagens não lidas
-- **Interface visual**: Contador com estilo quadrado amarelo no canto inferior direito
-- **Métodos de mensagem**: Adicionados métodos para gerenciar estado de leitura
-- **Atualização de interfaces**: Sistema atualiza contadores em tempo real
+#### ✨ Added
+- Script de teste `test-permissions-fix.js` para verificar o fix
+- Sistema de fallback para localStorage quando settings falham
+- Funções de teste para verificar permissões e localStorage
 
-### Adicionado
-- Script de teste `test-unread-count.js` para verificar sistema de contador
-- Documentação detalhada em `docs/UNREAD-MESSAGE-COUNT.md`
-- Métodos `getUnreadCount()`, `markConversationAsRead()`, `getUnreadCountsForActor()`
-- Sistema de timestamps de leitura persistente
+#### 📚 Documentation
+- Documentação sobre o fix de permissões (`docs/PERMISSIONS-FIX.md`)
+- Instruções de como testar o fix de permissões
 
 ---
 
-## [1.0.5] - 2024-01-XX
+## [1.0.7] - 2024-12-19
 
-### Removido
-- **Sistema de scroll personalizado**: Removido completamente o sistema de scroll personalizado
-- **Configurações de scroll**: Removidas todas as configurações relacionadas ao scroll
-- **Métodos de scroll**: Removidos métodos de gerenciamento de posições de scroll
-- **Scripts de teste**: Removidos scripts de teste relacionados ao scroll personalizado
-- **Documentação**: Removida documentação do sistema de scroll personalizado
+### 🐛 Fixed - SocketLib Error Logs
 
-### Alterado
-- **Comportamento de scroll**: Voltou ao comportamento padrão de scroll automático
-- **Botão voltar**: Corrigido para não fechar o agente, apenas voltar para tela anterior
-- **ChatConversationApplication**: Simplificada para usar scroll padrão
+#### 🔧 Changed
+- **VERIFICAÇÃO DE DISPONIBILIDADE MAIS FLEXÍVEL**: Função `_isSocketLibAvailable()` agora é menos restritiva
+- **LOGS DE ERRO REDUZIDOS**: Substituídos `console.error()` por `console.warn()` para logs de SocketLib
+- **NOTIFICAÇÕES REMOVIDAS**: Não são mais exibidas notificações de erro quando SocketLib está funcionando
+- **FUNÇÕES MAIS TOLERANTES**: Funções não retornam `false` desnecessariamente quando SocketLib não está disponível
 
-### Corrigido
-- **Navegação**: Botão voltar agora reabre o Chat7 em vez de fechar o agente
+#### ✨ Added
+- Script de teste `test-socketlib-fix.js` para verificar o fix
+- Documentação detalhada sobre o fix do SocketLib
+- Funções de teste para verificar status do SocketLib
 
----
-
-## [1.0.4] - 2024-01-XX
-
-### Corrigido
-- **Erro de configuração**: Corrigido erro "This is not a registered game setting" para scroll-positions
-- **Registro de configuração**: Adicionado registro da configuração scroll-positions no sistema de configurações
+#### 📚 Documentation
+- Documentação sobre o fix do SocketLib (`docs/SOCKETLIB-FIX.md`)
+- Instruções de como testar o fix
 
 ---
 
-## [1.0.3] - 2024-01-XX
+## [1.0.6] - 2024-12-19
 
-### Adicionado
-- **Sistema de scroll personalizado**: Controle total do usuário sobre a posição do scroll
-- **Persistência de posições**: Posição do scroll salva e restaurada para cada conversa
-- **Configurações de scroll**: Opções para habilitar/desabilitar auto-scroll e salvamento de posições
-- **Navegação livre**: Usuário pode rolar livremente sem interrupções por scroll automático
+### 🔄 Major Refactoring - SocketLib Only Communication
 
-### Alterado
-- **Comportamento de scroll**: Removidos todos os scrolls automáticos por padrão
-- **ChatConversationApplication**: Implementado sistema de salvamento e restauração de posições
-- **Módulo principal**: Adicionados métodos para gerenciar posições de scroll
-- **Configurações**: Novas opções para controlar comportamento de scroll
+#### ✨ Added
+- SocketLib agora é obrigatório como dependência
+- Melhor tratamento de erros para comunicação SocketLib
+- Notificações de erro mais informativas para usuários
 
-### Adicionado
-- Script de teste `test-custom-scroll.js` para verificar sistema de scroll personalizado
-- Documentação detalhada em `docs/CUSTOM-SCROLL-SYSTEM.md`
-- Métodos de gerenciamento de posições de scroll no módulo principal
-- Configurações de usuário para controlar comportamento de scroll
+#### 🗑️ Removed
+- **Removido completamente** suporte a socket nativo do FoundryVTT
+- **Removido completamente** sistema de comunicação via chat
+- **Removido** configuração de método de comunicação (agora apenas SocketLib)
+- **Removido** funções de fallback para socket nativo e chat
+- **Removido** listeners de chat para eventos do sistema
+- **Removido** funções de teste para socket nativo e chat
 
----
+#### 🔧 Changed
+- **REFATORAÇÃO MAJOR**: Módulo agora usa exclusivamente SocketLib para comunicação
+- Simplificação significativa do código de comunicação
+- Melhorias na estabilidade e performance da comunicação
+- Código mais limpo e fácil de manter
+- Todas as funções de comunicação agora verificam se SocketLib está disponível
+- Mensagens de erro mais claras quando SocketLib não está disponível
 
-## [1.0.2] - 2024-01-XX
+#### 🐛 Fixed
+- Eliminação de conflitos entre diferentes métodos de comunicação
+- Melhor consistência na comunicação entre clientes
+- Redução de bugs relacionados a métodos de comunicação mistos
+- **CRÍTICO**: Adicionado `"socket": true` no `module.json` para compatibilidade com SocketLib
+- Validação de métodos do SocketLib para evitar chamadas de funções indefinidas
+- Verificações seguras para todos os métodos do SocketLib
 
-### Corrigido
-- **Comportamento de scroll**: Corrigido problema onde o scroll voltava para o início e descia para o fim quando novas mensagens chegavam
-- **Re-renderização desnecessária**: Eliminadas re-renderizações completas que causavam reset do scroll
-- **Múltiplos eventos de scroll**: Coordenados eventos de scroll para evitar conflitos
-- **Experiência do usuário**: Scroll agora é inteligente e respeita a intenção do usuário
-
-### Adicionado
-- Sistema de scroll inteligente que detecta posição do usuário
-- Script de teste `test-scroll-fix.js` para verificar correção do scroll
-- Documentação detalhada da correção em `docs/SCROLL-BEHAVIOR-FIX.md`
-- Detecção de scroll manual para melhor experiência do usuário
-
-### Alterado
-- ChatConversationApplication com sistema de scroll inteligente (`scripts/agent-home.js`)
-- Método `_updateChatInterfacesImmediately` para evitar re-renderizações (`scripts/module.js`)
-- Adicionado script de teste ao `module.json`
+#### 📚 Documentation
+- README atualizado para refletir mudanças
+- Documentação sobre por que apenas SocketLib é usado
+- Instruções de instalação atualizadas
 
 ---
 
-## [1.0.1] - 2024-01-XX
+## [1.0.5] - 2024-12-18
 
-### Corrigido
-- **Mensagens em tempo real**: Corrigido problema onde mensagens do GM para jogadores não apareciam automaticamente no chat do agente
-- **Atualização de interfaces**: Mensagens agora aparecem imediatamente sem necessidade de fechar e abrir o chat novamente
-- **Métodos handleMessageUpdate**: Corrigidos para adicionar mensagens localmente em vez de apenas recarregar dados
-- **Compatibilidade**: Funciona com todos os métodos de comunicação (SocketLib, socket nativo, chat)
+### ✨ Added
+- Sistema de mute para contatos
+- Contatos anônimos para mensagens de jogadores não adicionados
+- Melhorias na interface de usuário
+- Sistema de notificações sonoras aprimorado
 
-### Adicionado
-- Script de teste `test-realtime-message-fix.js` para verificar correção de mensagens em tempo real
-- Documentação detalhada da correção em `docs/REALTIME-MESSAGE-FIX.md`
-- Logs melhorados para debugging de mensagens em tempo real
+### 🔧 Changed
+- Melhorias na performance do sistema de mensagens
+- Interface mais responsiva
+- Melhor integração com o chat do FoundryVTT
 
-### Alterado
-- Método `handleMessageUpdate` no módulo principal (`scripts/module.js`)
-- Método `handleMessageUpdate` no SocketLib integration (`scripts/socketlib-integration.js`)
-- Adicionado script de teste ao `module.json`
+### 🐛 Fixed
+- Correções em bugs de sincronização
+- Melhorias na estabilidade da comunicação em tempo real
 
 ---
 
-## [1.0.0] - 2024-01-XX
+## [1.0.4] - 2024-12-17
 
-### Adicionado
-- Versão inicial do módulo
-- Estrutura básica do módulo
-- Suporte ao FoundryVTT V11
-- Compatibilidade com Cyberpunk RED 0.88+
-- Pasta `__tests__` para organização de testes
-- Documentação completa de testes no `__tests__/README.md`
+### ✨ Added
+- Sistema de mensagens em tempo real
+- Integração com SocketLib
+- Interface cyberpunk moderna
+- Gerenciamento de contatos
 
-### Alterado
-- Reorganização: Todos os arquivos de teste movidos para pasta `__tests__`
-- Atualização de referências no `module.json` e documentação
-- Script `dev:watch` atualizado para monitorar pasta `__tests__`
+### 🔧 Changed
+- Melhorias na interface de usuário
+- Otimizações de performance
 
-### Removido
-- N/A
+### 🐛 Fixed
+- Correções em bugs de interface
+- Melhorias na estabilidade
 
-### Corrigido
-- N/A 
+---
+
+## [1.0.3] - 2024-12-16
+
+### ✨ Added
+- Sistema básico de mensagens
+- Interface inicial do Agent
+- Integração básica com FoundryVTT
+
+### 🔧 Changed
+- Melhorias na estrutura do código
+- Otimizações iniciais
+
+---
+
+## [1.0.2] - 2024-12-15
+
+### ✨ Added
+- Estrutura inicial do módulo
+- Configurações básicas
+- Sistema de localização
+
+---
+
+## [1.0.1] - 2024-12-14
+
+### ✨ Added
+- Primeira versão do módulo
+- Estrutura básica
+- Manifesto do módulo
+
+---
+
+## [1.0.0] - 2024-12-13
+
+### ✨ Added
+- Lançamento inicial do Cyberpunk Agent
+- Sistema básico de mensagens
+- Interface cyberpunk
+- Integração com FoundryVTT 
