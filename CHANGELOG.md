@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.10] - 2024-12-19
+
+### 🐛 Fixed - Infinite Message Loop
+
+#### 🔧 Changed
+- **FUNÇÃO `_sendSaveRequestViaSocketLib()`**: Agora retorna `false` quando falha em vez de assumir sucesso
+- **FUNÇÃO `handleSendMessage()`**: Adicionada verificação para filtrar mensagens do sistema
+- **FUNÇÃO `handleSaveMessages()`**: Corrigida para usar função específica para respostas do sistema
+- **NOVA FUNÇÃO `sendSystemResponseToUser()`**: Criada para enviar respostas do sistema sem causar loops
+
+#### ✨ Added
+- Script de teste `test-message-loop-fix.js` para verificar correção do loop
+- Função `sendSystemResponseToUser()` para respostas do sistema
+- Verificações para filtrar mensagens do sistema (`saveMessagesResponse`, `system`)
+- Testes para fluxo bidirecional de mensagens
+
+#### 🐛 Fixed
+- **LOOP INFINITO DE MENSAGENS**: Corrigido problema de mensagens de resposta do sistema causando loops
+- **MENSAGENS DO PLAYER PARA GM**: Agora devem chegar corretamente sem loops
+- **SALVAMENTO DE MENSAGENS**: Sistema de salvamento não causa mais loops infinitos
+- **CONSOLE LOGS**: Removidos logs repetitivos de "saveMessagesResponse"
+
+#### 📚 Documentation
+- Scripts de teste para verificar correção do loop
+- Funções de teste para fluxo bidirecional
+- Testes para condições originais do loop
+
+---
+
+## [1.0.9] - 2024-12-19
+
+### 🔄 Major Refactoring - Business Rules Implementation
+
+#### 🔧 Changed
+- **SISTEMA DE MENSAGENS REFATORADO**: Corrigido salvamento de mensagens para players
+- **SISTEMA DE LEITURA/NÃO LEITURA**: Implementado status read/unread nas mensagens
+- **NOTIFICAÇÕES SIMPLIFICADAS**: Agora mostra apenas "Nova mensagem no Chat7"
+- **MENSAGENS PRIVADAS**: Todas as mensagens são privadas entre participantes
+- **CONTADORES EM TEMPO REAL**: Sistema de contadores não lidos baseado em status read/unread
+
+#### ✨ Added
+- Script de teste `test-business-rules.js` para verificar implementação das regras
+- Sistema de fallback para localStorage quando SocketLib falha
+- Função `loadMessages()` para carregar mensagens de diferentes fontes
+- Status `read: false` em todas as novas mensagens
+- Marcação automática de mensagens como lidas ao abrir chat
+
+#### 🐛 Fixed
+- **MENSAGENS DO PLAYER PARA GM**: Corrigido problema de mensagens não chegarem
+- **SALVAMENTO DE MENSAGENS**: Players agora conseguem salvar mensagens corretamente
+- **CONTADORES DE MENSAGENS**: Sistema agora funciona corretamente com status read/unread
+- **NOTIFICAÇÕES**: Seguem as regras especificadas (apenas "Nova mensagem no Chat7")
+
+#### 📚 Documentation
+- Scripts de teste para verificar regras de negócio
+- Funções de teste para fluxo GM-Player
+- Testes de sistema de notificações
+- Testes de permissões e controle de acesso
+
+---
+
 ## [1.0.8] - 2024-12-19
 
 ### 🐛 Fixed - Permission Errors for Non-GM Users

@@ -310,6 +310,12 @@ async function handleSendMessage(data) {
     return;
   }
 
+  // Check if this is a system message (not a chat message)
+  if (data.senderId === 'saveMessagesResponse' || data.senderId === 'system' || !data.text) {
+    console.log("Cyberpunk Agent | Ignoring system message:", data.senderId);
+    return;
+  }
+
   // Check if this is a recent message to avoid duplicates
   const now = Date.now();
   const timeDiff = now - data.timestamp;
@@ -343,7 +349,8 @@ async function handleSendMessage(data) {
         time: new Date(data.timestamp).toLocaleTimeString('pt-BR', {
           hour: '2-digit',
           minute: '2-digit'
-        })
+        }),
+        read: false // New message is always unread
       };
 
       conversation.push(message);
@@ -364,11 +371,8 @@ async function handleSendMessage(data) {
     window.CyberpunkAgent.instance.updateOpenInterfaces();
   }
 
-  // Show notification to user
-  const sender = game.actors.get(data.senderId);
-  const senderName = sender ? sender.name : "Desconhecido";
-  const message = `Nova mensagem de ${senderName}`;
-  ui.notifications.info(message);
+  // Show notification to user - only "Nova mensagem no Chat7"
+  ui.notifications.info("Nova mensagem no Chat7");
 
   // Play notification sound if the current user is the receiver
   if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -412,11 +416,12 @@ async function handleSaveMessages(data) {
 
     // Notify the requesting user that save was successful
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      await window.CyberpunkAgent.instance.socketLibIntegration.sendMessageToUser(data.userId, 'saveMessagesResponse', {
+      await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(data.userId, 'saveMessagesResponse', {
         success: true,
         timestamp: Date.now(),
         userId: game.user.id,
-        userName: game.user.name
+        userName: game.user.name,
+        requestingUserId: data.userId // Add the requesting user ID
       });
     }
   } catch (error) {
@@ -424,12 +429,13 @@ async function handleSaveMessages(data) {
 
     // Notify the requesting user that save failed
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      await window.CyberpunkAgent.instance.socketLibIntegration.sendMessageToUser(data.userId, 'saveMessagesResponse', {
+      await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(data.userId, 'saveMessagesResponse', {
         success: false,
         error: error.message,
         timestamp: Date.now(),
         userId: game.user.id,
-        userName: game.user.name
+        userName: game.user.name,
+        requestingUserId: data.userId // Add the requesting user ID
       });
     }
   }
@@ -766,6 +772,32 @@ class SocketLibIntegration {
       return true;
     } catch (error) {
       console.error("Cyberpunk Agent | Error sending message to user via SocketLib:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Send system response to specific user
+   */
+  async sendSystemResponseToUser(userId, eventName, data) {
+    if (!this.isAvailable || !socket) return false;
+
+    try {
+      const responseData = {
+        timestamp: Date.now(),
+        userId: game.user.id,
+        userName: game.user.name,
+        sessionId: game.data.id,
+        ...data
+      };
+
+      // Send to specific user
+      await socket.executeAsUser(eventName, userId, responseData);
+
+      console.log(`Cyberpunk Agent | System response '${eventName}' sent to user ${userId} via SocketLib`);
+      return true;
+    } catch (error) {
+      console.error(`Cyberpunk Agent | Error sending system response '${eventName}' to user via SocketLib:`, error);
       return false;
     }
   }

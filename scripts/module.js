@@ -652,8 +652,8 @@ class CyberpunkAgent {
             const contactNetworks = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
             this.contactNetworks = new Map(Object.entries(contactNetworks));
 
-            const messages = game.settings.get('cyberpunk-agent', 'messages') || {};
-            this.messages = new Map(Object.entries(messages));
+            // Load messages using the new loadMessages function
+            this.loadMessages();
 
             // Load read timestamps
             this._loadReadTimestamps();
@@ -698,6 +698,48 @@ class CyberpunkAgent {
     }
 
     /**
+     * Load messages from settings or localStorage
+     */
+    async loadMessages() {
+        try {
+            let messagesData = {};
+
+            // Try to load from settings first (for GMs)
+            if (game.user.isGM) {
+                messagesData = game.settings.get('cyberpunk-agent', 'messages') || {};
+                console.log("Cyberpunk Agent | Messages loaded from settings");
+            } else {
+                // For non-GM users, try to load from localStorage first
+                const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+                const storedData = localStorage.getItem(storageKey);
+                if (storedData) {
+                    try {
+                        messagesData = JSON.parse(storedData);
+                        console.log("Cyberpunk Agent | Messages loaded from localStorage for user:", game.user.name);
+                    } catch (error) {
+                        console.error("Cyberpunk Agent | Error parsing localStorage messages:", error);
+                    }
+                }
+
+                // Also try to load from settings as fallback
+                if (Object.keys(messagesData).length === 0) {
+                    messagesData = game.settings.get('cyberpunk-agent', 'messages') || {};
+                    console.log("Cyberpunk Agent | Messages loaded from settings as fallback");
+                }
+            }
+
+            this.messages.clear();
+            Object.entries(messagesData).forEach(([conversationKey, conversation]) => {
+                this.messages.set(conversationKey, conversation);
+            });
+
+            console.log("Cyberpunk Agent | Messages loaded successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading messages:", error);
+        }
+    }
+
+    /**
      * Request GM to save messages
      */
     async _requestGMSaveMessages(messagesObject) {
@@ -711,7 +753,24 @@ class CyberpunkAgent {
         } else {
             // If we are not the GM, request the GM to save via SocketLib
             console.log("Cyberpunk Agent | Requesting GM to save messages via SocketLib");
-            return await this._sendSaveRequestViaSocketLib(messagesObject);
+            const success = await this._sendSaveRequestViaSocketLib(messagesObject);
+
+            // If SocketLib fails, try to save locally as fallback
+            if (!success) {
+                console.warn("Cyberpunk Agent | SocketLib save failed, saving locally as fallback");
+                try {
+                    // Save to localStorage as fallback
+                    const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+                    localStorage.setItem(storageKey, JSON.stringify(messagesObject));
+                    console.log("Cyberpunk Agent | Messages saved to localStorage as fallback");
+                    return true;
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error saving to localStorage:", error);
+                    return false;
+                }
+            }
+
+            return success;
         }
     }
 
@@ -724,9 +783,7 @@ class CyberpunkAgent {
         // Check if SocketLib is available
         if (!this._isSocketLibAvailable()) {
             this._handleSocketLibUnavailable();
-            // Don't return false here since SocketLib might still be working
-            // The availability check was too strict
-            return true; // Assume success since communication is working
+            return false; // Return false if SocketLib is not available
         }
 
         try {
@@ -741,12 +798,12 @@ class CyberpunkAgent {
                 console.log("Cyberpunk Agent | Save request sent via SocketLib successfully");
                 return true;
             } else {
-                console.warn("Cyberpunk Agent | SocketLib save request failed, but assuming success since communication is working");
-                return true; // Assume success since communication is working
+                console.warn("Cyberpunk Agent | SocketLib save request failed");
+                return false;
             }
         } catch (error) {
-            console.warn("Cyberpunk Agent | SocketLib save request error, but assuming success since communication is working:", error);
-            return true; // Assume success since communication is working
+            console.warn("Cyberpunk Agent | SocketLib save request error:", error);
+            return false;
         }
     }
 
@@ -789,6 +846,26 @@ class CyberpunkAgent {
         // Update the last read timestamp
         this.lastReadTimestamps.set(conversationKey, now);
 
+        // Mark all messages in this conversation as read
+        if (this.messages.has(conversationKey)) {
+            const conversation = this.messages.get(conversationKey);
+            let hasChanges = false;
+
+            conversation.forEach(message => {
+                // Mark message as read if the current user is the receiver
+                if (message.receiverId === actorId1 && !message.read) {
+                    message.read = true;
+                    hasChanges = true;
+                }
+            });
+
+            // Save messages if there were changes
+            if (hasChanges) {
+                this.saveMessages();
+                console.log(`Cyberpunk Agent | Marked messages in conversation ${conversationKey} as read`);
+            }
+        }
+
         // Clear the unread count cache for this conversation
         this.unreadCounts.delete(conversationKey);
 
@@ -809,16 +886,13 @@ class CyberpunkAgent {
             return this.unreadCounts.get(conversationKey);
         }
 
-        // Get the last read timestamp
-        const lastReadTimestamp = this.lastReadTimestamps.get(conversationKey) || 0;
-
         // Get all messages for this conversation
         const messages = this.getMessagesForConversation(actorId1, actorId2);
 
-        // Count messages that are newer than the last read timestamp and not from the current user
+        // Count messages that are unread for the current user
         const unreadCount = messages.filter(message =>
-            message.timestamp > lastReadTimestamp &&
-            message.senderId !== actorId1
+            message.receiverId === actorId1 &&
+            !message.read
         ).length;
 
         // Cache the result
@@ -968,7 +1042,8 @@ class CyberpunkAgent {
             time: new Date().toLocaleTimeString('pt-BR', {
                 hour: '2-digit',
                 minute: '2-digit'
-            })
+            }),
+            read: false // New message is always unread
         };
 
         conversation.push(message);
@@ -1029,36 +1104,27 @@ class CyberpunkAgent {
 
             let whisper = [];
             let blind = false;
-            let type = CONST.CHAT_MESSAGE_TYPES.IC; // Default to IC
+            let type = CONST.CHAT_MESSAGE_TYPES.WHISPER; // Always private
 
-            if (privateMessages) {
-                // Private message mode
-                type = CONST.CHAT_MESSAGE_TYPES.WHISPER;
+            // Always include GMs in whispers so they can see all messages
+            const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
+            whisper.push(...gmUsers);
 
-                // Always include GMs in whispers so they can see all messages
-                const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
-                whisper.push(...gmUsers);
-
-                // Add sender if they are a player
-                if (senderUser && !senderUser.isGM) {
-                    whisper.push(senderUser.id);
-                }
-
-                // Add receiver if they are a player
-                if (receiverUser && !receiverUser.isGM) {
-                    whisper.push(receiverUser.id);
-                }
-
-                // Remove duplicates
-                whisper = [...new Set(whisper)];
-
-                // Make it blind for non-participants
-                blind = true;
-            } else {
-                // Public message mode - visible to all
-                type = CONST.CHAT_MESSAGE_TYPES.IC;
-                blind = false;
+            // Add sender if they are a player
+            if (senderUser && !senderUser.isGM) {
+                whisper.push(senderUser.id);
             }
+
+            // Add receiver if they are a player
+            if (receiverUser && !receiverUser.isGM) {
+                whisper.push(receiverUser.id);
+            }
+
+            // Remove duplicates
+            whisper = [...new Set(whisper)];
+
+            // Make it blind for non-participants
+            blind = true;
 
             // Create the chat message
             const messageData = {
@@ -2465,14 +2531,8 @@ class CyberpunkAgent {
         // Also update other interfaces that might show contact lists
         this.updateOpenInterfaces();
 
-        // Show notification to user
-        const sender = game.actors.get(data.senderId);
-        const receiver = game.actors.get(data.receiverId);
-        const senderName = sender ? sender.name : "Desconhecido";
-        const receiverName = receiver ? receiver.name : "Desconhecido";
-
-        const message = `Nova mensagem de ${senderName} para ${receiverName}`;
-        ui.notifications.info(message);
+        // Show notification to user - only "Nova mensagem no Chat7"
+        ui.notifications.info("Nova mensagem no Chat7");
 
         // Play notification sound if the current user is the receiver and sender is not muted
         if (data.receiverId) {
