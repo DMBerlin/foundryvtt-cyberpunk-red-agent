@@ -1370,6 +1370,19 @@ class CyberpunkAgent {
             // Update open interfaces
             this.updateOpenInterfaces();
 
+            // Dispatch custom event for immediate UI updates
+            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                detail: {
+                    timestamp: Date.now(),
+                    type: 'contactMuteToggle',
+                    actorId: actorId,
+                    contactId: contactId,
+                    muteStatus: newMuteStatus,
+                    userId: game.user.id,
+                    userName: game.user.name
+                }
+            }));
+
             return newMuteStatus;
         } catch (error) {
             console.error("Cyberpunk Agent | Error toggling contact mute:", error);

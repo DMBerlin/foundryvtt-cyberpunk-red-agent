@@ -2,7 +2,7 @@
   "name": "cyberpunk-agent",
   "title": "Cyberpunk Agent",
   "description": "A comprehensive communication and contact management system for Cyberpunk RED",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "author": "Daniel",
   "minimumCoreVersion": "10",
   "compatibleCoreVersion": "11",

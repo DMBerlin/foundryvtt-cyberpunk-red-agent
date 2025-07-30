@@ -201,8 +201,9 @@ class AgentApplication extends FormApplication {
       // Simple re-render without forcing
       this.render(true);
     } else if (componentId.includes('chat7')) {
-      // Update Chat7 view
-      this._renderChat7View();
+      // Update Chat7 view with force re-render to ensure mute status is updated
+      console.log("AgentApplication | UI Controller update for Chat7, forcing re-render");
+      this.render(true);
     }
   }
 
@@ -353,11 +354,18 @@ class AgentApplication extends FormApplication {
 
     // Create new handler
     this._chat7UpdateHandler = (event) => {
-      const { type, senderId, receiverId, message } = event.detail;
+      const { type, senderId, receiverId, message, contactId, muteStatus } = event.detail;
 
-      if (type === 'messageUpdate' || type === 'contactUpdate') {
+      if (type === 'messageUpdate' || type === 'contactUpdate' || type === 'contactMuteToggle') {
         console.log("AgentApplication | Chat7 received update:", type);
-        this._renderChat7View();
+
+        // For mute toggle, we need to force a complete re-render to show the mute status
+        if (type === 'contactMuteToggle') {
+          console.log("AgentApplication | Contact mute toggle detected, forcing re-render");
+          this.render(true);
+        } else {
+          this._renderChat7View();
+        }
       }
     };
 
@@ -602,8 +610,38 @@ class AgentApplication extends FormApplication {
    */
   _toggleContactMute(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
-      this._renderChat7View(); // Refresh the view
+      const newMuteStatus = window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
+
+      console.log("AgentApplication | Contact mute toggled, forcing UI update");
+
+      // Strategy 1: Use UI Controller if available
+      if (window.CyberpunkAgentUIController) {
+        const chat7ComponentId = `agent-chat7-${this.actor.id}`;
+        window.CyberpunkAgentUIController.markDirty(chat7ComponentId);
+        console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller");
+      }
+
+      // Strategy 2: Force immediate re-render
+      this.render(true);
+
+      // Strategy 3: Dispatch custom event for real-time updates
+      document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        detail: {
+          timestamp: Date.now(),
+          type: 'contactMuteToggle',
+          actorId: this.actor.id,
+          contactId: contactId,
+          muteStatus: newMuteStatus
+        }
+      }));
+
+      // Show user feedback
+      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId) ||
+        window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id).find(c => c.id === contactId);
+
+      if (contact) {
+        ui.notifications.info(`Contato ${contact.name} ${newMuteStatus ? 'mutado' : 'desmutado'}!`);
+      }
     }
   }
 

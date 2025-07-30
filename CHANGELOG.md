@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.43] - 2024-12-29
+
+### Fixed
+- **Fixed Contact Mute UI Update Issue**: Resolved problem where contact mute status wasn't updating immediately in the UI:
+  - **Root Cause**: `_toggleContactMute` was calling `_renderChat7View()` which only set up listeners, not forcing re-render
+  - **Solution**: Implemented comprehensive UI update strategy with multiple fallback mechanisms
+  - **Impact**: Contact mute status now updates immediately without requiring screen navigation
+
+### Added
+- **Enhanced Contact Mute UI Updates**: Improved real-time UI updates for contact mute operations:
+  - **Multiple Update Strategies**: UI Controller marking, force re-render, and custom events
+  - **Immediate Visual Feedback**: Mute status changes are reflected instantly in contact cards
+  - **User Notifications**: Clear feedback when contacts are muted/unmuted
+  - **Real-time Event System**: Custom events for immediate UI synchronization
+
+### Changed
+- **Contact Mute Behavior**: Enhanced contact mute functionality:
+  - Updated `_toggleContactMute()` to use comprehensive UI update strategy
+  - Improved `_handleUIControllerUpdate()` to force re-render for Chat7 components
+  - Enhanced real-time listener to handle `contactMuteToggle` events
+  - Added custom event dispatching for immediate UI updates
+
 ## [1.0.42] - 2024-12-29
 
 ### Fixed
