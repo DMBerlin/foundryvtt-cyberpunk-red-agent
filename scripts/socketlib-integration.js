@@ -25,6 +25,12 @@ function initializeSocketLib() {
       return false;
     }
 
+    // Check if already initialized to prevent duplicate registration
+    if (window.socket && socket) {
+      console.log("Cyberpunk Agent | SocketLib already initialized, skipping duplicate registration");
+      return true;
+    }
+
     // Register our module with SocketLib - FOLLOWING OFFICIAL DOCUMENTATION
     socket = socketlib.registerModule("cyberpunk-agent");
     console.log("Cyberpunk Agent | Module registered with SocketLib:", socket);
@@ -49,15 +55,19 @@ function initializeSocketLib() {
       return false;
     }
 
+    // Register all functions - following official documentation pattern
+    // These will be registered on all clients when the module loads
     socket.register("contactUpdate", handleContactUpdate);
     socket.register("messageUpdate", handleMessageUpdate);
     socket.register("messageDeletion", handleMessageDeletion);
+    socket.register("conversationClear", handleConversationClear);
     socket.register("sendMessage", handleSendMessage);
     socket.register("saveMessages", handleSaveMessages);
     socket.register("saveMessagesResponse", handleSaveMessagesResponse);
     socket.register("ping", handlePing);
     socket.register("testConnection", handleTestConnection);
     socket.register("broadcastUpdate", handleBroadcastUpdate);
+    console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
 
@@ -88,10 +98,6 @@ function testSocketLibSetup() {
     const isRegistered = modules.includes('cyberpunk-agent');
     console.log(`Cyberpunk Agent | Module registered with SocketLib: ${isRegistered}`);
 
-    // Check connection status
-    const isConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
-    console.log(`Cyberpunk Agent | SocketLib connected: ${isConnected}`);
-
     // Log available methods
     console.log("Cyberpunk Agent | SocketLib methods:", Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function'));
 
@@ -99,8 +105,19 @@ function testSocketLibSetup() {
       console.warn("Cyberpunk Agent | Module not properly registered with SocketLib");
     }
 
-    if (!isConnected) {
-      console.warn("Cyberpunk Agent | SocketLib not connected");
+    // Test if our socket has the required methods
+    if (socket) {
+      const socketMethods = Object.keys(socket).filter(key => typeof socket[key] === 'function');
+      console.log("Cyberpunk Agent | Socket methods:", socketMethods);
+
+      const requiredMethods = ['executeForEveryone', 'executeForOthers', 'executeAsGM', 'executeAsUser'];
+      const missingMethods = requiredMethods.filter(method => !socketMethods.includes(method));
+
+      if (missingMethods.length > 0) {
+        console.warn("Cyberpunk Agent | Missing required socket methods:", missingMethods);
+      } else {
+        console.log("Cyberpunk Agent | All required socket methods available");
+      }
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error testing SocketLib setup:", error);
@@ -299,6 +316,62 @@ async function handleMessageDeletion(data) {
 }
 
 /**
+ * Handle conversation clear from other clients
+ */
+async function handleConversationClear(data) {
+  console.log("Cyberpunk Agent | Received conversation clear via SocketLib:", data);
+
+  // Prevent processing our own conversation clear
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own conversation clear notification");
+    return;
+  }
+
+  // Check if this is a recent clear to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore clears older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old conversation clear notification (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing conversation clear from:", data.userName);
+
+  try {
+    const { actorId, contactId } = data.data;
+
+    // Handle the conversation clear through CyberpunkAgent
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Clear the conversation for the current user's view
+      const conversationKey = window.CyberpunkAgent.instance._getConversationKey(actorId, contactId);
+      window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+
+      // Clear unread count cache
+      const unreadCacheKey = `${actorId}-${contactId}`;
+      window.CyberpunkAgent.instance.unreadCounts.delete(unreadCacheKey);
+
+      // Update interfaces
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+    } else {
+      console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for conversation clear");
+    }
+
+    // Show notification to user
+    const actor = game.actors.get(actorId);
+    const contact = game.actors.get(contactId);
+    const actorName = actor ? actor.name : "Desconhecido";
+    const contactName = contact ? contact.name : "Desconhecido";
+
+    const message = `Histórico de conversa limpo por ${actorName} na conversa com ${contactName}`;
+    ui.notifications.info(message);
+
+    console.log(`Cyberpunk Agent | Conversation cleared by ${actorName} with ${contactName}`);
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling conversation clear:", error);
+  }
+}
+
+/**
  * Handle send message from other clients
  */
 async function handleSendMessage(data) {
@@ -339,6 +412,13 @@ async function handleSendMessage(data) {
 
       const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
 
+      // Check if message already exists to avoid duplicates
+      const existingMessage = conversation.find(msg => msg.id === data.messageId);
+      if (existingMessage) {
+        console.log("Cyberpunk Agent | Message already exists, skipping duplicate");
+        return;
+      }
+
       // Add the message
       const message = {
         id: data.messageId,
@@ -359,31 +439,31 @@ async function handleSendMessage(data) {
       await window.CyberpunkAgent.instance.saveMessages();
 
       console.log("Cyberpunk Agent | Message added to conversation:", message);
+
+      // Update all open chat interfaces immediately
+      console.log("Cyberpunk Agent | Updating chat interfaces...");
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      // Show notification to user - only "Nova mensagem no Chat7"
+      ui.notifications.info("Nova mensagem no Chat7");
+
+      // Play notification sound if the current user is the receiver
+      if (data.receiverId) {
+        const userActors = window.CyberpunkAgent.instance.getUserActors();
+        const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+        if (isReceiver) {
+          window.CyberpunkAgent.instance.playNotificationSound();
+        }
+      }
+
+      console.log("Cyberpunk Agent | Message processed via SocketLib successfully");
     } catch (error) {
       console.error("Cyberpunk Agent | Error processing message:", error);
     }
+  } else {
+    console.error("Cyberpunk Agent | CyberpunkAgent instance not available for message processing");
   }
-
-  // Update all open chat interfaces immediately
-  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-    console.log("Cyberpunk Agent | Updating chat interfaces...");
-    window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
-    window.CyberpunkAgent.instance.updateOpenInterfaces();
-  }
-
-  // Show notification to user - only "Nova mensagem no Chat7"
-  ui.notifications.info("Nova mensagem no Chat7");
-
-  // Play notification sound if the current user is the receiver
-  if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-    const userActors = window.CyberpunkAgent.instance.getUserActors();
-    const isReceiver = userActors.some(actor => actor.id === data.receiverId);
-    if (isReceiver) {
-      window.CyberpunkAgent.instance.playNotificationSound();
-    }
-  }
-
-  console.log("Cyberpunk Agent | Message processed via SocketLib successfully");
 }
 
 /**
@@ -409,10 +489,8 @@ async function handleSaveMessages(data) {
   console.log("Cyberpunk Agent | Processing save request from:", data.userName);
 
   try {
-    // Save the messages to settings
-    game.settings.set('cyberpunk-agent', 'messages', data.messages);
-
-    console.log("Cyberpunk Agent | Messages saved successfully for user:", data.userName);
+    // Save the messages to localStorage (deprecated GM save functionality)
+    console.log("Cyberpunk Agent | Save messages request ignored - using localStorage only architecture for user:", data.userName);
 
     // Notify the requesting user that save was successful
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -675,6 +753,50 @@ class SocketLibIntegration {
   }
 
   /**
+   * Send conversation clear to all clients
+   */
+  async sendConversationClear(data) {
+    if (!this.isAvailable || !socket) {
+      console.warn("Cyberpunk Agent | SocketLib not available, using fallback");
+      return false;
+    }
+
+    try {
+      const clearData = {
+        timestamp: Date.now(),
+        userId: game.user.id,
+        userName: game.user.name,
+        sessionId: game.data.id,
+        ...data
+      };
+
+      console.log("Cyberpunk Agent | Attempting to send conversation clear via SocketLib:", clearData);
+
+      // Check if SocketLib is connected
+      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
+        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send conversation clear");
+        return false;
+      }
+
+      // Send to all clients using executeForEveryone
+      await socket.executeForEveryone('conversationClear', clearData);
+
+      console.log("Cyberpunk Agent | Conversation clear sent via SocketLib to all clients successfully");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending conversation clear via SocketLib:", error);
+      console.error("Error details:", {
+        error: error.message,
+        stack: error.stack,
+        socketlibAvailable: !!socketlib,
+        socketAvailable: !!socket,
+        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+      });
+      return false;
+    }
+  }
+
+  /**
    * Send message to all clients
    */
   async sendMessage(senderId, receiverId, text, messageId) {
@@ -697,13 +819,15 @@ class SocketLibIntegration {
 
       console.log("Cyberpunk Agent | Attempting to send message via SocketLib:", messageData);
 
-      // Check if SocketLib is connected
-      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
-        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send message");
+      // Check if socket has the executeForEveryone method
+      if (!socket || typeof socket.executeForEveryone !== 'function') {
+        console.warn("Cyberpunk Agent | Socket executeForEveryone method not available");
+        console.log("Cyberpunk Agent | Available socket methods:", socket ? Object.keys(socket).filter(key => typeof socket[key] === 'function') : []);
         return false;
       }
 
-      // Send to all clients using executeForEveryone
+      // Send to all clients using executeForEveryone - following official documentation
+      console.log("Cyberpunk Agent | Executing sendMessage for everyone...");
       await socket.executeForEveryone('sendMessage', messageData);
 
       console.log("Cyberpunk Agent | Message sent via SocketLib to all clients successfully");
@@ -715,7 +839,7 @@ class SocketLibIntegration {
         stack: error.stack,
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket,
-        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+        socketMethods: socket ? Object.keys(socket).filter(key => typeof socket[key] === 'function') : []
       });
       return false;
     }

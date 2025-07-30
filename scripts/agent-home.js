@@ -87,11 +87,28 @@ class AgentApplication extends FormApplication {
         contactsCount: contactsWithData.length,
         contacts: contactsWithData
       });
-    } else if (this.currentView === 'conversation' && this.currentContact) {
+    } else if (this.currentView === 'conversation' && this.currentContact && this.currentContact.id) {
       // Add conversation-specific data
       const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
-      templateData.messages = messages;
+
+      // Format messages for the Handlebars template
+      const formattedMessages = messages.map(message => ({
+        ...message,
+        isOwn: message.senderId === this.actor.id,
+        time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }));
+
+      templateData.messages = formattedMessages;
       templateData.contact = this.currentContact;
+
+      console.log("AgentApplication | Template data for conversation:", {
+        messagesCount: formattedMessages.length,
+        contact: this.currentContact.name,
+        messages: formattedMessages
+      });
     }
 
     return templateData;
@@ -101,15 +118,30 @@ class AgentApplication extends FormApplication {
    * Render the application with the current view
    */
   render(force = false, options = {}) {
-    const result = super.render(force, options);
+    // Prevent infinite loops during rendering
+    if (this._isRendering) {
+      console.log("AgentApplication | Already rendering, skipping render call");
+      return this;
+    }
 
-    // After rendering, update the content based on current view
-    this._updateViewContent();
+    this._isRendering = true;
 
-    // Register with UI Controller for real-time updates
-    this._registerWithUIController();
+    try {
+      const result = super.render(force, options);
 
-    return result;
+      // After rendering, update the content based on current view
+      this._updateViewContent();
+
+      // Register with UI Controller for real-time updates
+      this._registerWithUIController();
+
+      return result;
+    } finally {
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        this._isRendering = false;
+      }, 50);
+    }
   }
 
   /**
@@ -138,7 +170,7 @@ class AgentApplication extends FormApplication {
   _getComponentIds() {
     const componentIds = [];
 
-    if (this.currentView === 'conversation' && this.currentContact) {
+    if (this.currentView === 'conversation' && this.currentContact && this.currentContact.id) {
       componentIds.push(`agent-conversation-${this.actor.id}-${this.currentContact.id}`);
     } else if (this.currentView === 'chat7') {
       componentIds.push(`agent-chat7-${this.actor.id}`);
@@ -154,8 +186,20 @@ class AgentApplication extends FormApplication {
     console.log(`AgentApplication | Handling UI Controller update for: ${componentId}`);
 
     if (componentId.includes('conversation')) {
-      // Update conversation view
-      this._renderConversationView();
+      // Defensive check for currentContact
+      if (!this.currentContact || !this.currentContact.id) {
+        console.warn("AgentApplication | currentContact is null or undefined, skipping conversation update");
+        return;
+      }
+
+      // Prevent infinite loops
+      if (this._isUpdating) {
+        console.log("AgentApplication | Already updating, skipping UI Controller update");
+        return;
+      }
+
+      // Simple re-render without forcing
+      this.render(true);
     } else if (componentId.includes('chat7')) {
       // Update Chat7 view
       this._renderChat7View();
@@ -255,8 +299,8 @@ class AgentApplication extends FormApplication {
       return;
     }
 
-    // Mark conversation as read when opening
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    // Only mark conversation as read when opening (not during re-renders)
+    if (!this._isUpdating && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, this.currentContact.id);
     }
 
@@ -264,64 +308,40 @@ class AgentApplication extends FormApplication {
     const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
     console.log("AgentApplication | Messages for conversation:", messages.length, messages);
 
-    // Update the messages container
-    const messagesContainer = this.element.find('#messages-container');
-    console.log("AgentApplication | Messages container found:", messagesContainer.length > 0);
-
-    if (messagesContainer.length) {
-      messagesContainer.empty();
-
-      if (messages.length > 0) {
-        // Create messages list container
-        const messagesList = $('<div class="cp-messages-list"></div>');
-
-        messages.forEach((message, index) => {
-          const isOwnMessage = message.senderId === this.actor.id;
-          const messageTime = new Date(message.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-          console.log(`AgentApplication | Rendering message ${index + 1}:`, {
-            id: message.id,
-            text: message.text,
-            senderId: message.senderId,
-            actorId: this.actor.id,
-            isOwn: isOwnMessage,
-            time: messageTime
-          });
-
-          const messageHtml = `
-            <div class="cp-message ${isOwnMessage ? 'own' : 'other'}" data-message-id="${message.id}">
-              <div class="cp-message-content">
-                <div class="cp-message-text">${message.text}</div>
-                <div class="cp-message-time">${messageTime}</div>
-              </div>
-            </div>
-          `;
-
-          messagesList.append(messageHtml);
-        });
-
-        messagesContainer.append(messagesList);
-      } else {
-        // Show no messages message
-        const noMessagesHtml = `
-          <div class="cp-no-messages">
-            <div class="cp-no-messages-icon">
-              <i class="fas fa-comments"></i>
-            </div>
-            <h3>NENHUMA MENSAGEM</h3>
-            <p>Inicie uma conversa com ${this.currentContact.name}</p>
-          </div>
-        `;
-        messagesContainer.append(noMessagesHtml);
-      }
-
-      console.log("AgentApplication | Conversation view rendered successfully");
-    } else {
-      console.error("AgentApplication | Messages container not found!");
-    }
-
     // Setup real-time listener for conversation
     this._setupConversationRealtimeListener();
+
+    console.log("AgentApplication | Conversation view setup completed");
+  }
+
+  /**
+   * Force re-render conversation view with updated data
+   */
+  _forceRenderConversationView() {
+    console.log("AgentApplication | Force re-rendering conversation view");
+
+    if (!this.currentContact) {
+      console.error("AgentApplication | No contact specified for conversation view");
+      return;
+    }
+
+    // Prevent infinite loops by checking if we're already updating
+    if (this._isUpdating) {
+      console.log("AgentApplication | Already updating, skipping force re-render");
+      return;
+    }
+
+    this._isUpdating = true;
+
+    try {
+      // Force a complete re-render of the conversation view
+      this.render(true);
+    } finally {
+      // Reset the flag after a short delay to allow for completion
+      setTimeout(() => {
+        this._isUpdating = false;
+      }, 100);
+    }
   }
 
   /**
@@ -356,11 +376,25 @@ class AgentApplication extends FormApplication {
     this._conversationUpdateHandler = (event) => {
       const { type, senderId, receiverId, message } = event.detail;
 
+      // Defensive check for currentContact
+      if (!this.currentContact || !this.currentContact.id) {
+        console.warn("AgentApplication | currentContact is null or undefined, skipping conversation update");
+        return;
+      }
+
       if (type === 'messageUpdate' &&
         ((senderId === this.actor.id && receiverId === this.currentContact.id) ||
           (senderId === this.currentContact.id && receiverId === this.actor.id))) {
         console.log("AgentApplication | Conversation received update");
-        this._renderConversationView();
+
+        // Prevent infinite loops
+        if (this._isUpdating) {
+          console.log("AgentApplication | Already updating, skipping conversation update");
+          return;
+        }
+
+        // Simple re-render
+        this.render(true);
       }
     };
 
@@ -533,16 +567,32 @@ class AgentApplication extends FormApplication {
         <button class="cp-context-menu-item" data-action="mark-read" data-contact-id="${contact.id}">
           <i class="fas fa-check-double"></i>Marcar Todos como Lidos
         </button>
+        <button class="cp-context-menu-item" data-action="clear-history" data-contact-id="${contact.id}">
+          <i class="fas fa-trash"></i>Limpar Histórico
+        </button>
         <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
           <i class="fas fa-info-circle"></i>Informações do Contato
         </button>
       </div>
     `);
 
-    // Add event listeners
-    contextMenu.find('[data-action="mute"]').click(() => this._toggleContactMute(contact.id));
-    contextMenu.find('[data-action="mark-read"]').click(() => this._markAllMessagesAsRead(contact.id));
-    contextMenu.find('[data-action="info"]').click(() => this._showContactInfo(contact.id));
+    // Add event listeners with menu removal
+    contextMenu.find('[data-action="mute"]').click(() => {
+      this._toggleContactMute(contact.id);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="mark-read"]').click(() => {
+      this._markAllMessagesAsRead(contact.id);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="clear-history"]').click(() => {
+      this._clearConversationHistory(contact.id);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="info"]').click(() => {
+      this._showContactInfo(contact.id);
+      $('.cp-context-menu').remove();
+    });
 
     $('body').append(contextMenu);
   }
@@ -596,7 +646,79 @@ class AgentApplication extends FormApplication {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       await window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, contactId);
       ui.notifications.info("Todas as mensagens foram marcadas como lidas!");
-      this._renderChat7View(); // Refresh the view
+
+      // Force UI update using multiple strategies
+      console.log("AgentApplication | Triggering UI update after marking messages as read");
+
+      // Strategy 1: Use UI Controller if available
+      if (window.CyberpunkAgentUIController) {
+        const chat7ComponentId = `agent-chat7-${this.actor.id}`;
+        window.CyberpunkAgentUIController.markDirty(chat7ComponentId);
+        console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller");
+      }
+
+      // Strategy 2: Force immediate re-render
+      this._renderChat7View();
+
+      // Strategy 3: Dispatch custom event
+      document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        detail: {
+          timestamp: Date.now(),
+          type: 'messagesMarkedAsRead',
+          actorId: this.actor.id,
+          contactId: contactId
+        }
+      }));
+    }
+  }
+
+  /**
+   * Clear conversation history for a contact
+   */
+  async _clearConversationHistory(contactId) {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Show confirmation dialog
+      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId) ||
+        window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id).find(c => c.id === contactId);
+
+      if (!contact) {
+        ui.notifications.error("Contato não encontrado");
+        return;
+      }
+
+      const confirmed = await new Promise((resolve) => {
+        new Dialog({
+          title: "Limpar Histórico",
+          content: `
+            <div class="cp-clear-history-dialog">
+              <p>Tem certeza que deseja limpar todo o histórico de conversa com <strong>${contact.name}</strong>?</p>
+              <p><small>Esta ação só afetará o seu histórico. O histórico do outro contato permanecerá intacto.</small></p>
+            </div>
+          `,
+          buttons: {
+            cancel: {
+              label: "Cancelar",
+              callback: () => resolve(false)
+            },
+            confirm: {
+              label: "Limpar Histórico",
+              callback: () => resolve(true)
+            }
+          }
+        }).render(true);
+      });
+
+      if (confirmed) {
+        const success = await window.CyberpunkAgent.instance.clearConversationHistory(this.actor.id, contactId);
+        if (success) {
+          // Refresh the view
+          if (this.currentView === 'chat7') {
+            this._renderChat7View();
+          } else if (this.currentView === 'conversation' && this.currentContact?.id === contactId) {
+            this._renderConversationView();
+          }
+        }
+      }
     }
   }
 
@@ -634,7 +756,8 @@ class AgentApplication extends FormApplication {
     const input = this.element.find('.cp-message-input');
     const text = input.val().trim();
 
-    if (!text || !this.currentContact) {
+    if (!text || !this.currentContact || !this.currentContact.id) {
+      console.warn("AgentApplication | Cannot send message: missing text or currentContact");
       return;
     }
 
@@ -647,14 +770,14 @@ class AgentApplication extends FormApplication {
         await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.currentContact.id, text);
         console.log("Cyberpunk Agent | Message sent successfully");
 
-        // Mark conversation component as dirty for immediate update
+        // Simple and direct UI update after sending message
+        console.log("AgentApplication | Triggering UI update after sending message");
+
+        // Use a simple approach: just mark the conversation component as dirty
         if (window.CyberpunkAgentUIController) {
-          const componentId = `agent-conversation-${this.actor.id}-${this.currentContact.id}`;
-          window.CyberpunkAgentUIController.markDirty(componentId);
+          const conversationComponentId = `agent-conversation-${this.actor.id}-${this.currentContact.id}`;
+          window.CyberpunkAgentUIController.markDirty(conversationComponentId);
           console.log("AgentApplication | Marked conversation component as dirty after sending message");
-        } else {
-          // Fallback: immediately update the conversation view
-          this._renderConversationView();
         }
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);

@@ -2,520 +2,668 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.41] - 2024-12-29
+
+### Fixed
+- **Fixed `clearConversationHistory` Error**: Resolved "This is not a registered game setting" error:
+  - **Root Cause**: `clearConversationHistory` was attempting to save to removed `game.settings` key
+  - **Solution**: Updated function to use localStorage only for all users (GM and non-GM)
+  - **Impact**: Conversation clearing now works without errors and aligns with localStorage-only architecture
+
+### Deprecated
+- **GM Message Saving**: Deprecated `handleSaveMessagesRequest` function:
+  - **Reason**: Messages now use localStorage-only architecture as requested
+  - **Impact**: No more attempts to save messages to removed `game.settings`
+
+### Changed
+- **Message Persistence**: Aligned all message persistence with localStorage-only architecture:
+  - Updated conversation clear notification handler to use localStorage for all users
+  - Fixed SocketLib integration to not attempt saving to removed settings
+  - Simplified message saving logic to use only localStorage
+
+## [1.0.40] - 2024-12-29
+
+### Fixed
+- **SocketLib Architecture Overhaul**: Complete rewrite of SocketLib integration following official documentation:
+  - **Root Cause**: Previous implementation was not following SocketLib's intended usage patterns
+  - **Solution**: Implemented proper SocketLib initialization and function registration
+  - **Impact**: Eliminates connection issues and enables proper real-time communication
+
+### Removed
+- **Unreliable Connection Checks**: Removed `socketlib.isConnected()` checks that were causing false negatives
+- **Reconnection Logic**: Removed complex reconnection attempts that were not needed
+- **Duplicate Registration Prevention**: Simplified function registration to follow official patterns
+
+### Changed
+- **SocketLib Initialization**: Now follows official SocketLib documentation:
+  - Proper module registration in `socketlib.ready` hook
+  - Immediate function registration after module registration
+  - Simplified availability checks based on socket object existence
+  - Removed unnecessary connection state management
+
+### Technical
+- Rewrote `initializeSocketLib()` to follow official SocketLib patterns
+- Simplified `_isSocketLibAvailable()` to check only essential requirements
+- Removed `_attemptSocketLibReconnection()` and `_forceSocketLibConnection()` methods
+- Added `_checkSocketLibStatus()` for simplified status checking
+- Updated global test functions to use new simplified methods
+
+## [1.0.39] - 2024-12-29
+
+## [1.0.38] - 2024-12-29
+
+### Fixed
+- **SocketLib Connection Issues**: Fixed critical SocketLib connection problems:
+  - **Root Cause**: SocketLib was not connecting properly (`socketlibConnected: false`)
+  - **Solution**: Added automatic reconnection attempts and improved initialization
+  - **Impact**: Messages should now be sent via SocketLib for real-time communication
+
+### Added
+- **SocketLib Reconnection System**: Added robust SocketLib reconnection mechanism:
+  - **Automatic Reconnection**: `_attemptSocketLibReconnection()` method for automatic connection recovery
+  - **Connection Monitoring**: Enhanced `_isSocketLibAvailable()` to detect and attempt reconnection
+  - **Manual Reconnection**: `window.forceSocketLibReconnection()` function for manual reconnection
+  - **Immediate Initialization**: Added immediate SocketLib initialization if already available
+
+### Changed
+- **Enhanced SocketLib Initialization**: Improved SocketLib setup process:
+  - Added immediate initialization attempt if SocketLib is already available
+  - Enhanced connection testing and status reporting
+  - Better error handling and logging for SocketLib operations
+  - Improved reconnection logic with timeout-based retry mechanism
+
+### Technical
+- Added `_attemptSocketLibReconnection()` method with 10-second retry intervals
+- Enhanced `setupSocketLibWhenReady()` with immediate initialization fallback
+- Improved `_isSocketLibAvailable()` with automatic reconnection detection
+- Added `window.forceSocketLibReconnection()` for manual troubleshooting
+- Enhanced SocketLib connection status monitoring and reporting
+
+## [1.0.37] - 2024-12-29
+
+### Fixed
+- **Real-time Communication via SocketLib**: Enhanced SocketLib integration for better real-time message delivery:
+  - **Root Cause**: SocketLib message processing had potential issues with duplicate detection and error handling
+  - **Solution**: Improved message processing logic and added better error handling
+  - **Impact**: Messages should now appear in real-time on both sender and receiver clients
+
+### Added
+- **Enhanced SocketLib Debugging**: Added comprehensive debugging tools for SocketLib communication:
+  - **Test Function**: `window.testRealtimeCommunication()` for testing SocketLib message delivery
+  - **Connection Status**: Better logging of SocketLib connection and registration status
+  - **Message Processing**: Enhanced logging for message sending and receiving via SocketLib
+
+### Changed
+- **Improved Message Processing**: Enhanced SocketLib message handling:
+  - Added duplicate message detection to prevent processing the same message multiple times
+  - Improved error handling and logging in `handleSendMessage()` function
+  - Better organization of message processing logic within try-catch blocks
+  - Enhanced logging for debugging SocketLib communication issues
+
+### Technical
+- Enhanced `handleSendMessage()` function with duplicate detection and better error handling
+- Added `window.testRealtimeCommunication()` function for testing SocketLib functionality
+- Improved logging in SocketLib message sending with detailed error information
+- Better error handling and status reporting for SocketLib operations
+
+## [1.0.36] - 2024-12-29
+
+### Fixed
+- **Infinite Loop and UI Freezing**: Fixed critical issue where sending messages caused infinite loops and UI freezing:
+  - **Root Cause**: Multiple update strategies were creating circular dependencies and infinite re-render cycles
+  - **Solution**: Implemented loop prevention mechanisms and simplified update strategies
+  - **Impact**: Messages now appear immediately without freezing the UI or causing console loops
+
+### Added
+- **Loop Prevention System**: Added comprehensive loop prevention mechanisms:
+  - **Update Flags**: `_isUpdating` and `_isRendering` flags to prevent concurrent updates
+  - **Timeout Protection**: Automatic flag reset with timeouts to prevent permanent locks
+  - **Conditional Updates**: Smart conditions to skip updates when already processing
+
+### Changed
+- **Simplified Update Strategy**: Streamlined message sending and UI update process:
+  - Removed multiple conflicting update strategies from `_sendMessage()`
+  - Simplified UI Controller updates to use single component marking
+  - Reduced complexity in conversation update handlers
+  - Enhanced logging for better debugging of update cycles
+
+### Technical
+- Added `_isUpdating` and `_isRendering` flags with timeout-based reset
+- Modified `_forceRenderConversationView()` with loop prevention
+- Updated `_renderConversationView()` to avoid `markConversationAsRead()` during re-renders
+- Simplified `_sendMessage()` to use single UI Controller update strategy
+- Enhanced `render()` method with loop prevention
+- Improved error handling and logging throughout update cycles
+
+## [1.0.35] - 2024-12-29
+
+### Fixed
+- **Message Persistence in Chat Conversations**: Fixed issue where sent messages didn't appear immediately in chat:
+  - **Root Cause**: `_renderConversationView()` method wasn't forcing a complete re-render of the interface
+  - **Solution**: Added `_forceRenderConversationView()` method that forces complete re-render with updated data
+  - **Impact**: Messages now appear immediately after sending without requiring agent restart
+
+### Added
+- **Enhanced Chat Interface Updates**: Added robust re-rendering mechanism for conversation views:
+  - **Force Re-render Method**: `_forceRenderConversationView()` ensures complete interface refresh
+  - **Immediate Updates**: Messages appear instantly after sending
+  - **Multiple Update Strategies**: UI Controller, force re-render, and custom events work together
+
+### Changed
+- **Improved Message Sending Flow**: Enhanced message sending process:
+  - `_sendMessage()` now uses `_forceRenderConversationView()` for immediate updates
+  - `_handleUIControllerUpdate()` uses force re-render for conversation components
+  - Conversation real-time listeners use force re-render for better responsiveness
+
+### Technical
+- Added `_forceRenderConversationView()` method that calls `this.render(true)` for complete re-render
+- Updated all conversation update paths to use force re-render instead of basic setup
+- Enhanced logging for better debugging of message persistence issues
+- Added `window.testMessagePersistence()` function for testing message persistence
+
+## [1.0.34] - 2024-12-29
+
+### Fixed
+- **UIController Orphaned Components**: Fixed `Controller | Component or callback not found for: agent-conversation-*` warnings:
+  - **Root Cause**: Components were marked as "dirty" but removed before update cycle
+  - **Solution**: Added automatic cleanup of orphaned components and improved component validation
+  - **Impact**: Eliminates console warnings and improves UI update performance
+
+### Added
+- **Enhanced UIController Management**: Added robust component lifecycle management:
+  - **Component Validation**: `markDirtyMultiple()` now validates components before marking them dirty
+  - **Orphaned Component Cleanup**: Automatic cleanup of components that no longer exist
+  - **Status Monitoring**: New `getStatus()` method for debugging UIController state
+  - **Debug Function**: `window.debugUIController()` for troubleshooting component issues
+
+### Changed
+- **Improved Logging**: Enhanced UIController logging for better debugging:
+  - Separate logging for valid and invalid components in `markDirtyMultiple()`
+  - Detailed status information in update cycles
+  - Clear indication of orphaned component cleanup
+
+### Technical
+- Added `cleanupOrphanedComponents()` method to remove stale dirty states
+- Enhanced `performUpdate()` to clean orphaned components before processing
+- Added `getStatus()` method for comprehensive UIController state information
+- Improved error handling and logging throughout UIController operations
+- Added global `debugUIController()` function for troubleshooting
+
+## [1.0.33] - 2024-12-29
+
+### Fixed
+- **Unregistered Settings Error**: Fixed critical `This is not a registered game setting` error:
+  - **Root Cause**: `loadAgentData()` was trying to access unregistered `agent-data` setting
+  - **Solution**: Moved `agent-data` from `game.settings` to `localStorage` to match the architectural pattern
+  - **Impact**: Fixed Contact Manager settings persistence and player propagation issues
+  - **Result**: Contact Manager now works correctly and settings persist after refresh
+
+### Changed
+- **Data Persistence Strategy**: Updated data storage approach:
+  - `agent-data` now stored in `localStorage` instead of unregistered `game.settings`
+  - `saveAgentData()` and `loadAgentData()` methods updated to use `localStorage`
+  - `clearAllData()` method updated to clear `localStorage` items properly
+  - Maintains consistency with other user-specific data (messages, read timestamps)
+
+### Technical
+- Updated `loadAgentData()` to load `agent-data` from `localStorage` with proper error handling
+- Updated `saveAgentData()` to save `agent-data` to `localStorage` with user-specific keys
+- Updated `clearAllData()` to remove `localStorage` items for messages, agent data, and read timestamps
+- Enhanced error handling and logging for data persistence operations
+
+## [1.0.32] - 2024-12-29
+
+### Added
+- **Diagnostic Test Functions**: Added comprehensive test functions to investigate Contact Manager settings persistence issues:
+  - `window.testContactNetworkPersistence()`: Tests immediate settings save/retrieve functionality
+  - `window.verifyContactNetworkPersistence()`: Verifies settings persistence after page refresh
+  - `window.testPlayerContactNetworkAccess()`: Tests player access to GM's contact networks
+  - `window.testContactManagerSave()`: Tests the actual Contact Manager save method
+- Enhanced error logging and permission checking in diagnostic functions
+- Detailed console output for debugging settings persistence issues
+
+### Technical
+- Added user permission checks (`game.user.role`, `game.user.can('SETTINGS_MODIFY')`)
+- Added setting registration verification
+- Added timeout-based verification to account for async settings operations
+- Enhanced error handling with specific error types and detailed logging
+
+## [1.0.31] - 2024-12-29
+
+### Fixed
+- **Contact Manager Settings Persistence**: Fixed issues with Contact Manager settings not persisting globally and not propagating to player agents:
+  - Added `updateSetting` hook to automatically reload `contact-networks` when the setting changes
+  - Enhanced `saveContactNetworks` to force `loadAgentData()` after saving and added detailed logging
+  - Added new `reloadContactNetworks()` method for manual synchronization
+  - Added safety checks in `addControlButton` to prevent `controls.find is not a function` errors
+  - Added duplicate button prevention in token controls
+
+### Technical
+- Added `Hooks.on('updateSetting')` to trigger automatic data reload when contact networks change
+- Enhanced logging in `saveContactNetworks` and `loadAgentData` methods
+- Added `Array.isArray(controls)` validation in `addControlButton` and related hooks
+- Added `reloadContactNetworks()` method for manual data synchronization
+
+## [1.0.30] - 2024-12-29
+
+### Fixed
+- **Settings Registration Error**: Fixed `This is not a registered game setting` error loop when opening chat:
+  - Simplified `_saveReadTimestamps()` and `_loadReadTimestamps()` methods to exclusively use `localStorage`
+  - Removed references to the now-deleted `last-read-timestamps` setting
+  - Ensured all read timestamp operations use `localStorage` only
+
+### Technical
+- Updated read timestamp persistence to use `localStorage` exclusively
+- Removed all references to the deprecated `last-read-timestamps` setting
+- Fixed error loop caused by attempting to access unregistered settings
+
+## [1.0.29] - 2024-12-29
+
+### Fixed
+- **Controls Array Error**: Fixed `controls.find is not a function` error:
+  - Added defensive checks (`Array.isArray(controls)`) in `addControlButton` method
+  - Added validation in `renderSceneControls` hook to prevent errors when controls is not an array
+  - Added duplicate button prevention to avoid multiple agent buttons
+
+### Technical
+- Enhanced `addControlButton` method with robust array validation
+- Added safety checks in `renderSceneControls` hook
+- Improved error handling for token control button addition
+
+## [1.0.28] - 2024-12-29
+
+### Fixed
+- **Menu Button and Chat Errors**: Fixed multiple issues:
+  - Agent menu button not appearing on initial client load
+  - `getMessagesFromFoundryChat is not a function` error when opening chat
+  - Added additional `renderSceneControls` hook with delay to ensure button appears on initial UI render
+  - Corrected `getMessagesForConversation` method to remove calls to removed Foundry chat methods
+
+### Technical
+- Added `renderSceneControls` hook with 100ms delay for reliable button appearance
+- Updated `getMessagesForConversation` to align with localStorage-only architecture
+- Removed references to deleted `getMessagesFromFoundryChat` and `_mergeMessages` methods
+
+## [1.0.27] - 2024-12-29
+
+### Changed
+- **Module Settings Cleanup**: Removed duplicate and unnecessary module settings:
+  - Removed redundant "Gerenciador de Contatos" boolean setting
+  - Kept only `contact-manager-menu` setting that provides button access
+  - Cleaned up settings registration for a more streamlined configuration
+
+### Technical
+- Simplified `registerSettings()` method to only register essential settings
+- Removed duplicate contact manager configuration options
+- Streamlined module settings interface
+
+## [1.0.26] - 2024-12-29
+
+### Changed
+- **Architectural Overhaul**: Complete decoupling from FoundryVTT chat system:
+  - **Message Storage**: Moved all message storage to `localStorage` exclusively
+  - **Foundry Chat Integration**: Removed all FoundryVTT chat posting, deletion, and synchronization
+  - **Settings Cleanup**: Removed all Cyberpunk Agent settings except Contact Manager (GM-managed)
+  - **SocketLib Only**: All communication now happens exclusively via SocketLib
+
+### Removed
+- All FoundryVTT chat integration methods (`_createFoundryChatMessage`, `_handleNewChatMessage`, etc.)
+- All message synchronization with Foundry chat
+- All module settings except `contact-networks` and `contact-manager-menu`
+- All Foundry chat notification systems
+
+### Technical
+- Refactored `saveMessages()` and `loadMessages()` to use `localStorage` only
+- Removed `_requestGMSaveMessages()` and related GM request methods
+- Simplified `getMessagesForConversation()` to remove Foundry chat merging
+- Updated `clearConversationHistory()` to use `localStorage` only
+- Removed all `game.settings` usage for user-specific data
+
+## [1.0.25] - 2024-12-29
+
+### Fixed
+- **Context Menu Issues**: Fixed multiple context menu problems:
+  - Context menu not disappearing when options are selected
+  - `TypeError: undefined. Cannot read properties of null (reading 'id')` error
+  - Added explicit DOM removal (`$('.cp-context-menu').remove()`) to all context menu click handlers
+  - Added defensive checks for `this.currentContact` and `this.currentContact.id`
+
+### Technical
+- Enhanced `_showContextMenu` method with proper cleanup
+- Added null/undefined checks in `_setupConversationRealtimeListener`, `_handleUIControllerUpdate`, `_getComponentIds`, `_sendMessage`, and `getData` methods
+- Improved error handling for context menu operations
+
+## [1.0.24] - 2024-12-29
+
+### Added
+- **Conversation History Management**: Added ability to clear conversation history:
+  - New context menu option "Limpar Histórico" for clearing conversation history
+  - History clearing affects only the user who initiated the action
+  - Other users' conversation history remains intact unless they also clear it
+  - SocketLib notification system for cross-client synchronization
+
+### Technical
+- Added `clearConversationHistory()` method for clearing specific conversations
+- Added `_notifyConversationClear()` method for SocketLib notifications
+- Added `handleConversationClear()` method for processing clear notifications
+- Enhanced context menu with new clear history option
+
+## [1.0.23] - 2024-12-29
+
+### Fixed
+- **UI Rendering Issues**: Fixed multiple UI rendering problems:
+  - `Messages container not found!` error when opening chat
+  - Removed manual DOM manipulation from `_renderConversationView()`
+  - Ensured `getData()` provides all necessary data for Handlebars templating
+  - Simplified `_renderChat7View()` for better reliability
+
+### Technical
+- Removed manual DOM manipulation logic from conversation rendering
+- Enhanced `getData()` method to provide complete data for templates
+- Improved error handling in UI rendering methods
+
+## [1.0.22] - 2024-12-29
+
+### Added
+- **Flutter-like UI Update System**: Implemented a sophisticated UI update mechanism:
+  - Global `UIController` class for managing UI component updates
+  - "Dirty" component marking system for efficient re-rendering
+  - UI tree structure with callback-based update propagation
+  - Automatic rebuild scheduling and execution
+
+### Technical
+- Added `UIController` class with component registration and update management
+- Implemented `markDirty()`, `markDirtyMultiple()`, and `markAllDirty()` methods
+- Added scheduled update system with debouncing
+- Enhanced `_updateChatInterfacesImmediately()` and `handleMessageUpdate()` to use new UI system
+
+## [1.0.21] - 2024-12-29
+
+### Fixed
+- **Real-time Chat Updates**: Fixed issues with real-time message updates:
+  - Messages not appearing immediately when sent
+  - Send button not working (only Enter key worked)
+  - Corrected send button selector in `_activateConversationListeners()`
+  - Added immediate re-render after sending messages
+
+### Technical
+- Fixed send button event listener attachment
+- Enhanced `_sendMessage()` to trigger immediate UI update
+- Improved conversation view rendering after message sending
+
 ## [1.0.20] - 2024-12-29
 
-### 🚀 Added - Flutter-like UI Update System
+### Fixed
+- **Contact List Display**: Fixed contact list not displaying contacts:
+  - Updated `getData()` to pass contact data directly to Handlebars
+  - Simplified `_renderChat7View()` for better data flow
+  - Ensured proper data structure for template rendering
 
-#### 🔧 Changed
-- **UI CONTROLLER ARCHITECTURE**: Implementado sistema de controle de UI inspirado no Flutter com marcação de componentes "dirty" e rebuild
-- **REAL-TIME UPDATES**: Refatorado completamente sistema de atualizações em tempo real para usar o novo controlador de UI
-- **AGENTAPPLICATION INTEGRATION**: AgentApplication agora se registra com o controlador de UI e gerencia atualizações via callbacks
-- **PERFORMANCE**: Melhorada performance através de batch updates e redução de re-renders desnecessários
-
-#### ✨ Added
-- **UICONTROLLER CLASS**: Controlador global que gerencia componentes de UI e seus estados de atualização
-- **COMPONENT REGISTRATION**: Componentes podem se registrar com o controlador e fornecer callbacks de atualização
-- **DIRTY MARKING**: Componentes podem ser marcados como "dirty" quando precisam ser rebuildados
-- **UPDATE CYCLES**: Usa `requestAnimationFrame` para atualizações suaves e em lote da UI
-- **TREE STRUCTURE**: Componentes organizados em estrutura tipo árvore com callbacks para mudanças de estado
-
-#### 🐛 Fixed
-- **REAL-TIME MESSAGE DISPLAY**: Mensagens agora aparecem imediatamente em conversas abertas sem necessidade de refresh manual
-- **UI SYNCHRONIZATION**: Todos os componentes de UI relacionados (conversa, lista de contatos) atualizam simultaneamente quando o estado muda
-- **PERFORMANCE**: Reduzidas manipulações desnecessárias do DOM e melhorada eficiência de atualizações
-
-#### 📚 Documentation
-- Scripts de teste para verificar sistema de UI tipo Flutter
-- Documentação sobre arquitetura de controlador de UI
-- Testes para fluxo completo de mensagens e atualizações em tempo real
-
-#### 🔧 Technical Details
-- **UIController Architecture**: 
-  - `registerComponent(componentId, component, updateCallback)`: Registra componente para atualizações
-  - `markDirty(componentId)`: Marca componente como precisando de rebuild
-  - `markDirtyMultiple(componentIds)`: Marca múltiplos componentes como dirty
-  - `performUpdate()`: Executa ciclo de atualização para todos os componentes dirty
-- **Component IDs**: Sistema estruturado de identificação de componentes:
-  - `agent-conversation-{actorId}-{contactId}`: Para views de conversa
-  - `agent-chat7-{actorId}`: Para views de lista de contatos
-- **Update Flow**: 
-  1. Mensagem enviada/recebida → controlador de UI marca componentes relevantes como dirty
-  2. Ciclo de atualização agendado via `requestAnimationFrame`
-  3. Componentes dirty são rebuildados com dados frescos
-  4. UI reflete mudanças imediatamente sem intervenção manual
-
-#### 🧪 Testing
-- **NEW TEST SCRIPT**: Adicionado `test-flutter-ui-system.js` com testes abrangentes para:
-  - Funcionalidade do UI Controller
-  - Registro de componentes e marcação dirty
-  - Execução do ciclo de atualização
-  - Integração com AgentApplication
-  - Teste de fluxo completo de mensagens
-  - Verificação de atualizações em tempo real
-
----
+### Technical
+- Enhanced data passing to Handlebars templates
+- Improved contact list rendering logic
+- Fixed data structure issues in Chat7 view
 
 ## [1.0.19] - 2024-12-29
 
-### 🐛 Fixed - Message Sending and Display Issues
+### Fixed
+- **Application Instance Management**: Fixed issue with multiple Agent popups:
+  - Refactored application architecture to use single `AgentApplication` instance
+  - Implemented view-based navigation within single application window
+  - Removed multiple `FormApplication` instances in favor of unified approach
 
-#### 🔧 Changed
-- **SEND BUTTON SELECTOR**: Corrigido seletor do botão de enviar de `.cp-send-button` para `.cp-send-message` para corresponder ao template
-- **IMMEDIATE DISPLAY**: Adicionada atualização imediata da interface após envio de mensagem
-- **MESSAGE RENDERING**: Melhorado método `_renderConversationView()` com logs detalhados e estrutura HTML correta
-- **DEBUG LOGGING**: Adicionados logs detalhados para rastrear problemas de envio e exibição de mensagens
-
-#### ✨ Added
-- **DIAGNOSTIC SCRIPT**: Adicionado `test-message-sending.js` para verificar funcionalidade de envio de mensagens
-- **MESSAGE VALIDATION**: Verificação completa de dados de mensagens com logs detalhados
-- **REAL-TIME TESTING**: Testes para atualizações em tempo real e exibição de mensagens
-
-#### 🐛 Fixed
-- **SEND BUTTON NOT WORKING**: Corrigido problema onde o botão de enviar não funcionava (apenas Enter funcionava)
-- **MESSAGES NOT APPEARING**: Corrigido problema onde mensagens não apareciam imediatamente após serem enviadas
-- **TEMPLATE MISMATCH**: Resolvido conflito entre seletores do template e listeners JavaScript
-- **MESSAGE STRUCTURE**: Corrigida estrutura HTML das mensagens para corresponder ao template
-
-#### 📚 Documentation
-- Scripts de teste para verificar envio de mensagens
-- Logs detalhados para debugging de problemas de mensagens
-- Testes para funcionalidade de botão de enviar e exibição imediata
-
----
+### Technical
+- Consolidated multiple application classes into single `AgentApplication`
+- Implemented internal view switching instead of new window creation
+- Enhanced navigation logic for better user experience
 
 ## [1.0.18] - 2024-12-29
 
-### 🐛 Fixed - Contacts Display in Chat7
+### Fixed
+- **Contact List UI Updates**: Fixed contact list not refreshing properly:
+  - Added automatic refresh when opening contact list screen
+  - Added real-time updates when new messages arrive
+  - Added refresh when "mark all messages as read" is used
+  - Enhanced UI update mechanisms for better responsiveness
 
-#### 🔧 Changed
-- **TEMPLATE-BASED RENDERING**: Corrigido sistema de renderização de contatos para usar templates Handlebars em vez de manipulação manual do DOM
-- **DATA FLOW**: Melhorado fluxo de dados para passar contatos via `getData()` para o template
-- **EVENT LISTENERS**: Atualizados listeners para funcionar com estrutura do template Chat7
-- **DEBUG LOGGING**: Adicionados logs detalhados para diagnóstico de problemas de contatos
-
-#### ✨ Added
-- **DIAGNOSTIC SCRIPT**: Adicionado `test-contacts-display.js` para diagnosticar problemas de exibição de contatos
-- **TEMPLATE DATA**: Implementado sistema de dados específicos por view no método `getData()`
-- **CONTACT VALIDATION**: Verificação completa de dados de contatos com logs detalhados
-
-#### 🐛 Fixed
-- **CONTACTS NOT SHOWING**: Corrigido problema onde contatos não apareciam na lista do Chat7
-- **TEMPLATE MISMATCH**: Resolvido conflito entre renderização via template e manipulação manual do DOM
-- **DATA INTEGRATION**: Corrigida integração entre dados do módulo e template Handlebars
-
-#### 📚 Documentation
-- Scripts de teste para diagnosticar problemas de contatos
-- Logs detalhados para debugging de renderização
-- Documentação sobre fluxo de dados template-based
-
----
+### Technical
+- Enhanced `_updateChat7Interfaces()` method for better re-rendering
+- Added automatic UI refresh on contact list opening
+- Improved real-time update propagation for contact list
 
 ## [1.0.17] - 2024-12-29
 
-### 🔧 Changed - Single Instance Navigation
+### Fixed
+- **Unread Message Count Updates**: Fixed unread message chip issues:
+  - Chips not resetting when chat is opened
+  - Chips not updating in real-time when new messages arrive
+  - Enhanced `markConversationAsRead()` to clear unread count cache
+  - Added `_updateChatInterfacesImmediately()` for better real-time updates
 
-#### 🔧 Changed
-- **UNIFIED APPLICATION**: Refatorado aplicações do Agent para usar classe unificada `AgentApplication` com navegação baseada em views
-- **SINGLE INSTANCE**: Todas as telas do Agent (Home, Chat7, Conversa) agora funcionam dentro da mesma instância
-- **NAVIGATION SYSTEM**: Implementado método `navigateTo()` para troca de views sem criar novas janelas
-- **TEMPLATE SWITCHING**: Troca dinâmica de templates baseada na view atual (home, chat7, conversation)
-- **LEGACY COMPATIBILITY**: Mantida compatibilidade com classes existentes `AgentHomeApplication`, `Chat7Application`, e `ChatConversationApplication`
-
-#### ✨ Added
-- **VIEW MANAGEMENT**: Adicionado gerenciamento de estado de views com propriedades `currentView` e `currentContact`
-- **REAL-TIME LISTENERS**: Integrados listeners de atualização em tempo real para cada tipo de view
-- **TEST SCRIPT**: Adicionado `test-single-instance.js` para verificar comportamento de navegação de instância única
-
-#### 🐛 Fixed
-- **NEW POPUPS**: Corrigido problema onde abrir chat do Agent Home criava novos popups em vez de navegar dentro da mesma instância
-- **APPLICATION ARCHITECTURE**: Eliminada criação de múltiplas janelas do Agent durante navegação entre telas
-- **POPUP PREVENTION**: Prevenida criação de novas janelas durante navegação entre screens
-
-#### 📚 Documentation
-- Scripts de teste para verificar navegação de instância única
-- Documentação sobre arquitetura unificada do Agent
-- Testes para prevenção de popups
-
----
+### Technical
+- Enhanced unread count management and caching
+- Improved real-time UI update mechanisms
+- Added better error handling for unread count operations
 
 ## [1.0.16] - 2024-12-29
 
-### 🔧 Changed - Chat7 Contact List Rendering
-
-#### 🔧 Changed
-- **REAL-TIME LISTENER**: Chat7Application agora possui listener em tempo real similar ao ChatConversationApplication
-- **EVENT DISPATCHING**: `handleMessageUpdate()` agora dispara eventos DOM para atualizações em tempo real
-- **RENDER METHOD**: Adicionado override ao método render do Chat7Application para garantir dados frescos
-- **LISTENER SETUP**: Integrado setup de listener em tempo real no método `activateListeners` do Chat7Application
-
-#### ✨ Added
-- **REAL-TIME LISTENER**: Adicionado método `_setupRealtimeListener()` ao Chat7Application para lidar com atualizações em tempo real
-- **EVENT DISPATCHING**: Melhorado `handleMessageUpdate()` para disparar eventos DOM para atualizações de interface em tempo real
-- **TEST SCRIPT**: Adicionado script de teste abrangente para funcionalidade de renderização do Chat7
-
-#### 🐛 Fixed
-- **RENDERING ON OPEN**: Lista de contatos agora renderiza com dados frescos toda vez que é aberta
-- **REAL-TIME UPDATES**: Lista de contatos agora atualiza quando novas mensagens chegam, similar à tela de conversa
-- **MARK AS READ UPDATES**: Lista de contatos atualiza quando opção "marcar todas como lidas" é usada
-- **EVENT HANDLING**: Chat7Application agora escuta eventos `cyberpunk-agent-update` com tipos `messageUpdate` e `contactUpdate`
-
-#### 📚 Documentation
-- Scripts de teste para verificar renderização da lista de contatos
-- Testes para atualizações em tempo real
-- Documentação sobre sistema de eventos em tempo real
-
----
-
-## [1.0.15] - 2024-12-28
-
-### 🔧 Changed - Save Success Notifications
-
-#### 🔧 Changed
-- **NOTIFICAÇÕES DE SALVAMENTO**: Notificação "Mensagens salvas com sucesso" movida para console log
-- **REDUÇÃO DE NOTIFICAÇÕES UI**: Menos notificações na interface, mais informações no console para debugging
-- **CONSISTÊNCIA**: Todas as notificações de sucesso do sistema agora vão para console log
-
-#### 🐛 Fixed
-- **NOTIFICAÇÕES DESNECESSÁRIAS**: Removida notificação "Mensagens salvas com sucesso" da UI
-- **EXPERIÊNCIA DO USUÁRIO**: Interface mais limpa, sem notificações de operações internas do sistema
-
-#### ✨ Added
-- Script de teste `test-notification-cleanup.js` para verificar limpeza das notificações
-
-#### 📚 Documentation
-- Notificações de salvamento agora aparecem apenas no console para debugging
-- Mantidas notificações de erro na UI para alertar usuários sobre problemas
-
----
-
-## [1.0.14] - 2024-12-28
-
-### 🐛 Fixed - Unread Message Chip Issues & UI Notifications
-
-#### 🔧 Changed
-- **NOTIFICAÇÕES UI REMOVIDAS**: Notificações de interface atualizada movidas para console log
-- **ATUALIZAÇÃO DE INTERFACE**: Chat7 agora re-renderiza completamente quando contadores mudam
-- **ESTRATÉGIA DE ATUALIZAÇÃO**: `_updateChat7Interfaces()` agora força re-render em vez de manipulação manual do DOM
-- **LOGGING MELHORADO**: Logs detalhados em `markConversationAsRead()` e `getUnreadCount()` para debugging
-
-#### ✨ Added
-- Script de teste `test-unread-chip-fix.js` para verificar correções dos chips de mensagens não lidas
-- Logs de debug para rastrear marcação de mensagens como lidas
-- Verificação de cache de contadores não lidos
-
-#### 🐛 Fixed
-- **CHIPS NÃO ZERAM**: Corrigido problema dos chips de mensagens não lidas não zerarem quando chat é aberto
-- **ATUALIZAÇÃO EM TEMPO REAL**: Corrigido chips não atualizarem quando novas mensagens chegam com Agent aberto na lista de contatos
-- **NOTIFICAÇÕES UI**: Removidas notificações de interface atualizada da UI, movidas para console
-- **RE-RENDERIZAÇÃO**: Interface Chat7 agora re-renderiza corretamente quando contadores mudam
-
-#### 📚 Documentation
-- Scripts de teste para verificar correções dos chips
-- Logs de debug para rastrear problemas de contadores
-- Testes para atualizações em tempo real
-
----
-
-## [1.0.13] - 2024-12-28
-
-### ✨ Added - Mark Messages as Read Functionality
-
-#### 🔧 Changed
-- **MARCAÇÃO AUTOMÁTICA**: Mensagens são marcadas como lidas automaticamente quando o chat é aberto
-- **ATUALIZAÇÃO EM TEMPO REAL**: Contadores de mensagens não lidas atualizam imediatamente
-- **MENU DE CONTEXTO EXPANDIDO**: Adicionada opção "Marcar Todos como Lidos" no menu de contexto
-- **INTERFACE RESPONSIVA**: Chat7 atualiza contadores em tempo real quando mensagens são marcadas como lidas
-
-#### ✨ Added
-- Script de teste `test-mark-as-read.js` para verificar funcionalidade completa
-- Função `_markAllMessagesAsRead()` para marcar mensagens via menu de contexto
-- Chamada automática de `markConversationAsRead()` quando ChatConversationApplication é aberto
-- Atualização automática de interfaces quando mensagens são marcadas como lidas
-- Opção "Marcar Todos como Lidos" no menu de contexto dos contatos
-
-#### 🐛 Fixed
-- **MARCAÇÃO AUTOMÁTICA**: Corrigido para marcar mensagens como lidas quando chat é aberto
-- **CONTADORES EM TEMPO REAL**: Contadores agora atualizam imediatamente quando mensagens são marcadas
-- **MENU DE CONTEXTO**: Adicionada funcionalidade completa para marcar mensagens como lidas
-- **SINCRONIZAÇÃO**: Interfaces atualizam corretamente após marcar mensagens como lidas
-
-#### 📚 Documentation
-- Scripts de teste para verificar marcação automática
-- Testes para menu de contexto e funcionalidade manual
-- Documentação sobre atualizações em tempo real
-- Testes para contadores de mensagens não lidas
-
----
-
-## [1.0.12] - 2024-12-28
-
-### 🐛 Fixed - Scroll Bar Visibility for Players
-
-#### 🔧 Changed
-- **CSS OVERFLOW CORRIGIDO**: Alterado `overflow: hidden` para `overflow-y: auto` e `overflow-x: hidden` nos containers principais
-- **SCROLL VERTICAL HABILITADO**: Agora permite scroll vertical quando necessário em todos os containers do Agent
-- **CONSISTÊNCIA GM/PLAYER**: Scroll bar agora aparece tanto para GM quanto para Players
-
-#### ✨ Added
-- Script de teste `test-scroll-issue.js` para diagnosticar problemas de scroll
-- Funções de teste para verificar propriedades CSS de scroll
-- Análise de altura de conteúdo vs container
-
-#### 🐛 Fixed
-- **BARRA DE SCROLL SUMIU**: Corrigido problema da barra de scroll que não aparecia para Players
-- **OVERFLOW HIDDEN**: Removido `overflow: hidden` que impedia scroll em `.cp-agent`, `.cp-agent .sheet-body` e `.cp-agent-phone`
-- **SCROLL LATERAL**: Mantido `overflow-x: hidden` para evitar scroll horizontal indesejado
-
-#### 📚 Documentation
-- Scripts de teste para diagnosticar problemas de scroll
-- Análise detalhada de propriedades CSS
-- Testes de funcionalidade de scroll manual
-
----
-
-## [1.0.11] - 2024-12-28
-
-### 🐛 Fixed - Automatic Scroll Behavior
-
-#### 🔧 Changed
-- **COMPORTAMENTO DE SCROLL REMOVIDO**: Removido scroll automático quando novas mensagens chegam
-- **CONTROLE DO USUÁRIO**: Posição do scroll agora permanece onde o usuário deixou
-- **APARIÇÃO IMEDIATA**: Mensagens ainda aparecem imediatamente mas sem forçar scroll para baixo
-- **EXPERIÊNCIA DO USUÁRIO**: Melhorada permitindo controle manual do scroll
-
-#### ✨ Added
-- Script de teste `test-scroll-behavior-fix.js` para verificar mudanças no comportamento de scroll
-- Funções de teste para verificar scroll manual vs automático
-- Documentação sobre mudanças no comportamento de scroll
-
-#### 🐛 Fixed
-- **SCROLL AUTOMÁTICO**: Removido scroll automático em atualizações em tempo real
-- **SCROLL NO FOCUS**: Removido scroll automático quando a janela ganha foco
-- **SCROLL APÓS ENVIAR**: Removido scroll automático após enviar mensagens
-- **CONTROLE MANUAL**: Métodos de scroll mantidos para uso manual quando necessário
-
-#### 📚 Documentation
-- Scripts de teste para verificar comportamento de scroll
-- Funções de teste para scroll manual
-- Testes para aparição imediata de mensagens
-
----
-
-## [1.0.10] - 2024-12-19
-
-### 🐛 Fixed - Infinite Message Loop
-
-#### 🔧 Changed
-- **FUNÇÃO `_sendSaveRequestViaSocketLib()`**: Agora retorna `false` quando falha em vez de assumir sucesso
-- **FUNÇÃO `handleSendMessage()`**: Adicionada verificação para filtrar mensagens do sistema
-- **FUNÇÃO `handleSaveMessages()`**: Corrigida para usar função específica para respostas do sistema
-- **NOVA FUNÇÃO `sendSystemResponseToUser()`**: Criada para enviar respostas do sistema sem causar loops
-
-#### ✨ Added
-- Script de teste `test-message-loop-fix.js` para verificar correção do loop
-- Função `sendSystemResponseToUser()` para respostas do sistema
-- Verificações para filtrar mensagens do sistema (`saveMessagesResponse`, `system`)
-- Testes para fluxo bidirecional de mensagens
-
-#### 🐛 Fixed
-- **LOOP INFINITO DE MENSAGENS**: Corrigido problema de mensagens de resposta do sistema causando loops
-- **MENSAGENS DO PLAYER PARA GM**: Agora devem chegar corretamente sem loops
-- **SALVAMENTO DE MENSAGENS**: Sistema de salvamento não causa mais loops infinitos
-- **CONSOLE LOGS**: Removidos logs repetitivos de "saveMessagesResponse"
-
-#### 📚 Documentation
-- Scripts de teste para verificar correção do loop
-- Funções de teste para fluxo bidirecional
-- Testes para condições originais do loop
-
----
-
-## [1.0.9] - 2024-12-19
-
-### 🔄 Major Refactoring - Business Rules Implementation
-
-#### 🔧 Changed
-- **SISTEMA DE MENSAGENS REFATORADO**: Corrigido salvamento de mensagens para players
-- **SISTEMA DE LEITURA/NÃO LEITURA**: Implementado status read/unread nas mensagens
-- **NOTIFICAÇÕES SIMPLIFICADAS**: Agora mostra apenas "Nova mensagem no Chat7"
-- **MENSAGENS PRIVADAS**: Todas as mensagens são privadas entre participantes
-- **CONTADORES EM TEMPO REAL**: Sistema de contadores não lidos baseado em status read/unread
-
-#### ✨ Added
-- Script de teste `test-business-rules.js` para verificar implementação das regras
-- Sistema de fallback para localStorage quando SocketLib falha
-- Função `loadMessages()` para carregar mensagens de diferentes fontes
-- Status `read: false` em todas as novas mensagens
-- Marcação automática de mensagens como lidas ao abrir chat
-
-#### 🐛 Fixed
-- **MENSAGENS DO PLAYER PARA GM**: Corrigido problema de mensagens não chegarem
-- **SALVAMENTO DE MENSAGENS**: Players agora conseguem salvar mensagens corretamente
-- **CONTADORES DE MENSAGENS**: Sistema agora funciona corretamente com status read/unread
-- **NOTIFICAÇÕES**: Seguem as regras especificadas (apenas "Nova mensagem no Chat7")
-
-#### 📚 Documentation
-- Scripts de teste para verificar regras de negócio
-- Funções de teste para fluxo GM-Player
-- Testes de sistema de notificações
-- Testes de permissões e controle de acesso
-
----
-
-## [1.0.8] - 2024-12-19
-
-### 🐛 Fixed - Permission Errors for Non-GM Users
-
-#### 🔧 Changed
-- **ESCOPO DE CONFIGURAÇÃO ALTERADO**: Configuração `last-read-timestamps` mudou de `scope: 'world'` para `scope: 'client'`
-- **SISTEMA HÍBRIDO DE ARMAZENAMENTO**: GMs usam settings, Players usam localStorage
-- **FUNÇÕES ROBUSTAS**: `_saveReadTimestamps()` e `_loadReadTimestamps()` com fallback para localStorage
-- **VERIFICAÇÃO DE PERMISSÕES**: Sistema detecta automaticamente o papel do usuário
-
-#### ✨ Added
-- Script de teste `test-permissions-fix.js` para verificar o fix
-- Sistema de fallback para localStorage quando settings falham
-- Funções de teste para verificar permissões e localStorage
-
-#### 📚 Documentation
-- Documentação sobre o fix de permissões (`docs/PERMISSIONS-FIX.md`)
-- Instruções de como testar o fix de permissões
-
----
-
-## [1.0.7] - 2024-12-19
-
-### 🐛 Fixed - SocketLib Error Logs
-
-#### 🔧 Changed
-- **VERIFICAÇÃO DE DISPONIBILIDADE MAIS FLEXÍVEL**: Função `_isSocketLibAvailable()` agora é menos restritiva
-- **LOGS DE ERRO REDUZIDOS**: Substituídos `console.error()` por `console.warn()` para logs de SocketLib
-- **NOTIFICAÇÕES REMOVIDAS**: Não são mais exibidas notificações de erro quando SocketLib está funcionando
-- **FUNÇÕES MAIS TOLERANTES**: Funções não retornam `false` desnecessariamente quando SocketLib não está disponível
-
-#### ✨ Added
-- Script de teste `test-socketlib-fix.js` para verificar o fix
-- Documentação detalhada sobre o fix do SocketLib
-- Funções de teste para verificar status do SocketLib
-
-#### 📚 Documentation
-- Documentação sobre o fix do SocketLib (`docs/SOCKETLIB-FIX.md`)
-- Instruções de como testar o fix
-
----
-
-## [1.0.6] - 2024-12-19
-
-### 🔄 Major Refactoring - SocketLib Only Communication
-
-#### ✨ Added
-- SocketLib agora é obrigatório como dependência
-- Melhor tratamento de erros para comunicação SocketLib
-- Notificações de erro mais informativas para usuários
-
-#### 🗑️ Removed
-- **Removido completamente** suporte a socket nativo do FoundryVTT
-- **Removido completamente** sistema de comunicação via chat
-- **Removido** configuração de método de comunicação (agora apenas SocketLib)
-- **Removido** funções de fallback para socket nativo e chat
-- **Removido** listeners de chat para eventos do sistema
-- **Removido** funções de teste para socket nativo e chat
-
-#### 🔧 Changed
-- **REFATORAÇÃO MAJOR**: Módulo agora usa exclusivamente SocketLib para comunicação
-- Simplificação significativa do código de comunicação
-- Melhorias na estabilidade e performance da comunicação
-- Código mais limpo e fácil de manter
-- Todas as funções de comunicação agora verificam se SocketLib está disponível
-- Mensagens de erro mais claras quando SocketLib não está disponível
-
-#### 🐛 Fixed
-- Eliminação de conflitos entre diferentes métodos de comunicação
-- Melhor consistência na comunicação entre clientes
-- Redução de bugs relacionados a métodos de comunicação mistos
-- **CRÍTICO**: Adicionado `"socket": true` no `module.json` para compatibilidade com SocketLib
-- Validação de métodos do SocketLib para evitar chamadas de funções indefinidas
-- Verificações seguras para todos os métodos do SocketLib
-
-#### 📚 Documentation
-- README atualizado para refletir mudanças
-- Documentação sobre por que apenas SocketLib é usado
-- Instruções de instalação atualizadas
-
----
-
-## [1.0.5] - 2024-12-18
-
-### ✨ Added
-- Sistema de mute para contatos
-- Contatos anônimos para mensagens de jogadores não adicionados
-- Melhorias na interface de usuário
-- Sistema de notificações sonoras aprimorado
-
-### 🔧 Changed
-- Melhorias na performance do sistema de mensagens
-- Interface mais responsiva
-- Melhor integração com o chat do FoundryVTT
-
-### 🐛 Fixed
-- Correções em bugs de sincronização
-- Melhorias na estabilidade da comunicação em tempo real
-
----
-
-## [1.0.4] - 2024-12-17
-
-### ✨ Added
-- Sistema de mensagens em tempo real
-- Integração com SocketLib
-- Interface cyberpunk moderna
-- Gerenciamento de contatos
-
-### 🔧 Changed
-- Melhorias na interface de usuário
-- Otimizações de performance
-
-### 🐛 Fixed
-- Correções em bugs de interface
-- Melhorias na estabilidade
-
----
-
-## [1.0.3] - 2024-12-16
-
-### ✨ Added
-- Sistema básico de mensagens
-- Interface inicial do Agent
-- Integração básica com FoundryVTT
-
-### 🔧 Changed
-- Melhorias na estrutura do código
-- Otimizações iniciais
-
----
-
-## [1.0.2] - 2024-12-15
-
-### ✨ Added
-- Estrutura inicial do módulo
-- Configurações básicas
-- Sistema de localização
-
----
-
-## [1.0.1] - 2024-12-14
-
-### ✨ Added
-- Primeira versão do módulo
-- Estrutura básica
-- Manifesto do módulo
-
----
-
-## [1.0.0] - 2024-12-13
-
-### ✨ Added
-- Lançamento inicial do Cyberpunk Agent
-- Sistema básico de mensagens
-- Interface cyberpunk
-- Integração com FoundryVTT 
+### Changed
+- **Notification System**: Moved notifications from UI to console:
+  - Removed "interface updated" notifications from UI
+  - Moved "Mensagens salvas com sucesso" notifications to console
+  - Enhanced console logging for better debugging
+
+### Technical
+- Replaced `ui.notifications.info` calls with `console.log`
+- Improved console logging for system operations
+- Enhanced debugging information in console
+
+## [1.0.15] - 2024-12-29
+
+### Added
+- **Enhanced Contact Management**: Added new contact management features:
+  - "Mark all messages as read" option in contact context menu
+  - Real-time unread count updates in contact list
+  - Automatic marking of messages as read when opening chat
+  - Enhanced contact list UI with better unread message indicators
+
+### Technical
+- Added `markConversationAsRead()` method for bulk read operations
+- Enhanced unread count tracking and display
+- Improved contact list UI with real-time updates
+
+## [1.0.14] - 2024-12-29
+
+### Fixed
+- **Scrollbar Issues**: Fixed scrollbar visibility problems:
+  - Added scrollbar for players in Agent interface
+  - Changed CSS from `overflow: hidden` to `overflow-y: auto; overflow-x: hidden`
+  - Ensured consistent scrollbar behavior for both GM and players
+
+### Technical
+- Updated CSS classes for better scrollbar management
+- Enhanced overflow handling in Agent interface
+- Improved user experience for both GM and players
+
+## [1.0.13] - 2024-12-29
+
+### Changed
+- **Chat Scrolling Behavior**: Modified chat interface scrolling:
+  - Removed automatic scroll to bottom on new messages
+  - Messages still appear immediately but scroll remains manual
+  - Improved user control over chat navigation
+
+### Technical
+- Removed `_scrollToBottom()` and `_scrollToBottomOnNewMessage()` calls
+- Enhanced chat interface for manual scroll control
+- Maintained real-time message display without forced scrolling
+
+## [1.0.12] - 2024-12-29
+
+### Fixed
+- **Message Flow Issues**: Fixed critical message flow problems:
+  - Player messages not reaching GM
+  - Infinite console loop with system messages
+  - Enhanced message filtering to prevent system message loops
+  - Improved SocketLib communication reliability
+
+### Technical
+- Added system message filtering in `handleSendMessage()`
+- Fixed `_sendSaveRequestViaSocketLib()` return value handling
+- Enhanced error handling for SocketLib communications
+- Improved message flow between GM and players
+
+## [1.0.11] - 2024-12-29
+
+### Fixed
+- **Player Permission Issues**: Fixed permission-related errors:
+  - `User Bruno lacks permission to update Setting` error
+  - Changed `last-read-timestamps` setting scope to `client`
+  - Implemented hybrid `game.settings`/`localStorage` persistence for read timestamps
+  - Enhanced permission handling for different user roles
+
+### Technical
+- Updated setting scope for better permission management
+- Enhanced read timestamp persistence strategy
+- Improved error handling for permission-related operations
+
+## [1.0.10] - 2024-12-29
+
+### Fixed
+- **SocketLib Error Logs**: Fixed false positive SocketLib error logs:
+  - Relaxed `_isSocketLibAvailable()` logic to reduce false positives
+  - Suppressed error notifications when SocketLib is actually working
+  - Enhanced SocketLib availability checking
+
+### Technical
+- Improved SocketLib availability detection
+- Enhanced error logging to reduce noise
+- Better handling of SocketLib integration status
+
+## [1.0.9] - 2024-12-29
+
+### Added
+- **Real-time Chat Functionality**: Implemented real-time chat between GM and players:
+  - SocketLib integration for real-time message exchange
+  - Live message updates without page refresh
+  - Enhanced user experience with immediate message delivery
+
+### Technical
+- Added SocketLib integration for real-time communications
+- Implemented message synchronization across clients
+- Enhanced chat interface with real-time updates
+
+## [1.0.8] - 2024-12-29
+
+### Added
+- **Contact Management System**: Implemented comprehensive contact management:
+  - Contact Manager interface for GM to manage character contacts
+  - Contact assignment and removal functionality
+  - Contact list display in Agent interface
+  - Enhanced contact management workflow
+
+### Technical
+- Added ContactManagerApplication class
+- Implemented contact assignment and management logic
+- Enhanced Agent interface with contact list functionality
+
+## [1.0.7] - 2024-12-29
+
+### Added
+- **Agent Interface**: Implemented main Agent interface:
+  - AgentHomeApplication for main Agent screen
+  - Chat7Application for messaging functionality
+  - Basic messaging system between characters
+  - Enhanced user interface for Agent operations
+
+### Technical
+- Added AgentHomeApplication and Chat7Application classes
+- Implemented basic messaging functionality
+- Enhanced UI components for Agent interface
+
+## [1.0.6] - 2024-12-29
+
+### Added
+- **Token Control Integration**: Added Agent access through token controls:
+  - Agent button in token control toolbar
+  - Easy access to Agent interface for character management
+  - Enhanced integration with FoundryVTT token system
+
+### Technical
+- Added token control button integration
+- Enhanced Agent accessibility through token controls
+- Improved user experience for Agent access
+
+## [1.0.5] - 2024-12-29
+
+### Added
+- **Basic Module Structure**: Implemented foundational module structure:
+  - Core CyberpunkAgent class
+  - Basic settings registration
+  - Module initialization and cleanup
+  - Enhanced module architecture
+
+### Technical
+- Added core CyberpunkAgent class implementation
+- Implemented basic settings management
+- Enhanced module lifecycle management
+
+## [1.0.4] - 2024-12-29
+
+### Added
+- **Initial Module Setup**: Created basic module infrastructure:
+  - Module manifest and configuration
+  - Basic file structure and organization
+  - Initial CSS styling
+  - Enhanced module foundation
+
+### Technical
+- Created module.json with basic configuration
+- Implemented initial CSS styling
+- Enhanced module file organization
+
+## [1.0.3] - 2024-12-29
+
+### Added
+- **Project Foundation**: Established project foundation:
+  - Basic project structure
+  - Initial documentation
+  - Enhanced project organization
+
+### Technical
+- Created basic project structure
+- Added initial documentation
+- Enhanced project organization
+
+## [1.0.2] - 2024-12-29
+
+### Added
+- **Initial Development**: Started initial development:
+  - Basic module concept
+  - Enhanced development planning
+
+### Technical
+- Started initial module development
+- Enhanced development planning
+
+## [1.0.1] - 2024-12-29
+
+### Added
+- **Project Initialization**: Initialized project:
+  - Basic project setup
+  - Enhanced project initialization
+
+### Technical
+- Initialized project structure
+- Enhanced project setup
+
+## [1.0.0] - 2024-12-29
+
+### Added
+- **Initial Release**: First release of Cyberpunk Agent module:
+  - Basic module functionality
+  - Enhanced initial features
+
+### Technical
+- Initial module release
+- Enhanced basic functionality 

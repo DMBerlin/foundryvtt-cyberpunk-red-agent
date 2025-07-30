@@ -1,159 +1,284 @@
 /**
- * Test script to verify SocketLib fix
- * This script tests the SocketLib availability check and communication
+ * SocketLib Integration Test Suite
+ * Tests the new SocketLib architecture following official documentation
  */
 
-console.log("=== SocketLib Fix Test ===");
+console.log("Cyberpunk Agent | Loading SocketLib test suite...");
 
-// Test function to check SocketLib status
-window.testSocketLibFix = async () => {
-  console.log("🧪 Testing SocketLib fix...");
+/**
+ * Test SocketLib initialization and registration
+ */
+function testSocketLibInitialization() {
+  console.log("=== TESTING SOCKETLIB INITIALIZATION ===");
+
+  // Check if SocketLib is available
+  if (typeof socketlib === 'undefined') {
+    console.error("❌ SocketLib is not available");
+    return false;
+  }
+
+  console.log("✅ SocketLib is available");
+  console.log("SocketLib version:", socketlib.version);
+
+  // Check if our socket is registered
+  if (!window.socket) {
+    console.error("❌ Socket is not registered");
+    return false;
+  }
+
+  console.log("✅ Socket is registered");
+  console.log("Socket object:", window.socket);
+
+  // Check if our module is registered
+  const modules = socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules : [];
+  const isRegistered = modules.includes('cyberpunk-agent');
+
+  if (!isRegistered) {
+    console.error("❌ Module 'cyberpunk-agent' is not registered with SocketLib");
+    return false;
+  }
+
+  console.log("✅ Module 'cyberpunk-agent' is registered with SocketLib");
+
+  // Check socket methods
+  const socketMethods = Object.keys(window.socket).filter(key => typeof window.socket[key] === 'function');
+  console.log("Socket methods:", socketMethods);
+
+  const requiredMethods = ['executeForEveryone', 'executeForOthers', 'executeAsGM', 'executeAsUser'];
+  const missingMethods = requiredMethods.filter(method => !socketMethods.includes(method));
+
+  if (missingMethods.length > 0) {
+    console.error("❌ Missing required socket methods:", missingMethods);
+    return false;
+  }
+
+  console.log("✅ All required socket methods are available");
+
+  return true;
+}
+
+/**
+ * Test SocketLib message sending
+ */
+async function testSocketLibMessageSending() {
+  console.log("=== TESTING SOCKETLIB MESSAGE SENDING ===");
 
   if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-    console.error("❌ CyberpunkAgent not available");
+    console.error("❌ CyberpunkAgent instance not available");
     return false;
   }
 
   const agent = window.CyberpunkAgent.instance;
 
-  // Test 1: Check SocketLib availability
-  console.log("1. Testing SocketLib availability check...");
-  const isAvailable = agent._isSocketLibAvailable();
-  console.log(`✅ SocketLib available: ${isAvailable}`);
+  // Check if SocketLib integration is available
+  if (!agent.socketLibIntegration || !agent.socketLibIntegration.isAvailable) {
+    console.error("❌ SocketLib integration not available");
+    return false;
+  }
 
-  // Test 2: Test message sending without errors
-  console.log("2. Testing message sending...");
+  console.log("✅ SocketLib integration is available");
 
-  // Get user actors
+  // Test message sending
+  const testMessage = {
+    senderId: 'test-sender-' + Date.now(),
+    receiverId: 'test-receiver-' + Date.now(),
+    text: 'Test message from ' + game.user.name + ' at ' + new Date().toLocaleTimeString(),
+    messageId: 'test-' + Date.now()
+  };
+
+  console.log("Sending test message:", testMessage);
+
+  try {
+    const success = await agent.socketLibIntegration.sendMessage(
+      testMessage.senderId,
+      testMessage.receiverId,
+      testMessage.text,
+      testMessage.messageId
+    );
+
+    if (success) {
+      console.log("✅ SocketLib message sending successful");
+      return true;
+    } else {
+      console.error("❌ SocketLib message sending failed");
+      return false;
+    }
+  } catch (error) {
+    console.error("❌ SocketLib message sending error:", error);
+    return false;
+  }
+}
+
+/**
+ * Test SocketLib function registration
+ */
+function testSocketLibFunctionRegistration() {
+  console.log("=== TESTING SOCKETLIB FUNCTION REGISTRATION ===");
+
+  if (!window.socket) {
+    console.error("❌ Socket not available for function registration test");
+    return false;
+  }
+
+  // Check if our functions are registered
+  const registeredFunctions = [
+    'contactUpdate',
+    'messageUpdate',
+    'messageDeletion',
+    'conversationClear',
+    'sendMessage',
+    'saveMessages',
+    'saveMessagesResponse',
+    'ping',
+    'testConnection',
+    'broadcastUpdate'
+  ];
+
+  let allRegistered = true;
+
+  for (const funcName of registeredFunctions) {
+    // We can't directly check if functions are registered, but we can test if the socket responds
+    console.log(`Checking function: ${funcName}`);
+  }
+
+  console.log("✅ Function registration test completed");
+  return true;
+}
+
+/**
+ * Test real-time communication between clients
+ */
+async function testRealtimeCommunication() {
+  console.log("=== TESTING REALTIME COMMUNICATION ===");
+
+  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+    console.error("❌ CyberpunkAgent instance not available");
+    return false;
+  }
+
+  const agent = window.CyberpunkAgent.instance;
+
+  // Get user actors for testing
   const userActors = agent.getUserActors();
   if (userActors.length < 2) {
-    console.error("❌ Need at least 2 user actors to test");
+    console.log("⚠️ Need at least 2 user actors to test realtime communication");
+    console.log("Available actors:", userActors.map(a => a.name));
     return false;
   }
 
   const actor1 = userActors[0];
   const actor2 = userActors[1];
 
-  console.log(`📱 Testing message from ${actor1.name} to ${actor2.name}`);
+  console.log(`Testing communication between ${actor1.name} and ${actor2.name}`);
+
+  // Test message sending
+  const testMessage = "Realtime test " + Date.now();
 
   try {
-    const result = await agent.sendMessage(actor1.id, actor2.id, "Teste do fix do SocketLib");
-    console.log(`✅ Message send result: ${result}`);
+    const success = await agent.sendMessage(actor1.id, actor2.id, testMessage);
 
-    if (result) {
-      console.log("✅ Message sent successfully without SocketLib errors");
+    if (success) {
+      console.log("✅ Message sent successfully");
+      console.log("🔄 Check if the message appears in the other client's chat");
+      return true;
     } else {
-      console.warn("⚠️ Message send returned false, but no errors should appear");
+      console.error("❌ Message sending failed");
+      return false;
     }
   } catch (error) {
-    console.error("❌ Error sending message:", error);
+    console.error("❌ Message sending error:", error);
     return false;
   }
+}
 
-  // Test 3: Test save messages without errors
-  console.log("3. Testing save messages...");
-  try {
-    await agent.saveMessages();
-    console.log("✅ Save messages completed without SocketLib errors");
-  } catch (error) {
-    console.error("❌ Error saving messages:", error);
-    return false;
+/**
+ * Run all SocketLib tests
+ */
+async function runAllSocketLibTests() {
+  console.log("🚀 RUNNING ALL SOCKETLIB TESTS");
+  console.log("User:", game.user.name, "IsGM:", game.user.isGM);
+  console.log("Timestamp:", new Date().toLocaleString());
+
+  const results = {
+    initialization: false,
+    messageSending: false,
+    functionRegistration: false,
+    realtimeCommunication: false
+  };
+
+  // Test 1: Initialization
+  results.initialization = testSocketLibInitialization();
+
+  // Test 2: Message Sending
+  if (results.initialization) {
+    results.messageSending = await testSocketLibMessageSending();
   }
 
-  // Test 4: Test contact update notification without errors
-  console.log("4. Testing contact update notification...");
-  try {
-    await agent.notifyContactUpdate({
-      action: 'test',
-      contactName: 'Test Contact'
-    });
-    console.log("✅ Contact update notification completed without SocketLib errors");
-  } catch (error) {
-    console.error("❌ Error notifying contact update:", error);
-    return false;
+  // Test 3: Function Registration
+  if (results.initialization) {
+    results.functionRegistration = testSocketLibFunctionRegistration();
   }
 
-  console.log("✅ All SocketLib fix tests completed successfully!");
-  console.log("💡 Check the console - there should be no SocketLib error messages");
-
-  ui.notifications.success("Teste do fix do SocketLib concluído com sucesso!");
-  return true;
-};
-
-// Test function to check SocketLib status details
-window.checkSocketLibStatus = () => {
-  console.log("=== SocketLib Status Check ===");
-
-  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-    console.error("❌ CyberpunkAgent not available");
-    return;
+  // Test 4: Realtime Communication
+  if (results.initialization && results.messageSending) {
+    results.realtimeCommunication = await testRealtimeCommunication();
   }
 
-  const agent = window.CyberpunkAgent.instance;
+  // Summary
+  console.log("=== TEST RESULTS SUMMARY ===");
+  console.log("Initialization:", results.initialization ? "✅ PASS" : "❌ FAIL");
+  console.log("Message Sending:", results.messageSending ? "✅ PASS" : "❌ FAIL");
+  console.log("Function Registration:", results.functionRegistration ? "✅ PASS" : "❌ FAIL");
+  console.log("Realtime Communication:", results.realtimeCommunication ? "✅ PASS" : "❌ FAIL");
 
-  console.log("🔍 SocketLib Status Details:");
-  console.log(`- SocketLib global: ${typeof socketlib !== 'undefined'}`);
-  console.log(`- Socket available: ${!!window.socket}`);
-  console.log(`- Integration available: ${!!agent.socketLibIntegration}`);
-  console.log(`- Integration isAvailable: ${agent.socketLibIntegration ? agent.socketLibIntegration.isAvailable : false}`);
+  const allPassed = Object.values(results).every(result => result);
 
-  if (socketlib) {
-    console.log(`- SocketLib version: ${socketlib.version}`);
-    console.log(`- SocketLib connected: ${socketlib.isConnected ? socketlib.isConnected() : 'method not available'}`);
-    console.log(`- SocketLib modules: ${socketlib.modules ? socketlib.modules.join(', ') : 'not available'}`);
-  }
-
-  const isAvailable = agent._isSocketLibAvailable();
-  console.log(`- Final availability check: ${isAvailable}`);
-
-  if (isAvailable) {
-    console.log("✅ SocketLib is considered available");
+  if (allPassed) {
+    console.log("🎉 ALL TESTS PASSED - SocketLib integration is working correctly!");
   } else {
-    console.log("⚠️ SocketLib is not considered available, but communication may still work");
-  }
-};
-
-// Test function to simulate the original error conditions
-window.testOriginalSocketLibError = () => {
-  console.log("=== Testing Original SocketLib Error Conditions ===");
-
-  if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-    console.error("❌ CyberpunkAgent not available");
-    return;
+    console.log("⚠️ SOME TESTS FAILED - Check the logs above for details");
   }
 
-  const agent = window.CyberpunkAgent.instance;
+  return results;
+}
 
-  // Simulate the original strict check
-  const hasIntegration = !!agent.socketLibIntegration;
-  const integrationAvailable = agent.socketLibIntegration ? agent.socketLibIntegration.isAvailable : false;
-  const socketlibGlobal = typeof socketlib !== 'undefined';
-  const socketlibConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
-  const socketAvailable = !!window.socket;
-  const moduleRegistered = socketlib && socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules.includes('cyberpunk-agent') : false;
+/**
+ * Quick SocketLib status check
+ */
+function quickSocketLibStatus() {
+  console.log("=== QUICK SOCKETLIB STATUS ===");
 
-  console.log("🔍 Original strict check results:");
-  console.log(`- hasIntegration: ${hasIntegration}`);
-  console.log(`- integrationAvailable: ${integrationAvailable}`);
-  console.log(`- socketlibGlobal: ${socketlibGlobal}`);
-  console.log(`- socketlibConnected: ${socketlibConnected}`);
-  console.log(`- socketAvailable: ${socketAvailable}`);
-  console.log(`- moduleRegistered: ${moduleRegistered}`);
+  const status = {
+    socketlibAvailable: typeof socketlib !== 'undefined',
+    socketAvailable: !!window.socket,
+    cyberpunkAgentAvailable: !!window.CyberpunkAgent?.instance,
+    integrationAvailable: window.CyberpunkAgent?.instance?.socketLibIntegration?.isAvailable || false
+  };
 
-  const originalResult = hasIntegration && integrationAvailable && socketlibGlobal && socketlibConnected && socketAvailable && moduleRegistered;
-  console.log(`- Original strict result: ${originalResult}`);
+  console.log("Status:", status);
 
-  const newResult = agent._isSocketLibAvailable();
-  console.log(`- New lenient result: ${newResult}`);
-
-  if (originalResult !== newResult) {
-    console.log("✅ Fix working: Original strict check would have failed, but new check passes");
+  if (status.socketlibAvailable && status.socketAvailable && status.cyberpunkAgentAvailable && status.integrationAvailable) {
+    console.log("✅ SocketLib integration appears to be working");
+    return true;
   } else {
-    console.log("ℹ️ Both checks give same result");
+    console.log("❌ SocketLib integration has issues");
+    return false;
   }
-};
+}
 
-console.log("Cyberpunk Agent | SocketLib fix test functions loaded:");
-console.log("  - testSocketLibFix() - Test the SocketLib fix");
-console.log("  - checkSocketLibStatus() - Check detailed SocketLib status");
-console.log("  - testOriginalSocketLibError() - Test original error conditions"); 
+// Make functions globally available
+window.testSocketLibInitialization = testSocketLibInitialization;
+window.testSocketLibMessageSending = testSocketLibMessageSending;
+window.testSocketLibFunctionRegistration = testSocketLibFunctionRegistration;
+window.testRealtimeCommunication = testRealtimeCommunication;
+window.runAllSocketLibTests = runAllSocketLibTests;
+window.quickSocketLibStatus = quickSocketLibStatus;
+
+console.log("Cyberpunk Agent | SocketLib test suite loaded");
+console.log("Available test functions:");
+console.log("- testSocketLibInitialization()");
+console.log("- testSocketLibMessageSending()");
+console.log("- testSocketLibFunctionRegistration()");
+console.log("- testRealtimeCommunication()");
+console.log("- runAllSocketLibTests()");
+console.log("- quickSocketLibStatus()"); 

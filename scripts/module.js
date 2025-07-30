@@ -52,8 +52,26 @@ class UIController {
      * Mark multiple components as dirty
      */
     markDirtyMultiple(componentIds) {
-        componentIds.forEach(id => this.dirtyComponents.add(id));
-        console.log(`UIController | Marked multiple components as dirty:`, componentIds);
+        const validComponentIds = [];
+        const invalidComponentIds = [];
+
+        componentIds.forEach(id => {
+            if (this.components.has(id)) {
+                this.dirtyComponents.add(id);
+                validComponentIds.push(id);
+            } else {
+                invalidComponentIds.push(id);
+            }
+        });
+
+        if (validComponentIds.length > 0) {
+            console.log(`UIController | Marked valid components as dirty:`, validComponentIds);
+        }
+
+        if (invalidComponentIds.length > 0) {
+            console.log(`UIController | Skipped invalid components (not registered):`, invalidComponentIds);
+        }
+
         this.scheduleUpdate();
     }
 
@@ -61,10 +79,11 @@ class UIController {
      * Mark all components as dirty
      */
     markAllDirty() {
-        this.components.forEach((_, componentId) => {
+        const componentIds = Array.from(this.components.keys());
+        componentIds.forEach(componentId => {
             this.dirtyComponents.add(componentId);
         });
-        console.log(`UIController | Marked all components as dirty`);
+        console.log(`UIController | Marked all ${componentIds.length} components as dirty:`, componentIds);
         this.scheduleUpdate();
     }
 
@@ -93,6 +112,9 @@ class UIController {
         this.isUpdating = true;
         console.log(`UIController | Starting update cycle for ${this.dirtyComponents.size} components`);
 
+        // Clean up orphaned components before processing
+        const orphanedCount = this.cleanupOrphanedComponents();
+
         const componentsToUpdate = Array.from(this.dirtyComponents);
         this.dirtyComponents.clear();
 
@@ -109,12 +131,14 @@ class UIController {
                     console.error(`UIController | Error updating component ${componentId}:`, error);
                 }
             } else {
-                console.warn(`UIController | Component or callback not found for: ${componentId}`);
+                // Component was removed or never existed - clean up dirty state
+                console.log(`UIController | Component not found for: ${componentId} - cleaning up dirty state`);
+                this.dirtyComponents.delete(componentId);
             }
         });
 
         this.isUpdating = false;
-        console.log(`UIController | Update cycle completed`);
+        console.log(`UIController | Update cycle completed (cleaned up ${orphanedCount} orphaned components)`);
 
         // Check if more updates were queued during this cycle
         if (this.dirtyComponents.size > 0) {
@@ -141,6 +165,44 @@ class UIController {
      */
     getComponent(componentId) {
         return this.components.get(componentId);
+    }
+
+    /**
+     * Clean up orphaned components and dirty states
+     */
+    cleanupOrphanedComponents() {
+        const orphanedDirtyComponents = [];
+
+        // Find dirty components that no longer exist
+        this.dirtyComponents.forEach(componentId => {
+            if (!this.components.has(componentId)) {
+                orphanedDirtyComponents.push(componentId);
+            }
+        });
+
+        // Remove orphaned components from dirty state
+        orphanedDirtyComponents.forEach(componentId => {
+            this.dirtyComponents.delete(componentId);
+        });
+
+        if (orphanedDirtyComponents.length > 0) {
+            console.log(`UIController | Cleaned up ${orphanedDirtyComponents.length} orphaned dirty components:`, orphanedDirtyComponents);
+        }
+
+        return orphanedDirtyComponents.length;
+    }
+
+    /**
+     * Get status information for debugging
+     */
+    getStatus() {
+        return {
+            totalComponents: this.components.size,
+            dirtyComponents: this.dirtyComponents.size,
+            isUpdating: this.isUpdating,
+            componentIds: Array.from(this.components.keys()),
+            dirtyComponentIds: Array.from(this.dirtyComponents)
+        };
     }
 }
 
@@ -177,6 +239,7 @@ class CyberpunkAgent {
     static registerSettings() {
         console.log("Cyberpunk Agent | Registering settings...");
 
+        // Only keep contact networks setting for GM management
         game.settings.register('cyberpunk-agent', 'contact-networks', {
             name: 'Redes de Contatos',
             hint: 'Configure as redes de contatos para cada Actor',
@@ -186,62 +249,7 @@ class CyberpunkAgent {
             default: {}
         });
 
-        game.settings.register('cyberpunk-agent', 'agent-data', {
-            name: 'Agent Data',
-            hint: 'Dados internos do Agent',
-            scope: 'world',
-            config: false,
-            type: Object,
-            default: {}
-        });
-
-        game.settings.register('cyberpunk-agent', 'messages', {
-            name: 'Messages',
-            hint: 'Mensagens entre personagens',
-            scope: 'world',
-            config: false,
-            type: Object,
-            default: {}
-        });
-
-        game.settings.register('cyberpunk-agent', 'last-read-timestamps', {
-            name: 'Last Read Timestamps',
-            hint: 'Timestamps da última leitura de mensagens por conversa',
-            scope: 'client',
-            config: false,
-            type: Object,
-            default: {}
-        });
-
-        // SocketLib is now required for communication
-        game.settings.register('cyberpunk-agent', 'socketlib-status', {
-            name: 'Status do SocketLib',
-            hint: 'Status da conexão SocketLib para comunicação em tempo real',
-            scope: 'client',
-            config: false,
-            type: String,
-            default: 'checking'
-        });
-
-        game.settings.register('cyberpunk-agent', 'private-messages', {
-            name: 'Mensagens Privadas',
-            hint: 'Torna as mensagens do Agent privadas entre os participantes',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: true
-        });
-
-        game.settings.register('cyberpunk-agent', 'notification-sound', {
-            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND'),
-            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND_HINT'),
-            scope: 'client',
-            config: true,
-            type: Boolean,
-            default: true
-        });
-
-        // Register a custom settings menu for Cyberpunk Agent
+        // Register a custom settings menu for Cyberpunk Agent (Contact Manager only)
         game.settings.registerMenu('cyberpunk-agent', 'contact-manager-menu', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_BUTTON'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.CONTACT_MANAGER_HINT'),
@@ -249,175 +257,6 @@ class CyberpunkAgent {
             icon: 'fas fa-users',
             type: ContactManagerMenu,
             restricted: true
-        });
-
-        // Register direct Contact Manager button
-        game.settings.register('cyberpunk-agent', 'contact-manager-button', {
-            name: 'Gerenciador de Contatos',
-            hint: 'Clique para abrir diretamente o Gerenciador de Contatos',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: false,
-            onChange: (value) => {
-                if (value) {
-                    // Reset the setting immediately
-                    game.settings.set('cyberpunk-agent', 'contact-manager-button', false);
-
-                    // Open Contact Manager directly
-                    if (!game.user.isGM) {
-                        ui.notifications.warn('Apenas GMs podem acessar o Gerenciador de Contatos');
-                        return;
-                    }
-
-                    // Play opening sound effect
-                    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-                        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
-                    }
-
-                    const ContactClass = ContactManagerApplication || window.ContactManagerApplication;
-                    if (typeof ContactClass !== 'undefined') {
-                        const contactManager = new ContactClass();
-                        contactManager.render(true);
-                    } else {
-                        console.error("Cyberpunk Agent | ContactManagerApplication not loaded!");
-                        ui.notifications.error("Erro ao carregar o Gerenciador de Contatos. Tente recarregar a página (F5).");
-                    }
-                }
-            }
-        });
-
-        // Register data cleanup setting
-        game.settings.register('cyberpunk-agent', 'clear-all-data', {
-            name: 'Limpar Todos os Dados',
-            hint: 'Remove todas as conexões entre contatos e todas as mensagens salvas. ATENÇÃO: Esta ação não pode ser desfeita!',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: false,
-            onChange: (value) => {
-                if (value) {
-                    // Reset the setting immediately
-                    game.settings.set('cyberpunk-agent', 'clear-all-data', false);
-
-                    // Show confirmation dialog
-                    new Dialog({
-                        title: 'Confirmar Limpeza de Dados',
-                        content: `
-                            <div style="padding: 20px;">
-                                <h3 style="color: #ff0033; margin-bottom: 15px;">⚠️ ATENÇÃO ⚠️</h3>
-                                <p style="margin-bottom: 15px;">Você está prestes a <strong>DELETAR PERMANENTEMENTE</strong>:</p>
-                                <ul style="margin-bottom: 20px; padding-left: 20px;">
-                                    <li>Todas as conexões entre contatos</li>
-                                    <li>Todas as mensagens salvas</li>
-                                    <li>Todos os dados do Agent</li>
-                                </ul>
-                                <p style="color: #ff0033; font-weight: bold;">Esta ação NÃO pode ser desfeita!</p>
-                                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
-                                <input type="text" id="confirmText" style="width: 100%; margin-top: 10px; padding: 8px; border: 2px solid #ff0033; border-radius: 4px;">
-                            </div>
-                        `,
-                        buttons: {
-                            confirm: {
-                                label: 'Limpar Dados',
-                                icon: '<i class="fas fa-trash"></i>',
-                                callback: (html) => {
-                                    const confirmText = html.find('#confirmText').val();
-                                    if (confirmText === 'CONFIRMAR') {
-                                        CyberpunkAgent.instance.clearAllData();
-                                        ui.notifications.info('Todos os dados foram limpos com sucesso!');
-                                    } else {
-                                        ui.notifications.warn('Texto de confirmação incorreto. Operação cancelada.');
-                                    }
-                                }
-                            },
-                            cancel: {
-                                label: 'Cancelar',
-                                icon: '<i class="fas fa-times"></i>'
-                            }
-                        },
-                        default: 'cancel'
-                    }).render(true);
-                }
-            }
-        });
-
-        // Register sound effects test button
-        game.settings.register('cyberpunk-agent', 'test-sound-effects', {
-            name: 'Testar Efeitos Sonoros',
-            hint: 'Clique para testar os efeitos sonoros de abertura e fechamento',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: false,
-            onChange: (value) => {
-                if (value) {
-                    // Reset the setting immediately
-                    game.settings.set('cyberpunk-agent', 'test-sound-effects', false);
-
-                    // Test sound effects
-                    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-                        window.CyberpunkAgent.instance.testSoundEffects();
-                    } else {
-                        ui.notifications.error("Cyberpunk Agent não está disponível!");
-                    }
-                }
-            }
-        });
-
-        // Register data cleanup button setting
-        game.settings.register('cyberpunk-agent', 'clear-all-data-button', {
-            name: 'Limpar Todos os Dados',
-            hint: 'Clique para abrir o diálogo de confirmação para limpar todos os dados',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: false,
-            onChange: (value) => {
-                if (value) {
-                    // Reset the setting immediately
-                    game.settings.set('cyberpunk-agent', 'clear-all-data-button', false);
-
-                    // Show confirmation dialog
-                    new Dialog({
-                        title: 'Confirmar Limpeza de Dados',
-                        content: `
-                            <div style="padding: 20px;">
-                                <h3 style="color: #ff0033; margin-bottom: 15px;">⚠️ ATENÇÃO ⚠️</h3>
-                                <p style="margin-bottom: 15px;">Você está prestes a <strong>DELETAR PERMANENTEMENTE</strong>:</p>
-                                <ul style="margin-bottom: 20px; padding-left: 20px;">
-                                    <li>Todas as conexões entre contatos</li>
-                                    <li>Todas as mensagens salvas</li>
-                                    <li>Todos os dados do Agent</li>
-                                </ul>
-                                <p style="color: #ff0033; font-weight: bold;">Esta ação NÃO pode ser desfeita!</p>
-                                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
-                                <input type="text" id="confirmText" style="width: 100%; margin-top: 10px; padding: 8px; border: 2px solid #ff0033; border-radius: 4px;">
-                            </div>
-                        `,
-                        buttons: {
-                            confirm: {
-                                label: 'Limpar Dados',
-                                icon: '<i class="fas fa-trash"></i>',
-                                callback: (html) => {
-                                    const confirmText = html.find('#confirmText').val();
-                                    if (confirmText === 'CONFIRMAR') {
-                                        CyberpunkAgent.instance.clearAllData();
-                                        ui.notifications.info('Todos os dados foram limpos com sucesso!');
-                                    } else {
-                                        ui.notifications.warn('Texto de confirmação incorreto. Operação cancelada.');
-                                    }
-                                }
-                            },
-                            cancel: {
-                                label: 'Cancelar',
-                                icon: '<i class="fas fa-times"></i>'
-                            }
-                        },
-                        default: 'cancel'
-                    }).render(true);
-                }
-            }
         });
 
 
@@ -441,35 +280,11 @@ class CyberpunkAgent {
      * Setup FoundryVTT chat integration
      */
     setupFoundryChatIntegration() {
-        console.log("Cyberpunk Agent | Setting up FoundryVTT chat integration...");
-
-        // Sync messages when module loads
-        this.syncMessagesWithFoundryChat();
-
-        // Listen for new chat messages (only if not already set up)
-        if (!this._chatMessageHookSet) {
-            Hooks.on('createChatMessage', (message) => {
-                this._handleNewChatMessage(message);
-            });
-            this._chatMessageHookSet = true;
-            console.log("Cyberpunk Agent | Chat message hook set up");
-        }
-
-        console.log("Cyberpunk Agent | FoundryVTT chat integration setup complete");
+        console.log("Cyberpunk Agent | FoundryVTT chat integration disabled - using SocketLib only");
+        // Chat integration removed - all communication now goes through SocketLib
     }
 
-    /**
-     * Handle new chat messages from FoundryVTT
-     */
-    _handleNewChatMessage(message) {
-        // Check if this is a cyberpunk agent message
-        if (message.flags && message.flags['cyberpunk-agent'] && message.flags['cyberpunk-agent'].isAgentMessage) {
-            console.log("Cyberpunk Agent | New agent chat message detected:", message);
-
-            // Update our interfaces (avoid duplicate updates)
-            this._updateChatInterfacesImmediately();
-        }
-    }
+    // Chat integration methods removed - using SocketLib only
 
     /**
      * Internal setup method
@@ -543,6 +358,15 @@ class CyberpunkAgent {
             Hooks.on('updateActor', this.handleActorUpdate.bind(this));
         }
 
+        // Setup settings change hook to reload contact networks when they change
+        Hooks.on('updateSetting', (moduleId, settingKey, value, options) => {
+            if (moduleId === 'cyberpunk-agent' && settingKey === 'contact-networks') {
+                console.log("Cyberpunk Agent | Contact networks setting updated, reloading data...");
+                this.loadAgentData();
+                this.updateOpenInterfaces();
+            }
+        });
+
         this._agentSystemSetupComplete = true;
         console.log("Cyberpunk Agent | Agent system setup complete");
     }
@@ -551,19 +375,37 @@ class CyberpunkAgent {
      * Add control button to the scene controls
      */
     addControlButton(controls) {
+        // Safety check: ensure controls is an array
+        if (!Array.isArray(controls)) {
+            console.warn("Cyberpunk Agent | addControlButton: controls is not an array:", controls);
+            return;
+        }
+
         // Find the token controls
         const tokenControl = controls.find(control => control.name === "token");
 
         if (tokenControl) {
-            // Add the agent tool to the token controls
-            tokenControl.tools.push({
-                name: "agent",
-                title: "Cyberpunk Agent",
-                icon: "fas fa-mobile-alt",
-                onClick: () => {
-                    this.openAgentInterface();
-                }
-            });
+            // Safety check: ensure tools array exists
+            if (!Array.isArray(tokenControl.tools)) {
+                tokenControl.tools = [];
+            }
+
+            // Check if agent tool already exists to avoid duplicates
+            const existingAgentTool = tokenControl.tools.find(tool => tool.name === "agent");
+            if (!existingAgentTool) {
+                // Add the agent tool to the token controls
+                tokenControl.tools.push({
+                    name: "agent",
+                    title: "Cyberpunk Agent",
+                    icon: "fas fa-mobile-alt",
+                    onClick: () => {
+                        this.openAgentInterface();
+                    }
+                });
+                console.log("Cyberpunk Agent | Added agent button to token controls");
+            }
+        } else {
+            console.warn("Cyberpunk Agent | Token control not found in controls array");
         }
     }
 
@@ -790,11 +632,27 @@ class CyberpunkAgent {
      */
     loadAgentData() {
         try {
-            const savedData = game.settings.get('cyberpunk-agent', 'agent-data') || {};
-            this.agentData = new Map(Object.entries(savedData));
+            // Load agent data from localStorage
+            const storageKey = `cyberpunk-agent-data-${game.user.id}`;
+            const storedData = localStorage.getItem(storageKey);
+            if (storedData) {
+                try {
+                    const dataObject = JSON.parse(storedData);
+                    this.agentData = new Map(Object.entries(dataObject));
+                    console.log("Cyberpunk Agent | Agent data loaded from localStorage for user:", game.user.name);
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error parsing localStorage agent data:", error);
+                    this.agentData = new Map();
+                }
+            } else {
+                this.agentData = new Map();
+                console.log("Cyberpunk Agent | No agent data found in localStorage for user:", game.user.name);
+            }
 
             const contactNetworks = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
             this.contactNetworks = new Map(Object.entries(contactNetworks));
+
+            console.log("Cyberpunk Agent | Loaded contact networks:", Object.fromEntries(this.contactNetworks));
 
             // Load messages using the new loadMessages function
             this.loadMessages();
@@ -811,64 +669,70 @@ class CyberpunkAgent {
     }
 
     /**
-     * Save agent data to settings
+     * Save agent data to localStorage (no longer using game.settings for this)
      */
     saveAgentData() {
         try {
             const dataObject = Object.fromEntries(this.agentData);
-            game.settings.set('cyberpunk-agent', 'agent-data', dataObject);
+            const storageKey = `cyberpunk-agent-data-${game.user.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(dataObject));
+            console.log("Cyberpunk Agent | Agent data saved to localStorage for user:", game.user.name);
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving agent data:", error);
         }
     }
 
     /**
+     * Force reload contact networks from settings
+     */
+    reloadContactNetworks() {
+        try {
+            console.log("Cyberpunk Agent | Force reloading contact networks...");
+            const contactNetworks = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+            this.contactNetworks = new Map(Object.entries(contactNetworks));
+            console.log("Cyberpunk Agent | Contact networks reloaded:", Object.fromEntries(this.contactNetworks));
+
+            // Update all open interfaces
+            this.updateOpenInterfaces();
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error reloading contact networks:", error);
+        }
+    }
+
+    /**
      * Save messages to settings
+     */
+    /**
+     * Save messages to localStorage (all users)
      */
     async saveMessages() {
         try {
             const messagesObject = Object.fromEntries(this.messages);
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
 
-            // If user is GM, save directly
-            if (game.user.isGM) {
-                game.settings.set('cyberpunk-agent', 'messages', messagesObject);
-            } else {
-                // If user is not GM, send to GM to save
-                await this._requestGMSaveMessages(messagesObject);
-            }
+            localStorage.setItem(storageKey, JSON.stringify(messagesObject));
+            console.log("Cyberpunk Agent | Messages saved to localStorage for user:", game.user.name);
+
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving messages:", error);
         }
     }
 
     /**
-     * Load messages from settings or localStorage
+     * Load messages from localStorage (all users)
      */
     async loadMessages() {
         try {
             let messagesData = {};
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
 
-            // Try to load from settings first (for GMs)
-            if (game.user.isGM) {
-                messagesData = game.settings.get('cyberpunk-agent', 'messages') || {};
-                console.log("Cyberpunk Agent | Messages loaded from settings");
-            } else {
-                // For non-GM users, try to load from localStorage first
-                const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
-                const storedData = localStorage.getItem(storageKey);
-                if (storedData) {
-                    try {
-                        messagesData = JSON.parse(storedData);
-                        console.log("Cyberpunk Agent | Messages loaded from localStorage for user:", game.user.name);
-                    } catch (error) {
-                        console.error("Cyberpunk Agent | Error parsing localStorage messages:", error);
-                    }
-                }
-
-                // Also try to load from settings as fallback
-                if (Object.keys(messagesData).length === 0) {
-                    messagesData = game.settings.get('cyberpunk-agent', 'messages') || {};
-                    console.log("Cyberpunk Agent | Messages loaded from settings as fallback");
+            const storedData = localStorage.getItem(storageKey);
+            if (storedData) {
+                try {
+                    messagesData = JSON.parse(storedData);
+                    console.log("Cyberpunk Agent | Messages loaded from localStorage for user:", game.user.name);
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error parsing localStorage messages:", error);
                 }
             }
 
@@ -880,41 +744,6 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Messages loaded successfully");
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading messages:", error);
-        }
-    }
-
-    /**
-     * Request GM to save messages
-     */
-    async _requestGMSaveMessages(messagesObject) {
-        console.log("Cyberpunk Agent | Requesting GM to save messages");
-
-        if (game.user.isGM) {
-            // If we are the GM, save directly
-            game.settings.set('cyberpunk-agent', 'messages', messagesObject);
-            console.log("Cyberpunk Agent | Messages saved by GM");
-            return true;
-        } else {
-            // If we are not the GM, request the GM to save via SocketLib
-            console.log("Cyberpunk Agent | Requesting GM to save messages via SocketLib");
-            const success = await this._sendSaveRequestViaSocketLib(messagesObject);
-
-            // If SocketLib fails, try to save locally as fallback
-            if (!success) {
-                console.warn("Cyberpunk Agent | SocketLib save failed, saving locally as fallback");
-                try {
-                    // Save to localStorage as fallback
-                    const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
-                    localStorage.setItem(storageKey, JSON.stringify(messagesObject));
-                    console.log("Cyberpunk Agent | Messages saved to localStorage as fallback");
-                    return true;
-                } catch (error) {
-                    console.error("Cyberpunk Agent | Error saving to localStorage:", error);
-                    return false;
-                }
-            }
-
-            return success;
         }
     }
 
@@ -967,14 +796,8 @@ class CyberpunkAgent {
         const conversationKey = this._getConversationKey(actorId1, actorId2);
         const conversation = this.messages.get(conversationKey) || [];
 
-        // Get messages from FoundryVTT chat as well
-        const foundryMessages = this.getMessagesFromFoundryChat(actorId1, actorId2);
-
-        // Merge messages from both sources
-        const mergedMessages = this._mergeMessages(conversation, foundryMessages);
-
-        // Mark messages as own/other based on sender
-        return mergedMessages.map(message => ({
+        // Mark messages as own/other based on sender (localStorage only)
+        return conversation.map(message => ({
             ...message,
             isOwn: message.senderId === actorId1
         }));
@@ -1024,8 +847,47 @@ class CyberpunkAgent {
         // Save the read timestamps to settings
         this._saveReadTimestamps();
 
-        // Update all open interfaces to reflect the change immediately
+        // Force immediate UI updates using multiple strategies
+        console.log("Cyberpunk Agent | Triggering immediate UI updates for conversation read");
+
+        // Strategy 1: Use UI Controller if available
+        if (window.CyberpunkAgentUIController) {
+            const conversationComponentId = `agent-conversation-${actorId1}-${actorId2}`;
+            const reverseConversationComponentId = `agent-conversation-${actorId2}-${actorId1}`;
+            const chat7ComponentIds = [
+                `agent-chat7-${actorId1}`,
+                `agent-chat7-${actorId2}`
+            ];
+
+            // Mark conversation components as dirty
+            window.CyberpunkAgentUIController.markDirtyMultiple([
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+
+            console.log("Cyberpunk Agent | Marked components as dirty via UI Controller for conversation read:", [
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+        }
+
+        // Strategy 2: Force immediate chat interface updates
         this._updateChatInterfacesImmediately();
+
+        // Strategy 3: Update all open interfaces
+        this.updateOpenInterfaces();
+
+        // Strategy 4: Dispatch custom event for backward compatibility
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'conversationRead',
+                actorId1: actorId1,
+                actorId2: actorId2
+            }
+        }));
 
         console.log(`Cyberpunk Agent | Marked conversation ${conversationKey} as read at ${new Date(now).toISOString()}`);
     }
@@ -1087,43 +949,16 @@ class CyberpunkAgent {
      */
     _saveReadTimestamps() {
         try {
-            // Check if user has permission to save settings
-            if (!game.user.isGM && !game.user.hasRole('ASSISTANT')) {
-                // For non-GM users, save to localStorage as fallback
-                const timestampsData = {};
-                this.lastReadTimestamps.forEach((timestamp, conversationKey) => {
-                    timestampsData[conversationKey] = timestamp;
-                });
-
-                const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
-                localStorage.setItem(storageKey, JSON.stringify(timestampsData));
-                console.log("Cyberpunk Agent | Read timestamps saved to localStorage for user:", game.user.name);
-                return;
-            }
-
             const timestampsData = {};
             this.lastReadTimestamps.forEach((timestamp, conversationKey) => {
                 timestampsData[conversationKey] = timestamp;
             });
 
-            game.settings.set('cyberpunk-agent', 'last-read-timestamps', timestampsData);
-            console.log("Cyberpunk Agent | Read timestamps saved to settings");
+            const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(timestampsData));
+            console.log("Cyberpunk Agent | Read timestamps saved to localStorage for user:", game.user.name);
         } catch (error) {
-            console.warn("Cyberpunk Agent | Error saving read timestamps to settings, trying localStorage:", error);
-
-            // Fallback to localStorage if settings fail
-            try {
-                const timestampsData = {};
-                this.lastReadTimestamps.forEach((timestamp, conversationKey) => {
-                    timestampsData[conversationKey] = timestamp;
-                });
-
-                const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
-                localStorage.setItem(storageKey, JSON.stringify(timestampsData));
-                console.log("Cyberpunk Agent | Read timestamps saved to localStorage as fallback");
-            } catch (localStorageError) {
-                console.error("Cyberpunk Agent | Error saving read timestamps to localStorage:", localStorageError);
-            }
+            console.error("Cyberpunk Agent | Error saving read timestamps to localStorage:", error);
         }
     }
 
@@ -1132,47 +967,21 @@ class CyberpunkAgent {
      */
     _loadReadTimestamps() {
         try {
-            let timestampsData = {};
+            const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            const storedData = localStorage.getItem(storageKey);
 
-            // Try to load from settings first (for GMs and assistants)
-            if (game.user.isGM || game.user.hasRole('ASSISTANT')) {
-                timestampsData = game.settings.get('cyberpunk-agent', 'last-read-timestamps') || {};
-                console.log("Cyberpunk Agent | Read timestamps loaded from settings");
+            if (storedData) {
+                const timestampsData = JSON.parse(storedData);
+                this.lastReadTimestamps.clear();
+                Object.entries(timestampsData).forEach(([conversationKey, timestamp]) => {
+                    this.lastReadTimestamps.set(conversationKey, timestamp);
+                });
+                console.log("Cyberpunk Agent | Read timestamps loaded from localStorage for user:", game.user.name);
             } else {
-                // For non-GM users, load from localStorage
-                const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
-                const storedData = localStorage.getItem(storageKey);
-                if (storedData) {
-                    timestampsData = JSON.parse(storedData);
-                    console.log("Cyberpunk Agent | Read timestamps loaded from localStorage for user:", game.user.name);
-                } else {
-                    console.log("Cyberpunk Agent | No read timestamps found in localStorage for user:", game.user.name);
-                }
+                console.log("Cyberpunk Agent | No read timestamps found in localStorage for user:", game.user.name);
             }
-
-            this.lastReadTimestamps.clear();
-            Object.entries(timestampsData).forEach(([conversationKey, timestamp]) => {
-                this.lastReadTimestamps.set(conversationKey, timestamp);
-            });
-
         } catch (error) {
-            console.warn("Cyberpunk Agent | Error loading read timestamps from settings, trying localStorage:", error);
-
-            // Fallback to localStorage if settings fail
-            try {
-                const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
-                const storedData = localStorage.getItem(storageKey);
-                if (storedData) {
-                    const timestampsData = JSON.parse(storedData);
-                    this.lastReadTimestamps.clear();
-                    Object.entries(timestampsData).forEach(([conversationKey, timestamp]) => {
-                        this.lastReadTimestamps.set(conversationKey, timestamp);
-                    });
-                    console.log("Cyberpunk Agent | Read timestamps loaded from localStorage as fallback");
-                }
-            } catch (localStorageError) {
-                console.error("Cyberpunk Agent | Error loading read timestamps from localStorage:", localStorageError);
-            }
+            console.error("Cyberpunk Agent | Error loading read timestamps from localStorage:", error);
         }
     }
 
@@ -1211,8 +1020,7 @@ class CyberpunkAgent {
         // Clear unread count cache for this conversation
         this.unreadCounts.delete(this._getConversationKey(senderId, receiverId));
 
-        // Create FoundryVTT chat message for real chat integration
-        this._createFoundryChatMessage(senderId, receiverId, text.trim(), messageId);
+        // Foundry chat integration removed - using SocketLib only
 
         // Check if SocketLib is available
         if (!this._isSocketLibAvailable()) {
@@ -1242,92 +1050,10 @@ class CyberpunkAgent {
     }
 
     /**
- * Create a FoundryVTT chat message for real chat integration
- */
-    _createFoundryChatMessage(senderId, receiverId, text, messageId) {
-        try {
-            const sender = game.actors.get(senderId);
-            const receiver = game.actors.get(receiverId);
-
-            if (!sender || !receiver) {
-                console.warn("Cyberpunk Agent | Invalid sender or receiver for chat message");
-                return;
-            }
-
-            // Check if private messages are enabled
-            const privateMessages = game.settings.get('cyberpunk-agent', 'private-messages');
-
-            // Determine message visibility based on user permissions
-            const senderUser = this._getUserForActor(senderId);
-            const receiverUser = this._getUserForActor(receiverId);
-
-            let whisper = [];
-            let blind = false;
-            let type = CONST.CHAT_MESSAGE_TYPES.WHISPER; // Always private
-
-            // Always include GMs in whispers so they can see all messages
-            const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
-            whisper.push(...gmUsers);
-
-            // Add sender if they are a player
-            if (senderUser && !senderUser.isGM) {
-                whisper.push(senderUser.id);
-            }
-
-            // Add receiver if they are a player
-            if (receiverUser && !receiverUser.isGM) {
-                whisper.push(receiverUser.id);
-            }
-
-            // Remove duplicates
-            whisper = [...new Set(whisper)];
-
-            // Make it blind for non-participants
-            blind = true;
-
-            // Create the chat message
-            const messageData = {
-                user: game.user.id,
-                speaker: {
-                    Actor: senderId,
-                    alias: sender.name
-                },
-                content: `<div class="cyberpunk-agent-chat-message" data-message-id="${messageId}" data-private="${privateMessages}">
-                    <div class="cyberpunk-agent-chat-header">
-                        <img src="${sender.img}" alt="${sender.name}" class="cyberpunk-agent-chat-avatar" />
-                        <span class="cyberpunk-agent-chat-sender">${sender.name}</span>
-                        <span class="cyberpunk-agent-chat-arrow">→</span>
-                        <span class="cyberpunk-agent-chat-receiver">${receiver.name}</span>
-                    </div>
-                    <div class="cyberpunk-agent-chat-content">
-                        ${text}
-                    </div>
-                    <div class="cyberpunk-agent-chat-time">
-                        ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                </div>`,
-                type: type,
-                whisper: whisper,
-                blind: blind,
-                flags: {
-                    'cyberpunk-agent': {
-                        isAgentMessage: true,
-                        messageId: messageId,
-                        senderId: senderId,
-                        receiverId: receiverId,
-                        timestamp: Date.now(),
-                        isPrivate: privateMessages
-                    }
-                }
-            };
-
-            ChatMessage.create(messageData);
-            console.log("Cyberpunk Agent | Private FoundryVTT chat message created:", messageData);
-
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error creating FoundryVTT chat message:", error);
-        }
-    }
+     * Create a FoundryVTT chat message for real chat integration
+     * This serves only as a notification - deleting these messages should not affect Chat7 state
+     */
+    // Foundry chat message creation methods removed - using SocketLib only
 
     /**
      * Get user for an actor (if any)
@@ -1350,104 +1076,7 @@ class CyberpunkAgent {
     /**
      * Get messages from FoundryVTT chat for a conversation
      */
-    getMessagesFromFoundryChat(actorId1, actorId2) {
-        const conversationKey = this._getConversationKey(actorId1, actorId2);
-        const messages = [];
-
-        // Get all chat messages
-        const chatMessages = game.messages.contents;
-
-        for (const chatMessage of chatMessages) {
-            // Check if this is a cyberpunk agent message
-            if (chatMessage.flags && chatMessage.flags['cyberpunk-agent'] && chatMessage.flags['cyberpunk-agent'].isAgentMessage) {
-                const agentFlags = chatMessage.flags['cyberpunk-agent'];
-
-                // Check if this message belongs to our conversation
-                if ((agentFlags.senderId === actorId1 && agentFlags.receiverId === actorId2) ||
-                    (agentFlags.senderId === actorId2 && agentFlags.receiverId === actorId1)) {
-
-                    // Parse the message content
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = chatMessage.content;
-
-                    const contentDiv = tempDiv.querySelector('.cyberpunk-agent-chat-content');
-                    const timeDiv = tempDiv.querySelector('.cyberpunk-agent-chat-time');
-
-                    if (contentDiv) {
-                        messages.push({
-                            id: agentFlags.messageId,
-                            senderId: agentFlags.senderId,
-                            receiverId: agentFlags.receiverId,
-                            text: contentDiv.textContent.trim(),
-                            timestamp: agentFlags.timestamp,
-                            time: timeDiv ? timeDiv.textContent.trim() : new Date(agentFlags.timestamp).toLocaleTimeString('pt-BR', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            }),
-                            isOwn: agentFlags.senderId === actorId1,
-                            chatMessageId: chatMessage.id
-                        });
-                    }
-                }
-            }
-        }
-
-        // Sort by timestamp
-        messages.sort((a, b) => a.timestamp - b.timestamp);
-
-        return messages;
-    }
-
-    /**
-     * Sync messages between our system and FoundryVTT chat
-     */
-    syncMessagesWithFoundryChat() {
-        console.log("Cyberpunk Agent | Syncing messages with FoundryVTT chat...");
-
-        // Get all conversations from our system
-        this.messages.forEach((conversation, conversationKey) => {
-            const [actorId1, actorId2] = conversationKey.split('-');
-
-            // Get messages from FoundryVTT chat
-            const foundryMessages = this.getMessagesFromFoundryChat(actorId1, actorId2);
-
-            // Merge messages
-            const mergedMessages = this._mergeMessages(conversation, foundryMessages);
-
-            // Update our conversation
-            this.messages.set(conversationKey, mergedMessages);
-        });
-
-        // Save updated messages
-        this.saveMessages();
-
-        console.log("Cyberpunk Agent | Message sync completed");
-    }
-
-    /**
-     * Merge messages from our system and FoundryVTT chat
-     */
-    _mergeMessages(ourMessages, foundryMessages) {
-        const merged = [...ourMessages];
-
-        for (const foundryMsg of foundryMessages) {
-            // Check if we already have this message
-            const existingIndex = merged.findIndex(msg => msg.id === foundryMsg.id);
-
-            if (existingIndex === -1) {
-                // Add new message from FoundryVTT
-                merged.push(foundryMsg);
-            } else {
-                // Update existing message with FoundryVTT data
-                merged[existingIndex] = { ...merged[existingIndex], ...foundryMsg };
-            }
-        }
-
-        // Sort by timestamp
-        merged.sort((a, b) => a.timestamp - b.timestamp);
-
-        return merged;
-    }
+    // Foundry chat sync methods removed - using SocketLib only
 
     /**
      * Check if an actor is in another actor's contact list
@@ -1938,7 +1567,7 @@ class CyberpunkAgent {
 
             // Delete corresponding FoundryVTT chat messages
             console.log("Cyberpunk Agent | Deleting FoundryVTT chat messages...");
-            await this._deleteFoundryChatMessages(messageIds);
+            // Foundry chat deletion removed - using SocketLib only
 
             // Notify all clients about the message deletion
             console.log("Cyberpunk Agent | Notifying clients about message deletion...");
@@ -1955,24 +1584,7 @@ class CyberpunkAgent {
     /**
      * Delete FoundryVTT chat messages
      */
-    async _deleteFoundryChatMessages(messageIds) {
-        try {
-            // Get all chat messages with cyberpunk-agent flags
-            const chatMessages = game.messages.filter(msg =>
-                msg.flags['cyberpunk-agent'] &&
-                messageIds.includes(msg.flags['cyberpunk-agent'].messageId)
-            );
-
-            // Delete each chat message
-            for (const chatMessage of chatMessages) {
-                await chatMessage.delete();
-            }
-
-            console.log(`Cyberpunk Agent | Deleted ${chatMessages.length} FoundryVTT chat messages`);
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error deleting FoundryVTT chat messages:", error);
-        }
-    }
+    // Foundry chat deletion methods removed - using SocketLib only
 
     /**
      * Notify all clients about message deletion
@@ -2021,6 +1633,109 @@ class CyberpunkAgent {
             this._updateChatInterfacesImmediately();
         } catch (error) {
             console.error("Cyberpunk Agent | Error notifying message deletion:", error);
+        }
+    }
+
+    /**
+     * Clear conversation history for a specific actor
+     * This only affects the current actor's view of the conversation
+     * The other contact's state remains intact
+     */
+    async clearConversationHistory(actorId, contactId) {
+        try {
+            console.log("Cyberpunk Agent | Starting conversation history clear process");
+            console.log("Cyberpunk Agent | Actor:", actorId, "Contact:", contactId);
+
+            const conversationKey = this._getConversationKey(actorId, contactId);
+            console.log("Cyberpunk Agent | Conversation key:", conversationKey);
+
+            // Get current messages for this conversation
+            const messages = this.messages.get(conversationKey) || [];
+            console.log("Cyberpunk Agent | Original messages count:", messages.length);
+
+            if (messages.length === 0) {
+                console.log("Cyberpunk Agent | No messages to clear");
+                return true;
+            }
+
+            // Clear all messages for this conversation
+            this.messages.set(conversationKey, []);
+            console.log("Cyberpunk Agent | Cleared all messages for conversation");
+
+            // Clear unread count cache for this conversation
+            const unreadCacheKey = `${actorId}-${contactId}`;
+            this.unreadCounts.delete(unreadCacheKey);
+            console.log("Cyberpunk Agent | Cleared unread count cache for conversation");
+
+            // Enhanced save process to ensure persistence
+            console.log("Cyberpunk Agent | Enhanced saving of cleared messages...");
+
+            // Save to localStorage for all users (GM and non-GM)
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const messagesObject = Object.fromEntries(this.messages);
+            localStorage.setItem(storageKey, JSON.stringify(messagesObject));
+            console.log("Cyberpunk Agent | Saved cleared messages to localStorage for user:", game.user.name);
+
+            // Notify all clients about the conversation clear
+            console.log("Cyberpunk Agent | Notifying clients about conversation clear...");
+            await this._notifyConversationClear(actorId, contactId);
+
+            console.log(`Cyberpunk Agent | Successfully cleared conversation history for ${conversationKey}`);
+            ui.notifications.info("Histórico de conversa limpo com sucesso!");
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing conversation history:", error);
+            ui.notifications.error("Erro ao limpar histórico de conversa: " + error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Notify all clients about conversation clear
+     */
+    async _notifyConversationClear(actorId, contactId) {
+        try {
+            const notificationData = {
+                type: 'conversationClear',
+                data: {
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    sessionId: game.data.id,
+                    actorId: actorId,
+                    contactId: contactId
+                }
+            };
+
+            // Check if SocketLib is available
+            if (!this._isSocketLibAvailable()) {
+                this._handleSocketLibUnavailable();
+                return;
+            }
+
+            console.log("Cyberpunk Agent | Sending conversation clear notification via SocketLib");
+            try {
+                if (this.socketLibIntegration && this.socketLibIntegration.sendConversationClear) {
+                    const success = await this.socketLibIntegration.sendConversationClear(notificationData);
+                    if (success) {
+                        console.log("Cyberpunk Agent | SocketLib conversation clear notification sent successfully");
+                    } else {
+                        console.warn("Cyberpunk Agent | SocketLib conversation clear notification failed");
+                        console.log("Cyberpunk Agent | Falha ao enviar notificação de limpeza via SocketLib");
+                    }
+                } else {
+                    console.warn("Cyberpunk Agent | SocketLib integration not available");
+                    console.log("Cyberpunk Agent | Integração SocketLib não disponível");
+                }
+            } catch (error) {
+                console.warn("Cyberpunk Agent | SocketLib conversation clear notification failed:", error);
+                console.log("Cyberpunk Agent | Erro na comunicação SocketLib: " + error.message);
+            }
+
+            // Also trigger immediate update for local interfaces
+            this._updateChatInterfacesImmediately();
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error notifying conversation clear:", error);
         }
     }
 
@@ -2211,11 +1926,16 @@ class CyberpunkAgent {
             const networksObject = Object.fromEntries(this.contactNetworks);
             game.settings.set('cyberpunk-agent', 'contact-networks', networksObject);
 
+            console.log("Cyberpunk Agent | Contact networks saved to settings:", networksObject);
+
             // Notify all clients about the contact update
             this.notifyContactUpdate(actionDetails);
 
             // Also trigger immediate update for local interfaces
             this._updateContactManagerImmediately();
+
+            // Force reload of agent data to ensure consistency
+            this.loadAgentData();
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving contact networks:", error);
         }
@@ -2232,13 +1952,20 @@ class CyberpunkAgent {
             this.contactNetworks.clear();
             game.settings.set('cyberpunk-agent', 'contact-networks', {});
 
-            // Clear messages
+            // Clear messages from localStorage
             this.messages.clear();
-            game.settings.set('cyberpunk-agent', 'messages', {});
+            const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            localStorage.removeItem(messagesStorageKey);
 
-            // Clear agent data
+            // Clear agent data from localStorage
             this.agentData.clear();
-            game.settings.set('cyberpunk-agent', 'agent-data', {});
+            const agentDataStorageKey = `cyberpunk-agent-data-${game.user.id}`;
+            localStorage.removeItem(agentDataStorageKey);
+
+            // Clear read timestamps from localStorage
+            this.lastReadTimestamps.clear();
+            const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            localStorage.removeItem(timestampsStorageKey);
 
             // Update all open interfaces
             this._updateChatInterfacesImmediately();
@@ -2338,9 +2065,9 @@ class CyberpunkAgent {
                             console.warn("Cyberpunk Agent | SocketLib integration instance not available for socket update");
                         }
 
-                        // Test connection immediately after initialization
+                        // Test setup immediately after initialization
                         setTimeout(() => {
-                            this._testSocketLibConnection();
+                            this._checkSocketLibStatus();
                         }, 1000);
                     } else {
                         console.error("Cyberpunk Agent | SocketLib integration initialization failed");
@@ -2359,35 +2086,43 @@ class CyberpunkAgent {
     }
 
     /**
- * Test SocketLib connection after initialization
- */
-    _testSocketLibConnection() {
+     * Test SocketLib setup and functionality
+     */
+    _testSocketLibSetup() {
         try {
             if (window.socket && typeof socketlib !== 'undefined') {
-                console.log("Cyberpunk Agent | Testing SocketLib connection...");
+                console.log("Cyberpunk Agent | Testing SocketLib setup...");
                 console.log("Cyberpunk Agent | Socket available:", !!window.socket);
                 console.log("Cyberpunk Agent | SocketLib methods:", Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function'));
 
-                // Safe check for isConnected method
-                const isConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
-                console.log("Cyberpunk Agent | SocketLib connected:", isConnected);
-
-                // Safe check for modules
+                // Check if our module is properly registered
                 const modules = socketlib && socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules : [];
-                console.log("Cyberpunk Agent | Registered modules:", modules);
-
-                // Test if our module is properly registered
                 const isRegistered = modules.includes('cyberpunk-agent');
                 console.log("Cyberpunk Agent | Module registered:", isRegistered);
 
                 if (!isRegistered) {
                     console.warn("Cyberpunk Agent | Module not properly registered with SocketLib");
                 }
+
+                // Test socket methods
+                if (window.socket) {
+                    const socketMethods = Object.keys(window.socket).filter(key => typeof window.socket[key] === 'function');
+                    console.log("Cyberpunk Agent | Socket methods:", socketMethods);
+
+                    const requiredMethods = ['executeForEveryone', 'executeForOthers', 'executeAsGM', 'executeAsUser'];
+                    const missingMethods = requiredMethods.filter(method => !socketMethods.includes(method));
+
+                    if (missingMethods.length > 0) {
+                        console.warn("Cyberpunk Agent | Missing required socket methods:", missingMethods);
+                    } else {
+                        console.log("Cyberpunk Agent | All required socket methods available");
+                    }
+                }
             } else {
-                console.warn("Cyberpunk Agent | SocketLib not available for connection test");
+                console.warn("Cyberpunk Agent | SocketLib not available for setup test");
             }
         } catch (error) {
-            console.error("Cyberpunk Agent | Error testing SocketLib connection:", error);
+            console.error("Cyberpunk Agent | Error testing SocketLib setup:", error);
         }
     }
 
@@ -2408,28 +2143,22 @@ class CyberpunkAgent {
         const hasIntegration = !!this.socketLibIntegration;
         const integrationAvailable = this.socketLibIntegration ? this.socketLibIntegration.isAvailable : false;
         const socketlibGlobal = typeof socketlib !== 'undefined';
-
-        // Safe checks for SocketLib methods
-        const socketlibConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
         const socketAvailable = !!window.socket;
-        const moduleRegistered = socketlib && socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules.includes('cyberpunk-agent') : false;
 
-        // More lenient check - if SocketLib is available and we have a socket, consider it available
-        // The strict check was causing false negatives when SocketLib was actually working
-        const isAvailable = (socketlibGlobal && socketAvailable) || (hasIntegration && integrationAvailable);
+        // Simplified check following SocketLib documentation
+        // SocketLib doesn't have a persistent "connected" state like traditional WebSockets
+        // If we have the socket object and SocketLib is available, we consider it available
+        const isAvailable = socketlibGlobal && socketAvailable && hasIntegration && integrationAvailable;
 
         console.log("Cyberpunk Agent | SocketLib availability check:", {
             hasIntegration,
             integrationAvailable,
             socketlibGlobal,
-            socketlibConnected,
             socketAvailable,
-            moduleRegistered,
             isAvailable,
             user: game.user.name,
             isGM: game.user.isGM,
-            socketlibVersion: socketlib ? socketlib.version : 'unknown',
-            socketlibMethods: socketlib ? Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function') : []
+            socketlibVersion: socketlib ? socketlib.version : 'unknown'
         });
 
         return isAvailable;
@@ -2450,6 +2179,24 @@ class CyberpunkAgent {
         // Don't show notifications since SocketLib is actually working
         // The availability check was too strict, but the communication is functional
         console.log("Cyberpunk Agent | SocketLib communication is working despite availability check failure");
+    }
+
+    /**
+ * Simplified SocketLib connection check
+ * SocketLib doesn't have a persistent connection state like traditional WebSockets
+ */
+    _checkSocketLibStatus() {
+        console.log("Cyberpunk Agent | Checking SocketLib status...");
+
+        const status = {
+            socketlibAvailable: typeof socketlib !== 'undefined',
+            socketAvailable: !!window.socket,
+            integrationAvailable: this.socketLibIntegration ? this.socketLibIntegration.isAvailable : false,
+            socketMethods: window.socket ? Object.keys(window.socket).filter(key => typeof window.socket[key] === 'function') : []
+        };
+
+        console.log("Cyberpunk Agent | SocketLib status:", status);
+        return status;
     }
 
 
@@ -2592,6 +2339,7 @@ class CyberpunkAgent {
         }
 
         // Reload contact data from settings
+        console.log("Cyberpunk Agent | Reloading contact networks from settings...");
         this.loadAgentData();
 
         // Update all open interfaces
@@ -2666,7 +2414,10 @@ class CyberpunkAgent {
         // Clear unread count cache for this conversation
         this.unreadCounts.delete(this._getConversationKey(data.senderId, data.receiverId));
 
-        // Use UI Controller to mark relevant components as dirty
+        // Force immediate UI updates using multiple strategies
+        console.log("Cyberpunk Agent | Triggering immediate UI updates for message update");
+
+        // Strategy 1: Use UI Controller if available
         if (window.CyberpunkAgentUIController) {
             const conversationComponentId = `agent-conversation-${data.senderId}-${data.receiverId}`;
             const reverseConversationComponentId = `agent-conversation-${data.receiverId}-${data.senderId}`;
@@ -2687,15 +2438,15 @@ class CyberpunkAgent {
                 reverseConversationComponentId,
                 ...chat7ComponentIds
             ]);
-        } else {
-            // Fallback: Update all open chat interfaces immediately
-            this._updateChatInterfacesImmediately();
         }
 
-        // Also update other interfaces that might show contact lists
+        // Strategy 2: Force immediate chat interface updates
+        this._updateChatInterfacesImmediately();
+
+        // Strategy 3: Update all open interfaces
         this.updateOpenInterfaces();
 
-        // Dispatch custom event for backward compatibility
+        // Strategy 4: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
                 timestamp: Date.now(),
@@ -2796,64 +2547,88 @@ class CyberpunkAgent {
     }
 
     /**
- * Handle save messages request from players
- */
-    handleSaveMessagesRequest(data) {
-        console.log("Cyberpunk Agent | Received save messages request from:", data.userName);
+     * Handle conversation clear
+     */
+    handleConversationClear(data) {
+        console.log("Cyberpunk Agent | Received conversation clear notification from:", data.userName);
+        console.log("Cyberpunk Agent | Clear data:", data);
 
-        // Only GMs can save messages
-        if (!game.user.isGM) {
-            console.log("Cyberpunk Agent | Non-GM user cannot save messages");
+        // Prevent processing our own conversation clear
+        if (data.userId === game.user.id) {
+            console.log("Cyberpunk Agent | Ignoring own conversation clear notification");
             return;
         }
 
-        // Check if this is a recent request to avoid duplicates
+        // Check if this is a recent clear to avoid duplicates
         const now = Date.now();
         const timeDiff = now - data.timestamp;
-        if (timeDiff > 30000) { // Ignore requests older than 30 seconds
-            console.log("Cyberpunk Agent | Ignoring old save request (age:", timeDiff, "ms)");
+        if (timeDiff > 30000) { // Ignore clears older than 30 seconds
+            console.log("Cyberpunk Agent | Ignoring old conversation clear notification (age:", timeDiff, "ms)");
             return;
         }
 
-        console.log("Cyberpunk Agent | Processing save request from:", data.userName);
-
         try {
-            // Save the messages to settings
-            game.settings.set('cyberpunk-agent', 'messages', data.messages);
+            const { actorId, contactId } = data.data;
+            console.log("Cyberpunk Agent | Processing conversation clear for actor:", actorId, "contact:", contactId);
 
-            console.log("Cyberpunk Agent | Messages saved successfully for user:", data.userName);
+            const conversationKey = this._getConversationKey(actorId, contactId);
+            console.log("Cyberpunk Agent | Conversation key:", conversationKey);
 
-            // Notify the requesting user that save was successful
-            if (game.socket) {
-                game.socket.emit('module.cyberpunk-agent', {
-                    type: 'saveMessagesResponse',
-                    data: {
-                        success: true,
-                        timestamp: Date.now(),
-                        userId: game.user.id,
-                        userName: game.user.name,
-                        requestingUserId: data.userId
-                    }
-                });
-            }
+            // Clear the conversation for the current user's view
+            this.messages.set(conversationKey, []);
+            console.log("Cyberpunk Agent | Cleared conversation messages");
+
+            // Clear unread count cache for this conversation
+            const unreadCacheKey = `${actorId}-${contactId}`;
+            this.unreadCounts.delete(unreadCacheKey);
+            console.log("Cyberpunk Agent | Cleared unread count cache");
+
+            // Enhanced save process to ensure persistence
+            console.log("Cyberpunk Agent | Enhanced saving of cleared messages from notification...");
+
+            // Save to localStorage for all users (GM and non-GM)
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const messagesObject = Object.fromEntries(this.messages);
+            localStorage.setItem(storageKey, JSON.stringify(messagesObject));
+            console.log("Cyberpunk Agent | Saved cleared messages to localStorage from notification for user:", game.user.name);
+
+            // Update all open chat interfaces immediately
+            console.log("Cyberpunk Agent | Updating chat interfaces...");
+            this._updateChatInterfacesImmediately();
+
+            // Also update other interfaces that might show contact lists
+            console.log("Cyberpunk Agent | Updating other interfaces...");
+            this.updateOpenInterfaces();
+
+            // Force a complete refresh of all chat interfaces
+            console.log("Cyberpunk Agent | Forcing complete refresh of chat interfaces...");
+            this.forceUpdateChatInterfaces();
+
+            // Show notification to user
+            const actor = game.actors.get(actorId);
+            const contact = game.actors.get(contactId);
+            const actorName = actor ? actor.name : "Desconhecido";
+            const contactName = contact ? contact.name : "Desconhecido";
+
+            const message = `Histórico de conversa limpo por ${actorName} na conversa com ${contactName}`;
+            ui.notifications.info(message);
+
+            console.log(`Cyberpunk Agent | Successfully processed conversation clear by ${actorName} with ${contactName}`);
         } catch (error) {
-            console.error("Cyberpunk Agent | Error saving messages:", error);
-
-            // Notify the requesting user that save failed
-            if (game.socket) {
-                game.socket.emit('module.cyberpunk-agent', {
-                    type: 'saveMessagesResponse',
-                    data: {
-                        success: false,
-                        error: error.message,
-                        timestamp: Date.now(),
-                        userId: game.user.id,
-                        userName: game.user.name,
-                        requestingUserId: data.userId
-                    }
-                });
-            }
+            console.error("Cyberpunk Agent | Error handling conversation clear:", error);
         }
+    }
+
+    /**
+     * Handle save messages request from players
+     * Note: This function is deprecated as messages are now stored in localStorage only
+     */
+    handleSaveMessagesRequest(data) {
+        console.log("Cyberpunk Agent | Received save messages request from:", data.userName, "- DEPRECATED (using localStorage only)");
+
+        // Since messages are now stored in localStorage only, this function is no longer needed
+        // All users save their own messages to their localStorage
+        console.log("Cyberpunk Agent | Save messages request ignored - using localStorage only architecture");
     }
 
     /**
@@ -3232,8 +3007,325 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | Module cleanup called");
     }
 
+    // ========================================
+    // DIAGNOSTIC TEST FUNCTIONS
+    // ========================================
 
+    /**
+ * Test function to verify contact network persistence
+ * Run this in GM console, then refresh (F5), then run verifyContactNetworkPersistence
+ */
+    testContactNetworkPersistence() {
+        try {
+            console.log("=== TESTING CONTACT NETWORK PERSISTENCE ===");
+
+            // Check user permissions
+            console.log("User role:", game.user.role);
+            console.log("User can modify world settings:", game.user.can('SETTINGS_MODIFY'));
+
+            // Check if setting is registered
+            const setting = game.settings.settings.get('cyberpunk-agent.contact-networks');
+            console.log("Setting registration:", setting);
+
+            // Get current setting
+            const currentSetting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+            console.log("Current contact-networks setting:", currentSetting);
+
+            // Add a test contact
+            const testContact = {
+                id: 'test-contact-' + Date.now(),
+                name: 'Test Contact',
+                actorId: 'test-actor-id',
+                isActive: true
+            };
+
+            const updatedSetting = {
+                ...currentSetting,
+                [testContact.id]: testContact
+            };
+
+            console.log("Setting contact-networks to:", updatedSetting);
+
+            // Try to save the setting with error handling
+            try {
+                const result = game.settings.set('cyberpunk-agent', 'contact-networks', updatedSetting);
+                console.log("game.settings.set() result:", result);
+            } catch (setError) {
+                console.error("❌ ERROR during game.settings.set():", setError);
+            }
+
+            // Wait a moment and then verify it was saved
+            setTimeout(() => {
+                try {
+                    const savedSetting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+                    console.log("Retrieved setting after delay:", savedSetting);
+
+                    if (savedSetting[testContact.id]) {
+                        console.log("✅ SUCCESS: Test contact was saved and retrieved after delay");
+                        console.log("🔄 Now please refresh your FoundryVTT client (F5) and run: window.verifyContactNetworkPersistence()");
+                    } else {
+                        console.log("❌ FAILED: Test contact was not saved properly after delay");
+                        console.log("Expected test contact ID:", testContact.id);
+                        console.log("Available keys:", Object.keys(savedSetting));
+                    }
+                } catch (getError) {
+                    console.error("❌ ERROR during game.settings.get():", getError);
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error("❌ ERROR in testContactNetworkPersistence:", error);
+        }
+    }
+
+    /**
+     * Verify function to check if contact networks persist after refresh
+     * Run this after refreshing (F5) following testContactNetworkPersistence
+     */
+    verifyContactNetworkPersistence() {
+        try {
+            console.log("=== VERIFYING CONTACT NETWORK PERSISTENCE AFTER REFRESH ===");
+
+            // Get the setting after refresh
+            const setting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+            console.log("Contact-networks setting after refresh:", setting);
+
+            // Look for test contacts
+            const testContacts = Object.entries(setting).filter(([key, value]) =>
+                key.startsWith('test-contact-')
+            );
+
+            if (testContacts.length > 0) {
+                console.log("✅ SUCCESS: Test contacts found after refresh:", testContacts);
+                console.log("🔄 Contact Manager settings are persisting correctly");
+            } else {
+                console.log("❌ FAILED: No test contacts found after refresh");
+                console.log("🔄 Contact Manager settings are NOT persisting");
+            }
+
+            // Also check if the CyberpunkAgent instance can load the data
+            if (CyberpunkAgent.instance) {
+                console.log("Reloading agent data...");
+                CyberpunkAgent.instance.loadAgentData();
+                console.log("Agent contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
+            }
+
+        } catch (error) {
+            console.error("❌ ERROR in verifyContactNetworkPersistence:", error);
+        }
+    }
+
+    /**
+ * Test function to verify player propagation
+ * Run this in player console to check if they can see GM's contact networks
+ */
+    testPlayerContactNetworkAccess() {
+        try {
+            console.log("=== TESTING PLAYER CONTACT NETWORK ACCESS ===");
+
+            // Check if player can access the setting
+            const setting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+            console.log("Player can access contact-networks setting:", setting);
+
+            // Check if CyberpunkAgent instance exists and has contact networks
+            if (CyberpunkAgent.instance) {
+                console.log("Agent instance contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
+
+                // Try to reload agent data
+                CyberpunkAgent.instance.loadAgentData();
+                console.log("After reload - Agent contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
+            } else {
+                console.log("❌ CyberpunkAgent instance not found");
+            }
+
+        } catch (error) {
+            console.error("❌ ERROR in testPlayerContactNetworkAccess:", error);
+        }
+    }
+
+    /**
+     * Test function to verify Contact Manager save functionality
+     * Run this in GM console to test the actual Contact Manager save method
+     */
+    testContactManagerSave() {
+        try {
+            console.log("=== TESTING CONTACT MANAGER SAVE FUNCTIONALITY ===");
+
+            // Get current contact networks
+            const currentNetworks = Object.fromEntries(this.contactNetworks);
+            console.log("Current contact networks in memory:", currentNetworks);
+
+            // Add a test contact using the Contact Manager method
+            const testActorId = 'test-actor-' + Date.now();
+            const testContactId = 'test-contact-' + Date.now();
+
+            // Add to memory first
+            if (!this.contactNetworks.has(testActorId)) {
+                this.contactNetworks.set(testActorId, []);
+            }
+
+            const testContact = {
+                id: testContactId,
+                name: 'Test Contact via Manager',
+                actorId: testContactId,
+                isActive: true
+            };
+
+            this.contactNetworks.get(testActorId).push(testContact);
+            console.log("Added test contact to memory:", testContact);
+
+            // Save using the Contact Manager method
+            this.saveContactNetworks({ action: 'test', actorId: testActorId, contactId: testContactId });
+
+            // Check if it was saved to settings
+            const savedSetting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+            console.log("Settings after save:", savedSetting);
+
+            if (savedSetting[testActorId] && savedSetting[testActorId].find(c => c.id === testContactId)) {
+                console.log("✅ SUCCESS: Contact Manager save method works correctly");
+            } else {
+                console.log("❌ FAILED: Contact Manager save method did not persist the contact");
+            }
+
+        } catch (error) {
+            console.error("❌ ERROR in testContactManagerSave:", error);
+        }
+    }
 }
+
+// Make test functions globally available
+window.testContactNetworkPersistence = function () {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testContactNetworkPersistence();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.verifyContactNetworkPersistence = function () {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.verifyContactNetworkPersistence();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.testPlayerContactNetworkAccess = function () {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testPlayerContactNetworkAccess();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.testContactManagerSave = function () {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.testContactManagerSave();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.debugUIController = function () {
+    if (window.CyberpunkAgentUIController) {
+        const status = window.CyberpunkAgentUIController.getStatus();
+        console.log("=== UIController Status ===");
+        console.log("Total Components:", status.totalComponents);
+        console.log("Dirty Components:", status.dirtyComponents);
+        console.log("Is Updating:", status.isUpdating);
+        console.log("Component IDs:", status.componentIds);
+        console.log("Dirty Component IDs:", status.dirtyComponentIds);
+
+        // Clean up orphaned components
+        const orphanedCount = window.CyberpunkAgentUIController.cleanupOrphanedComponents();
+        console.log("Orphaned components cleaned up:", orphanedCount);
+    } else {
+        console.error("❌ UIController not available");
+    }
+};
+
+window.testMessagePersistence = function () {
+    if (CyberpunkAgent.instance) {
+        console.log("=== TESTING MESSAGE PERSISTENCE ===");
+
+        // Get current messages
+        const currentMessages = Object.fromEntries(CyberpunkAgent.instance.messages);
+        console.log("Current messages in memory:", currentMessages);
+
+        // Test sending a message
+        const testMessage = "Test message " + Date.now();
+        console.log("Sending test message:", testMessage);
+
+        // This will be called from the chat interface
+        console.log("🔄 Please send this message in the chat interface:", testMessage);
+        console.log("🔄 Then check if it appears immediately and persists after refresh");
+
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.testRealtimeCommunication = function () {
+    if (CyberpunkAgent.instance) {
+        console.log("=== TESTING REALTIME COMMUNICATION ===");
+
+        // Test SocketLib connection
+        console.log("🔍 Testing SocketLib connection...");
+        const socketStatus = CyberpunkAgent.instance.socketLibIntegration.getConnectionStatus();
+        console.log("SocketLib Status:", socketStatus);
+
+        // Test if we can send a message via SocketLib
+        console.log("🔍 Testing SocketLib message sending...");
+        const testMessage = "Realtime test " + Date.now();
+
+        // Get user actors for testing
+        const userActors = CyberpunkAgent.instance.getUserActors();
+        if (userActors.length >= 2) {
+            const actor1 = userActors[0];
+            const actor2 = userActors[1];
+
+            console.log(`🔄 Testing message from ${actor1.name} to ${actor2.name}:`, testMessage);
+
+            // Send test message via SocketLib directly
+            CyberpunkAgent.instance.socketLibIntegration.sendMessage(actor1.id, actor2.id, testMessage, `test-${Date.now()}`)
+                .then(success => {
+                    console.log("✅ SocketLib message sending result:", success);
+                    if (success) {
+                        console.log("🔄 Message sent via SocketLib - check if it appears in the other client");
+                    } else {
+                        console.log("❌ SocketLib message sending failed");
+                    }
+                })
+                .catch(error => {
+                    console.error("❌ SocketLib message sending error:", error);
+                });
+        } else {
+            console.log("⚠️ Need at least 2 user actors to test realtime communication");
+            console.log("Available actors:", userActors.map(a => a.name));
+        }
+
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.checkSocketLibStatus = function () {
+    if (CyberpunkAgent.instance) {
+        console.log("=== CHECKING SOCKETLIB STATUS ===");
+        CyberpunkAgent.instance._checkSocketLibStatus();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
+
+window.testSocketLibSetup = function () {
+    if (CyberpunkAgent.instance) {
+        console.log("=== TESTING SOCKETLIB SETUP ===");
+        CyberpunkAgent.instance._testSocketLibSetup();
+    } else {
+        console.error("❌ CyberpunkAgent instance not available");
+    }
+};
 
 console.log("Cyberpunk Agent | module.js loaded successfully");
 
@@ -3274,6 +3366,16 @@ Hooks.once('ready', () => {
     Hooks.on('getSceneControlButtons', (controls) => {
         if (CyberpunkAgent.instance) {
             CyberpunkAgent.instance.addControlButton(controls);
+        }
+    });
+
+    // Additional hook to ensure button appears on UI render
+    Hooks.on('renderSceneControls', (controls, html) => {
+        if (CyberpunkAgent.instance && Array.isArray(controls)) {
+            // Force a small delay to ensure controls are fully rendered
+            setTimeout(() => {
+                CyberpunkAgent.instance.addControlButton(controls);
+            }, 100);
         }
     });
 
