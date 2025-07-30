@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.12] - 2024-12-28
+
+### 🐛 Fixed - Scroll Bar Visibility for Players
+
+#### 🔧 Changed
+- **CSS OVERFLOW CORRIGIDO**: Alterado `overflow: hidden` para `overflow-y: auto` e `overflow-x: hidden` nos containers principais
+- **SCROLL VERTICAL HABILITADO**: Agora permite scroll vertical quando necessário em todos os containers do Agent
+- **CONSISTÊNCIA GM/PLAYER**: Scroll bar agora aparece tanto para GM quanto para Players
+
+#### ✨ Added
+- Script de teste `test-scroll-issue.js` para diagnosticar problemas de scroll
+- Funções de teste para verificar propriedades CSS de scroll
+- Análise de altura de conteúdo vs container
+
+#### 🐛 Fixed
+- **BARRA DE SCROLL SUMIU**: Corrigido problema da barra de scroll que não aparecia para Players
+- **OVERFLOW HIDDEN**: Removido `overflow: hidden` que impedia scroll em `.cp-agent`, `.cp-agent .sheet-body` e `.cp-agent-phone`
+- **SCROLL LATERAL**: Mantido `overflow-x: hidden` para evitar scroll horizontal indesejado
+
+#### 📚 Documentation
+- Scripts de teste para diagnosticar problemas de scroll
+- Análise detalhada de propriedades CSS
+- Testes de funcionalidade de scroll manual
+
+---
+
 ## [1.0.11] - 2024-12-28
 
 ### 🐛 Fixed - Automatic Scroll Behavior

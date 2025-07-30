@@ -176,7 +176,8 @@
   background: var(--cp-darker);
   border: 1px solid var(--cp-border);
   border-radius: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   font-family: 'Rajdhani', sans-serif;
   color: var(--cp-text);
   box-shadow: var(--cp-shadow);
@@ -285,7 +286,8 @@
 .cp-agent .sheet-body {
   padding: 0;
   height: calc(100% - 60px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--cp-darker);
   display: flex;
   flex-direction: row;
@@ -308,7 +310,8 @@
   background: var(--cp-gradient-dark);
   border: 3px solid var(--cp-border);
   border-radius: 25px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   font-family: 'Rajdhani', sans-serif;
