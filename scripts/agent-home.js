@@ -501,9 +501,6 @@ class ChatConversationApplication extends FormApplication {
       html.find('.cp-message-delete').click(this._onDeleteMessage.bind(this));
     }
 
-    // Scroll to bottom of messages
-    this._scrollToBottom();
-
     // Listen for real-time updates
     this._setupRealtimeListener();
   }
@@ -515,17 +512,17 @@ class ChatConversationApplication extends FormApplication {
     // Listen for custom events from the module
     document.addEventListener('cyberpunk-agent-update', (event) => {
       if (event.detail && event.detail.type === 'messageUpdate') {
-        // Scroll to bottom on new message
-        this._scrollToBottomOnNewMessage();
+        // Messages will appear immediately but no automatic scrolling
+        console.log("Cyberpunk Agent | New message received, interface updated without auto-scroll");
       }
     });
 
-    // Also listen for window focus to scroll to bottom
-    window.addEventListener('focus', () => {
-      setTimeout(() => {
-        this._scrollToBottom();
-      }, 100);
-    });
+    // Remove automatic scroll on window focus
+    // window.addEventListener('focus', () => {
+    //   setTimeout(() => {
+    //     this._scrollToBottom();
+    //   }, 100);
+    // });
   }
 
   /**
@@ -648,8 +645,7 @@ class ChatConversationApplication extends FormApplication {
         await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.contact.id, text);
         console.log("Cyberpunk Agent | Message sent successfully");
 
-        // Scroll to bottom after sending message
-        this._scrollToBottom();
+        // Don't auto-scroll after sending - let user control scroll position
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);
         ui.notifications.error("Erro ao enviar mensagem: " + error.message);
@@ -707,10 +703,12 @@ class ChatConversationApplication extends FormApplication {
   }
 
   /**
-   * Scroll to bottom on new message (always)
+   * Scroll to bottom on new message (manual only)
    */
   _scrollToBottomOnNewMessage() {
-    // Always scroll to bottom when a new message is added
+    // Manual scroll only - no automatic scrolling
+    // This method is kept for potential manual scroll buttons or user actions
+    console.log("Cyberpunk Agent | Manual scroll to bottom requested");
     setTimeout(() => {
       this._scrollToBottom();
     }, 100);

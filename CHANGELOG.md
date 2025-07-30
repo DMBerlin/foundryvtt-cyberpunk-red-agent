@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.11] - 2024-12-28
+
+### 🐛 Fixed - Automatic Scroll Behavior
+
+#### 🔧 Changed
+- **COMPORTAMENTO DE SCROLL REMOVIDO**: Removido scroll automático quando novas mensagens chegam
+- **CONTROLE DO USUÁRIO**: Posição do scroll agora permanece onde o usuário deixou
+- **APARIÇÃO IMEDIATA**: Mensagens ainda aparecem imediatamente mas sem forçar scroll para baixo
+- **EXPERIÊNCIA DO USUÁRIO**: Melhorada permitindo controle manual do scroll
+
+#### ✨ Added
+- Script de teste `test-scroll-behavior-fix.js` para verificar mudanças no comportamento de scroll
+- Funções de teste para verificar scroll manual vs automático
+- Documentação sobre mudanças no comportamento de scroll
+
+#### 🐛 Fixed
+- **SCROLL AUTOMÁTICO**: Removido scroll automático em atualizações em tempo real
+- **SCROLL NO FOCUS**: Removido scroll automático quando a janela ganha foco
+- **SCROLL APÓS ENVIAR**: Removido scroll automático após enviar mensagens
+- **CONTROLE MANUAL**: Métodos de scroll mantidos para uso manual quando necessário
+
+#### 📚 Documentation
+- Scripts de teste para verificar comportamento de scroll
+- Funções de teste para scroll manual
+- Testes para aparição imediata de mensagens
+
+---
+
 ## [1.0.10] - 2024-12-19
 
 ### 🐛 Fixed - Infinite Message Loop
