@@ -1297,14 +1297,29 @@ class CyberpunkAgent {
     toggleContactMute(actorId, contactId) {
         try {
             const userId = game.user.id;
-            let userMuteSettings = this._loadUserMuteSettings(userId);
+
+            // Ensure _userMuteSettings exists
+            if (!this._userMuteSettings) {
+                this._userMuteSettings = new Map();
+            }
+
+            // Load user's mute settings if not already loaded
+            if (!this._userMuteSettings.has(userId)) {
+                this._loadUserMuteSettings(userId);
+            }
+
+            let userMuteSettings = this._userMuteSettings.get(userId);
+            if (!userMuteSettings) {
+                userMuteSettings = new Map();
+                this._userMuteSettings.set(userId, userMuteSettings);
+            }
 
             // Create actor-specific mute key: userId-actorId-contactId
             const muteKey = `${userId}-${actorId}-${contactId}`;
-            const currentMuteStatus = userMuteSettings[muteKey] || false;
+            const currentMuteStatus = userMuteSettings.get(muteKey) || false;
             const newMuteStatus = !currentMuteStatus;
 
-            userMuteSettings[muteKey] = newMuteStatus;
+            userMuteSettings.set(muteKey, newMuteStatus);
             this._saveUserMuteSettings(userId, userMuteSettings);
 
             console.log(`Cyberpunk Agent | Contact ${contactId} ${newMuteStatus ? 'muted' : 'unmuted'} for actor ${actorId} by user ${userId}`);
@@ -1339,8 +1354,12 @@ class CyberpunkAgent {
                 this._userMuteSettings = new Map();
             }
 
+            // Convert Map to object for localStorage
             const muteData = Object.fromEntries(userMuteSettings);
             localStorage.setItem(`cyberpunk-agent-mutes-${userId}`, JSON.stringify(muteData));
+
+            // Update the in-memory Map
+            this._userMuteSettings.set(userId, userMuteSettings);
         } catch (error) {
             console.warn("Cyberpunk Agent | Error saving user mute settings:", error);
         }
