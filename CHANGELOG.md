@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.53] - 2025-01-30
+
+### Fixed
+- **Interface Auto-Open Issue**: Fixed critical bug where the Agent interface would open automatically after clearing data in module settings:
+  - **Root Cause**: Event listeners were not being properly removed when interfaces were closed, causing them to react to update events
+  - **Solution**: Implemented proper event listener cleanup and visibility checks before processing updates
+  - **Impact**: Agent interface no longer opens unexpectedly after data clearing operations
+
+### Technical Details
+- **Event Listener Cleanup**: Added proper removal of `cyberpunk-agent-update` event listeners in `close()` method
+- **Visibility Checks**: Added checks to ensure interfaces are rendered and visible before processing updates
+- **Selective Updates**: Modified update functions to only process visible interfaces
+- **Memory Leak Prevention**: Proper cleanup prevents memory leaks from orphaned event listeners
+- **Test Suite**: Added comprehensive test script to verify the fix works correctly
+
+### Files Modified
+- `scripts/agent-home.js`: Added event listener cleanup and visibility checks
+- `scripts/module.js`: Modified update functions to be more selective
+- `scripts/test-interface-auto-open-fix.js`: New test script for verification
+- `docs/INTERFACE-AUTO-OPEN-FIX.md`: Documentation of the fix
+
+## [1.0.52] - 2025-01-30
+
+### Added
+- **Actor Isolation System**: Implemented complete isolation of mute settings and message history per actor:
+  - **Mute Settings Isolation**: Each actor now has independent mute configurations for their contacts
+  - **Message History Isolation**: Each actor maintains their own conversation history, independent of other actors
+  - **Migration System**: Automatic detection and migration of existing data to the new isolated format
+  - **Backup System**: Automatic backup of old data before migration with rollback capability
+
+### Changed
+- **Mute System**: Changed mute key format from `actorId-contactId` to `userId-actorId-contactId` for complete isolation
+- **Message Storage**: Changed from global storage to actor-specific storage (`cyberpunk-agent-messages-userId-actorId`)
+- **Agent Loading**: Modified `showAgentHome()` to load actor-specific messages when opening an agent
+- **Message Saving**: Updated `sendMessage()` and `handleMessageUpdate()` to save messages for both sender and receiver actors
+
+### Technical Details
+- **New Methods**: Added `saveMessagesForActor()`, `loadMessagesForActor()` for actor-specific message management
+- **Migration Scripts**: Created `migrate-actor-isolation.js` with automatic migration detection and rollback functionality
+- **Test Suite**: Added `test-actor-isolation.js` with comprehensive tests for mute and message isolation
+- **Documentation**: Created `ACTOR-ISOLATION.md` with detailed explanation of the isolation system
+- **Backward Compatibility**: Maintained compatibility with existing data through automatic migration
+
+### Benefits
+- **GM Flexibility**: GM can have different mute settings for each character they control
+- **Player Privacy**: Players' mute settings and message history are completely isolated
+- **Performance**: Only loads relevant data for the current actor
+- **Data Integrity**: Prevents cross-contamination of settings between different actors
+
 ## [1.0.51] - 2025-01-30
 ### Fixed
 - **Contact Display Issue**: Fixed a critical bug where contacts were not appearing in the character's agent UI after being added via the Contact Manager. The issue was caused by a data structure mismatch in the `getContactsForActor` method, which was expecting contact IDs but receiving contact objects. Contacts are now properly displayed immediately after addition.

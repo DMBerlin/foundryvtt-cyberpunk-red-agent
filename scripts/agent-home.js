@@ -183,6 +183,12 @@ class AgentApplication extends FormApplication {
   _handleUIControllerUpdate(componentId) {
     console.log(`AgentApplication | Handling UI Controller update for: ${componentId}`);
 
+    // Check if the application is actually rendered and visible
+    if (!this.rendered || !this.element || !this.element.is(':visible')) {
+      console.log("AgentApplication | Application not rendered or visible, skipping UI Controller update");
+      return;
+    }
+
     if (componentId.includes('conversation')) {
       // Defensive check for currentContact
       if (!this.currentContact || !this.currentContact.id) {
@@ -209,6 +215,19 @@ class AgentApplication extends FormApplication {
    * Unregister from UI Controller when closing
    */
   close(options = {}) {
+    // Remove event listeners to prevent memory leaks and unwanted behavior
+    if (this._chat7UpdateHandler) {
+      document.removeEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+      this._chat7UpdateHandler = null;
+      console.log("AgentApplication | Removed Chat7 event listener");
+    }
+
+    if (this._conversationUpdateHandler) {
+      document.removeEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+      this._conversationUpdateHandler = null;
+      console.log("AgentApplication | Removed conversation event listener");
+    }
+
     // Unregister from UI Controller
     if (window.CyberpunkAgentUIController) {
       const componentIds = this._getComponentIds();
@@ -357,6 +376,12 @@ class AgentApplication extends FormApplication {
       if (type === 'messageUpdate' || type === 'contactUpdate' || type === 'contactMuteToggle') {
         console.log("AgentApplication | Chat7 received update:", type);
 
+        // Check if the application is actually rendered and visible
+        if (!this.rendered || !this.element || !this.element.is(':visible')) {
+          console.log("AgentApplication | Application not rendered or visible, skipping update");
+          return;
+        }
+
         // For message updates, we need to force a complete re-render to refresh unread counts
         if (type === 'messageUpdate') {
           console.log("AgentApplication | Message update detected, forcing re-render for unread count update");
@@ -390,6 +415,12 @@ class AgentApplication extends FormApplication {
       // Defensive check for currentContact
       if (!this.currentContact || !this.currentContact.id) {
         console.warn("AgentApplication | currentContact is null or undefined, skipping conversation update");
+        return;
+      }
+
+      // Check if the application is actually rendered and visible
+      if (!this.rendered || !this.element || !this.element.is(':visible')) {
+        console.log("AgentApplication | Application not rendered or visible, skipping conversation update");
         return;
       }
 

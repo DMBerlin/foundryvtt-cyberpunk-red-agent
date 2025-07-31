@@ -585,7 +585,7 @@ class CyberpunkAgent {
     /**
      * Show the agent home screen
      */
-    showAgentHome(actor) {
+    async showAgentHome(actor) {
         console.log("Cyberpunk Agent | Attempting to show agent home for actor:", actor.name);
         console.log("Cyberpunk Agent | AgentApplication available:", typeof AgentApplication);
         console.log("Cyberpunk Agent | Window AgentApplication:", typeof window.AgentApplication);
@@ -604,6 +604,10 @@ class CyberpunkAgent {
         }
 
         try {
+            // Load actor-specific messages before opening the interface
+            console.log("Cyberpunk Agent | Loading messages for actor:", actor.id);
+            await this.loadMessagesForActor(actor.id);
+
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
             const agentApp = new AgentClass(actor);
@@ -727,6 +731,32 @@ class CyberpunkAgent {
     }
 
     /**
+     * Save messages for a specific actor
+     */
+    async saveMessagesForActor(actorId) {
+        try {
+            const userId = game.user.id;
+            const actorMessages = new Map();
+
+            // Filter messages that involve this actor
+            for (const [conversationKey, messages] of this.messages.entries()) {
+                if (conversationKey.includes(actorId)) {
+                    actorMessages.set(conversationKey, messages);
+                }
+            }
+
+            const messagesObject = Object.fromEntries(actorMessages);
+            const storageKey = `cyberpunk-agent-messages-${userId}-${actorId}`;
+
+            localStorage.setItem(storageKey, JSON.stringify(messagesObject));
+            console.log(`Cyberpunk Agent | Messages saved to localStorage for user ${game.user.name} and actor ${actorId}`);
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving messages for actor:", error);
+        }
+    }
+
+    /**
      * Load messages from localStorage (all users)
      */
     async loadMessages() {
@@ -752,6 +782,36 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Messages loaded successfully");
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading messages:", error);
+        }
+    }
+
+    /**
+     * Load messages for a specific actor from localStorage
+     */
+    async loadMessagesForActor(actorId) {
+        try {
+            const userId = game.user.id;
+            const storageKey = `cyberpunk-agent-messages-${userId}-${actorId}`;
+            let messagesData = {};
+
+            const storedData = localStorage.getItem(storageKey);
+            if (storedData) {
+                try {
+                    messagesData = JSON.parse(storedData);
+                    console.log(`Cyberpunk Agent | Messages loaded from localStorage for user ${game.user.name} and actor ${actorId}`);
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error parsing localStorage messages for actor:", error);
+                }
+            }
+
+            // Load actor-specific messages into the main messages map
+            Object.entries(messagesData).forEach(([conversationKey, conversation]) => {
+                this.messages.set(conversationKey, conversation);
+            });
+
+            console.log(`Cyberpunk Agent | Messages loaded successfully for actor ${actorId}`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading messages for actor:", error);
         }
     }
 
@@ -1021,7 +1081,12 @@ class CyberpunkAgent {
         };
 
         conversation.push(message);
-        await this.saveMessages();
+
+        // Save messages for both sender and receiver actors
+        await this.saveMessagesForActor(senderId);
+        if (senderId !== receiverId) {
+            await this.saveMessagesForActor(receiverId);
+        }
 
         // Clear unread count cache for this conversation
         this.unreadCounts.delete(this._getConversationKey(senderId, receiverId));
@@ -1234,7 +1299,8 @@ class CyberpunkAgent {
             const userId = game.user.id;
             let userMuteSettings = this._loadUserMuteSettings(userId);
 
-            const muteKey = `${actorId}-${contactId}`;
+            // Create actor-specific mute key: userId-actorId-contactId
+            const muteKey = `${userId}-${actorId}-${contactId}`;
             const currentMuteStatus = userMuteSettings[muteKey] || false;
             const newMuteStatus = !currentMuteStatus;
 
@@ -1337,7 +1403,8 @@ class CyberpunkAgent {
 
             const userMutes = this._userMuteSettings.get(userId);
             if (userMutes) {
-                const muteKey = `${actorId}-${contactId}`;
+                // Use actor-specific mute key: userId-actorId-contactId
+                const muteKey = `${userId}-${actorId}-${contactId}`;
                 return userMutes.get(muteKey) || false;
             }
 
@@ -1549,11 +1616,9 @@ class CyberpunkAgent {
             // Enhanced save process to ensure persistence
             console.log("Cyberpunk Agent | Enhanced saving of cleared messages...");
 
-            // Save to localStorage for all users (GM and non-GM)
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
-            const messagesObject = Object.fromEntries(this.messages);
-            localStorage.setItem(storageKey, JSON.stringify(messagesObject));
-            console.log("Cyberpunk Agent | Saved cleared messages to localStorage for user:", game.user.name);
+            // Save to localStorage for the specific actor
+            await this.saveMessagesForActor(actorId);
+            console.log("Cyberpunk Agent | Saved cleared messages to localStorage for actor:", actorId);
 
             // Notify all clients about the conversation clear
             console.log("Cyberpunk Agent | Notifying clients about conversation clear...");
@@ -1649,7 +1714,7 @@ class CyberpunkAgent {
         // Find and mark conversation components as dirty
         const openWindows = Object.values(ui.windows);
         openWindows.forEach(window => {
-            if (window && window.rendered) {
+            if (window && window.rendered && window.element && window.element.is(':visible')) {
                 if (window.constructor.name === 'ChatConversationApplication') {
                     const componentId = `conversation-${window.actor?.id}-${window.currentContact?.id}`;
                     componentsToUpdate.push(componentId);
@@ -2360,7 +2425,7 @@ class CyberpunkAgent {
     /**
  * Handle message update notifications from other clients
  */
-    handleMessageUpdate(data) {
+    async handleMessageUpdate(data) {
         console.log("Cyberpunk Agent | Received message update notification from:", data.userName);
 
         // Prevent processing our own updates
@@ -2398,8 +2463,11 @@ class CyberpunkAgent {
                     // Add the message
                     conversation.push(data.message);
 
-                    // Save messages
-                    this.saveMessages();
+                    // Save messages for both sender and receiver actors
+                    await this.saveMessagesForActor(data.senderId);
+                    if (data.senderId !== data.receiverId) {
+                        await this.saveMessagesForActor(data.receiverId);
+                    }
                     console.log("Cyberpunk Agent | Message added to local conversation successfully");
                 } else {
                     console.log("Cyberpunk Agent | Message already exists in conversation, skipping");
@@ -2720,7 +2788,7 @@ class CyberpunkAgent {
         let updatedCount = 0;
 
         openWindows.forEach(window => {
-            if (window && window.rendered) {
+            if (window && window.rendered && window.element && window.element.is(':visible')) {
                 // Check if it's an agent-related application
                 if (window.constructor.name === 'AgentHomeApplication' ||
                     window.constructor.name === 'Chat7Application' ||

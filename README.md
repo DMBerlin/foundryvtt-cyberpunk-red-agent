@@ -10,8 +10,9 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 - **Mensagens Privadas**: Opção para tornar as mensagens privadas entre participantes
 - **Notificações Sonoras**: Sons de notificação para novas mensagens
 - **Integração com FoundryVTT**: Sincronização com o chat do FoundryVTT
-- **Sistema de Mute**: Mute contatos específicos para controlar notificações
-- **Contatos Anônimos**: Receba mensagens de contatos não adicionados à sua lista
+- **Sistema de Mute Isolado**: Mute contatos específicos para cada personagem independentemente
+- **Histórico Isolado**: Cada personagem mantém seu próprio histórico de conversas
+- **Isolamento por Actor**: Configurações e dados são isolados por personagem/actor
 
 ## Requisitos
 
@@ -77,6 +78,12 @@ Para problemas ou dúvidas:
 MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## Changelog
+
+### v1.0.52
+- **Sistema de Isolamento por Actor**: Implementado isolamento completo de configurações de mute e histórico de mensagens por personagem
+- **Migração Automática**: Sistema automático de migração de dados existentes para o novo formato
+- **Backup e Rollback**: Sistema de backup automático com capacidade de rollback
+- **Testes Automatizados**: Scripts de teste para verificar o isolamento funcionando corretamente
 
 ### v1.0.6
 - **REFATORAÇÃO MAJOR**: Módulo agora usa exclusivamente SocketLib para comunicação
