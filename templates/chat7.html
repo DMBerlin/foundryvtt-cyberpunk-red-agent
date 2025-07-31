@@ -27,8 +27,7 @@
     {{#if contacts.length}}
     <div class="cp-contacts-list">
       {{#each contacts}}
-      <div class="cp-contact-item {{#if this.isAnonymous}}anonymous{{/if}} {{#if this.isMuted}}muted{{/if}}"
-        data-contact-id="{{this.id}}"
+      <div class="cp-contact-item {{#if this.isMuted}}muted{{/if}}" data-contact-id="{{this.id}}"
         title="Conversar com {{this.name}}{{#if this.isMuted}} (Notificações mutadas){{/if}}">
         <div class="cp-contact-avatar">
           <img src="{{this.img}}" alt="{{this.name}}" />
@@ -40,9 +39,6 @@
         </div>
         <div class="cp-contact-info">
           <span class="cp-contact-name">{{this.name}}</span>
-          {{#if this.isAnonymous}}
-          <span class="cp-contact-status anonymous">ANÔNIMO</span>
-          {{/if}}
           {{#if this.isMuted}}
           <span class="cp-contact-status muted">MUTADO</span>
           {{/if}}

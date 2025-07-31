@@ -2,6 +2,128 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.51] - 2025-01-30
+### Fixed
+- **Contact Display Issue**: Fixed a critical bug where contacts were not appearing in the character's agent UI after being added via the Contact Manager. The issue was caused by a data structure mismatch in the `getContactsForActor` method, which was expecting contact IDs but receiving contact objects. Contacts are now properly displayed immediately after addition.
+
+## [1.0.50] - 2025-01-30
+
+### Fixed
+- **SocketLib Connection Warnings**: Removed unreliable `socketlib.isConnected()` checks that were causing false "not connected" warnings:
+  - **Root Cause**: SocketLib doesn't have a persistent connection state like traditional WebSockets, making `isConnected()` checks misleading
+  - **Solution**: Replaced connection state checks with availability checks for `socketlib` and `window.socket` objects
+  - **Impact**: Eliminated false "SocketLib not connected" warnings when adding contacts and other operations
+
+### Technical Details
+- **Removed Connection Checks**: Eliminated all `socketlib.isConnected()` calls throughout the codebase
+- **Updated Availability Logic**: Changed from connection-based to availability-based SocketLib checks
+- **Improved Error Logging**: Removed misleading connection status from error logs
+- **Enhanced Debug Methods**: Updated debug and test methods to reflect proper SocketLib usage patterns
+- **Contact Update Fix**: Fixed "SocketLib not connected, cannot send update" warnings during contact addition
+
+## [1.0.49] - 2025-01-30
+
+### Fixed
+- **GM Data Management Dialog Error**: Fixed "yes is not a function" and "no is not a function" errors in GM Data Management dialogs:
+  - **Root Cause**: `Dialog.confirm()` was being used incorrectly with string values for `yes` and `no` properties
+  - **Solution**: Replaced `Dialog.confirm()` with proper `Dialog` constructor using `buttons` object with callback functions
+  - **Impact**: GM Data Management confirmation dialogs now work correctly without throwing errors
+
+### Technical Details
+- **Dialog Implementation**: Updated both `_onClearAllMessages()` and `_onClearAllContacts()` methods to use proper Dialog constructor
+- **Promise-based Resolution**: Used Promise-based approach to handle dialog confirmation asynchronously
+- **Proper Button Callbacks**: Implemented proper button callbacks that resolve the Promise with boolean values
+- **Default Button**: Set "no" as the default button for safety
+
+## [1.0.48] - 2025-01-30
+
+### Fixed
+- **GM Data Management Template Path**: Fixed ENOENT error when opening GM Data Management menu:
+  - **Root Cause**: Template path was using relative path `templates/gm-data-management.html` instead of full module path
+  - **Solution**: Changed template path to `modules/cyberpunk-agent/templates/gm-data-management.html` to match other templates
+  - **Impact**: GM Data Management menu now opens correctly without file not found errors
+
+### Technical Details
+- **Template Path Correction**: Updated `GMDataManagementMenu.defaultOptions.template` to use full module path
+- **Consistency**: Aligned with other template paths in the module (e.g., `modules/cyberpunk-agent/templates/...`)
+- **Foundry VTT Compatibility**: Ensures Foundry VTT can properly locate and load the template file
+
+## [1.0.47] - 2025-01-30
+
+### Added
+- **GM Data Management Tools**: Added comprehensive GM data management functionality to module settings:
+  - **Clear All Messages Button**: Allows GM to delete all chat message histories for all actors
+  - **Clear All Contacts Button**: Allows GM to delete all contact connections for all actors (also deletes all messages)
+  - **GM Data Management Menu**: New settings menu accessible only to GMs with warning dialogs and confirmation prompts
+  - **Cross-Client Synchronization**: All clearing operations are synchronized across all connected clients via SocketLib
+
+### Fixed
+- **Contact Addition Error**: Fixed "Erro ao adicionar contato!" error when adding contacts that already exist:
+  - **Root Cause**: `addContactToActor` was returning `false` when contact already existed, causing error message
+  - **Solution**: Changed logic to return `true` when contact already exists, treating it as a successful operation
+  - **Impact**: Contact addition now works properly without showing errors for existing contacts
+
+### Technical Details
+- **New Methods**: Added `clearAllMessages()` and `clearAllContacts()` methods to CyberpunkAgent class
+- **SocketLib Integration**: Added handlers for `allMessagesCleared` and `allContactsCleared` broadcast types
+- **localStorage Management**: Comprehensive clearing of all localStorage items across all users
+- **UI Updates**: Automatic interface updates after clearing operations
+- **Permission Enforcement**: All operations restricted to GM users only
+- **Warning System**: Confirmation dialogs with clear warnings about irreversible actions
+
+## [1.0.46] - 2025-01-30
+
+### Fixed
+- **Contact Manager Error**: Fixed "Erro ao adicionar contato!" error when adding contacts via Contact Manager:
+  - **Root Cause**: Missing permission checks and inadequate error handling in contact addition process
+  - **Solution**: Added comprehensive permission checks and error handling throughout the contact addition flow
+  - **Impact**: Contact addition now works properly with clear error messages and proper GM permission enforcement
+
+### Technical Details
+- **Permission Enforcement**: Added GM-only restriction for `addContactToActor` method since `contact-networks` is world-scoped
+- **Enhanced Error Handling**: Improved error handling in `addContactToActor`, `saveContactNetworks`, and `_onResultClick` methods
+- **Better User Feedback**: Enhanced error messages to indicate GM permission requirements and provide specific error details
+- **Validation Checks**: Added validation for CyberpunkAgent instance availability and method existence before operations
+- **Setting Verification**: Added verification that `contact-networks` setting is properly registered before attempting to save
+
+## [1.0.45] - 2024-12-29
+
+### Removed
+- **Anonymous Contact Feature**: Completely removed all anonymous contact functionality from the module:
+  - **Root Cause**: Anonymous contact feature was causing bugs and complexity in the agent system
+  - **Solution**: Removed all anonymous contact related code, methods, and UI elements
+  - **Impact**: Simplified contact system, reduced complexity, and eliminated related bugs
+
+### Technical Details
+- **Removed Methods**: `getAnonymousContact`, `_getExistingAnonymousContact`, `_storeAnonymousContact`, `getAnonymousContactsForActor`, `_convertAnonymousToRegularContact`
+- **Removed UI Elements**: Anonymous contact display logic from Chat7 template and CSS styles
+- **Removed Tests**: All test functions and files related to anonymous contacts
+- **Simplified Data Structure**: Removed anonymous contact storage and management from agent data
+- **Updated Contact Logic**: Simplified `getContactsForActor` to only return regular contacts
+- **Cleaned Up References**: Removed all anonymous contact references from UI and data processing
+
+## [1.0.44] - 2024-12-29
+
+### Fixed
+- **Real-time Unread Count Updates**: Fixed issue where unread message count chips were not updating immediately when new messages arrived while the Chat7 contact list was open:
+  - **Root Cause**: Chat7 interfaces were not being forced to refresh their unread count data when new messages arrived
+  - **Solution**: Implemented `_forceChat7UnreadCountUpdate()` method to specifically target Chat7 interfaces for unread count updates
+  - **Impact**: Unread count chips now appear instantly when a new message is received, without requiring navigation away from the contact list screen
+
+### Added
+- **Enhanced Message Update Processing**: Improved real-time message update handling:
+  - **Chat7-Specific Updates**: New `_forceChat7UnreadCountUpdate()` method targets Chat7 interfaces specifically
+  - **Multiple Update Strategies**: Comprehensive update strategies including UI Controller, direct targeting, and forced re-rendering
+  - **Real-time Event Handling**: Enhanced real-time event handling for `messageUpdate` events
+  - **Unread Count Cache Management**: Improved cache clearing to ensure fresh data retrieval
+
+### Changed
+- **Message Update Flow**: Enhanced message update processing:
+  - Updated `handleMessageUpdate()` to include Chat7-specific unread count updates
+  - Enhanced Chat7 real-time listener to force re-renders for message updates
+  - Improved UI Controller update handling for Chat7 components
+  - Added comprehensive logging for debugging unread count updates
+
 ## [1.0.43] - 2024-12-29
 
 ### Fixed

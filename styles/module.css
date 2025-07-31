@@ -641,10 +641,7 @@
   font-size: 0.9em;
 }
 
-.cp-contact-status.anonymous {
-  color: var(--cp-warning);
-  font-style: italic;
-}
+
 
 .cp-contact-status.muted {
   color: var(--cp-error);
@@ -2294,11 +2291,7 @@
   box-shadow: 0 0 15px var(--cp-glow-weak);
 }
 
-/* Enhanced contact status with pulse */
-.cp-contact-status.anonymous {
-  animation: pulse 2s ease-in-out infinite;
-  color: var(--cp-warning);
-}
+
 
 /* Cyberpunk-style loading states */
 .cp-app-icon.loading .cp-app-icon-inner {

@@ -372,6 +372,86 @@ async function handleConversationClear(data) {
 }
 
 /**
+ * Handle all messages cleared notification
+ */
+async function handleAllMessagesCleared(data) {
+  console.log("Cyberpunk Agent | Received all messages cleared notification via SocketLib:", data);
+
+  // Prevent processing our own updates
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own all messages cleared notification");
+    return;
+  }
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Clear local messages
+      window.CyberpunkAgent.instance.messages.clear();
+      window.CyberpunkAgent.instance.lastReadTimestamps.clear();
+
+      // Clear localStorage for current user
+      const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
+      const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+      localStorage.removeItem(messagesStorageKey);
+      localStorage.removeItem(timestampsStorageKey);
+
+      console.log("Cyberpunk Agent | Cleared all messages locally");
+
+      // Update all open interfaces
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      // Show notification
+      ui.notifications.info("All chat message histories have been cleared by the GM");
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling all messages cleared:", error);
+  }
+}
+
+/**
+ * Handle all contacts cleared notification
+ */
+async function handleAllContactsCleared(data) {
+  console.log("Cyberpunk Agent | Received all contacts cleared notification via SocketLib:", data);
+
+  // Prevent processing our own updates
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own all contacts cleared notification");
+    return;
+  }
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Clear local contact networks
+      window.CyberpunkAgent.instance.contactNetworks.clear();
+
+      // Clear local messages (since contacts are removed)
+      window.CyberpunkAgent.instance.messages.clear();
+      window.CyberpunkAgent.instance.lastReadTimestamps.clear();
+
+      // Clear localStorage for current user
+      const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
+      const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+      localStorage.removeItem(messagesStorageKey);
+      localStorage.removeItem(timestampsStorageKey);
+
+      console.log("Cyberpunk Agent | Cleared all contacts and messages locally");
+
+      // Update all open interfaces
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance._updateContactManagerImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      // Show notification
+      ui.notifications.info("All contact connections and messages have been cleared by the GM");
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling all contacts cleared:", error);
+  }
+}
+
+/**
  * Handle send message from other clients
  */
 async function handleSendMessage(data) {
@@ -565,6 +645,10 @@ async function handleBroadcastUpdate(data) {
     await handleContactUpdate(data);
   } else if (data.type === 'messageUpdate') {
     await handleMessageUpdate(data);
+  } else if (data.type === 'allMessagesCleared') {
+    await handleAllMessagesCleared(data);
+  } else if (data.type === 'allContactsCleared') {
+    await handleAllContactsCleared(data);
   }
 }
 
@@ -640,9 +724,10 @@ class SocketLibIntegration {
 
       console.log("Cyberpunk Agent | Attempting to send contact update via SocketLib:", updateData);
 
-      // Check if SocketLib is connected
-      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
-        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send update");
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send update");
         return false;
       }
 
@@ -657,8 +742,7 @@ class SocketLibIntegration {
         error: error.message,
         stack: error.stack,
         socketlibAvailable: !!socketlib,
-        socketAvailable: !!socket,
-        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+        socketAvailable: !!socket
       });
       return false;
     }
@@ -684,9 +768,10 @@ class SocketLibIntegration {
 
       console.log("Cyberpunk Agent | Attempting to send message update via SocketLib:", updateData);
 
-      // Check if SocketLib is connected
-      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
-        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send update");
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send update");
         return false;
       }
 
@@ -701,8 +786,7 @@ class SocketLibIntegration {
         error: error.message,
         stack: error.stack,
         socketlibAvailable: !!socketlib,
-        socketAvailable: !!socket,
-        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+        socketAvailable: !!socket
       });
       return false;
     }
@@ -728,9 +812,10 @@ class SocketLibIntegration {
 
       console.log("Cyberpunk Agent | Attempting to send message deletion via SocketLib:", deletionData);
 
-      // Check if SocketLib is connected
-      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
-        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send deletion");
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send deletion");
         return false;
       }
 
@@ -745,8 +830,7 @@ class SocketLibIntegration {
         error: error.message,
         stack: error.stack,
         socketlibAvailable: !!socketlib,
-        socketAvailable: !!socket,
-        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+        socketAvailable: !!socket
       });
       return false;
     }
@@ -772,9 +856,10 @@ class SocketLibIntegration {
 
       console.log("Cyberpunk Agent | Attempting to send conversation clear via SocketLib:", clearData);
 
-      // Check if SocketLib is connected
-      if (!socketlib || typeof socketlib.isConnected !== 'function' || !socketlib.isConnected()) {
-        console.warn("Cyberpunk Agent | SocketLib not connected, cannot send conversation clear");
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send conversation clear");
         return false;
       }
 
@@ -789,8 +874,7 @@ class SocketLibIntegration {
         error: error.message,
         stack: error.stack,
         socketlibAvailable: !!socketlib,
-        socketAvailable: !!socket,
-        isConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+        socketAvailable: !!socket
       });
       return false;
     }

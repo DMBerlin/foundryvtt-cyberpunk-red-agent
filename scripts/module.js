@@ -259,7 +259,15 @@ class CyberpunkAgent {
             restricted: true
         });
 
-
+        // Register a custom settings menu for GM Data Management
+        game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
+            name: 'GM Data Management',
+            hint: 'Manage all chat messages and contact connections for all actors',
+            label: 'GM Data Management',
+            icon: 'fas fa-database',
+            type: GMDataManagementMenu,
+            restricted: true
+        });
 
         console.log("Cyberpunk Agent | Settings registered successfully");
     }
@@ -930,11 +938,9 @@ class CyberpunkAgent {
 
         // Get all contacts for this actor
         const contacts = this.getContactsForActor(actorId);
-        const anonymousContacts = this.getAnonymousContactsForActor(actorId);
-        const allContacts = [...contacts, ...anonymousContacts];
 
         // Calculate unread count for each contact
-        allContacts.forEach(contact => {
+        contacts.forEach(contact => {
             const unreadCount = this.getUnreadCount(actorId, contact.id);
             if (unreadCount > 0) {
                 unreadCounts[contact.id] = unreadCount;
@@ -1101,117 +1107,7 @@ class CyberpunkAgent {
         return `(${areaCode}) ${prefix}-${lineNumber}`;
     }
 
-    /**
-     * Get or create anonymous contact for sender
-     */
-    getAnonymousContact(senderId) {
-        try {
-            const sender = game.actors.get(senderId);
-            if (!sender) {
-                console.warn("Cyberpunk Agent | Sender not found:", senderId);
-                return {
-                    id: senderId,
-                    name: "Desconhecido",
-                    img: "icons/svg/mystery-man.svg",
-                    isAnonymous: true
-                };
-            }
 
-            // Check if we already have an anonymous contact for this sender
-            const existingAnonymous = this._getExistingAnonymousContact(senderId);
-            if (existingAnonymous) {
-                return existingAnonymous;
-            }
-
-            // Create new anonymous contact data
-            const anonymousContact = {
-                id: senderId, // Use original sender ID for consistency
-                name: this._generateRandomPhoneNumber(),
-                img: 'icons/svg/mystery-man.svg',
-                isAnonymous: true,
-                originalSenderId: senderId
-            };
-
-            // Store the anonymous contact for consistency
-            this._storeAnonymousContact(senderId, anonymousContact);
-
-            return anonymousContact;
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error getting anonymous contact:", error);
-            return {
-                id: senderId,
-                name: "Erro",
-                img: "icons/svg/mystery-man.svg",
-                isAnonymous: true
-            };
-        }
-    }
-
-    /**
-     * Get existing anonymous contact for sender
-     */
-    _getExistingAnonymousContact(senderId) {
-        try {
-            // Check in agent data for stored anonymous contacts
-            const anonymousContacts = this.agentData.get('anonymousContacts') || new Map();
-            return anonymousContacts.get(senderId);
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error getting existing anonymous contact:", error);
-            return null;
-        }
-    }
-
-    /**
-     * Store anonymous contact for consistency
-     */
-    _storeAnonymousContact(senderId, anonymousContact) {
-        try {
-            let anonymousContacts = this.agentData.get('anonymousContacts');
-            if (!anonymousContacts) {
-                anonymousContacts = new Map();
-                this.agentData.set('anonymousContacts', anonymousContacts);
-            }
-            anonymousContacts.set(senderId, anonymousContact);
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error storing anonymous contact:", error);
-        }
-    }
-
-    /**
-     * Get anonymous contacts for an actor (people who sent messages but aren't in contact list)
-     */
-    getAnonymousContactsForActor(actorId) {
-        const anonymousContacts = [];
-        const regularContacts = this.getContactsForActor(actorId);
-        const regularContactIds = regularContacts.map(c => c.id);
-
-        // Check all conversations for this actor
-        this.messages.forEach((conversation, conversationKey) => {
-            const [actor1Id, actor2Id] = conversationKey.split('-');
-
-            // Find conversations where this actor is involved
-            if (actor1Id === actorId || actor2Id === actorId) {
-                // Get the other actor in the conversation
-                const otherActorId = actor1Id === actorId ? actor2Id : actor1Id;
-
-                // If the other actor is not in the contact list, they're anonymous
-                if (!regularContactIds.includes(otherActorId)) {
-                    const anonymousContact = this.getAnonymousContact(otherActorId);
-
-                    // Use the original sender ID for the anonymous contact ID
-                    anonymousContact.id = otherActorId;
-                    anonymousContact.isAnonymous = true;
-
-                    // Check if we already added this anonymous contact
-                    if (!anonymousContacts.some(c => c.id === otherActorId)) {
-                        anonymousContacts.push(anonymousContact);
-                    }
-                }
-            }
-        });
-
-        return anonymousContacts;
-    }
 
     /**
      * Notify about message updates
@@ -1315,60 +1211,37 @@ class CyberpunkAgent {
      * Get contacts for an actor
      */
     getContactsForActor(actorId) {
-        // Ensure mute system is initialized
-        this._initializeMuteSystem();
+        try {
+            const contactNetworks = this.contactNetworks.get(actorId);
+            if (!contactNetworks) {
+                return [];
+            }
 
-        const contacts = this.contactNetworks.get(actorId) || [];
-
-        // Add mute status to contacts based on current user's settings
-        return contacts.map(contact => ({
-            ...contact,
-            isMuted: this.isContactMuted(actorId, contact.id)
-        }));
+            // Contact networks are stored as arrays of contact objects with {id, name, img}
+            // Return them directly since they already have the correct structure
+            return contactNetworks;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error getting contacts for actor:", error);
+            return [];
+        }
     }
 
     /**
- * Toggle mute status for a contact
- */
+     * Toggle contact mute status
+     */
     toggleContactMute(actorId, contactId) {
         try {
-            // Ensure _userMuteSettings exists
-            if (!this._userMuteSettings) {
-                this._userMuteSettings = new Map();
-            }
-
-            // Check if user has access to this actor
-            const userActors = this.getUserActors();
-            const hasAccess = userActors.some(actor => actor.id === actorId);
-
-            if (!hasAccess) {
-                console.warn("Cyberpunk Agent | User attempted to toggle contact mute for actor they don't have access to.");
-                ui.notifications.warn("Você não tem acesso a este personagem.");
-                return false;
-            }
-
-            // Get user's mute settings
             const userId = game.user.id;
-            if (!this._userMuteSettings.has(userId)) {
-                this._userMuteSettings.set(userId, new Map());
-            }
+            let userMuteSettings = this._loadUserMuteSettings(userId);
 
-            const userMutes = this._userMuteSettings.get(userId);
             const muteKey = `${actorId}-${contactId}`;
-            const currentMuteStatus = userMutes.get(muteKey) || false;
+            const currentMuteStatus = userMuteSettings[muteKey] || false;
             const newMuteStatus = !currentMuteStatus;
 
-            // Update user's mute settings
-            userMutes.set(muteKey, newMuteStatus);
-            this._userMuteSettings.set(userId, userMutes);
+            userMuteSettings[muteKey] = newMuteStatus;
+            this._saveUserMuteSettings(userId, userMuteSettings);
 
-            // Save user's mute settings to localStorage (client-side only)
-            this._saveUserMuteSettings(userId);
-
-            console.log(`Cyberpunk Agent | Contact ${contactId} mute ${newMuteStatus ? 'enabled' : 'disabled'} for actor ${actorId} by user ${game.user.name}`);
-
-            // Update open interfaces
-            this.updateOpenInterfaces();
+            console.log(`Cyberpunk Agent | Contact ${contactId} ${newMuteStatus ? 'muted' : 'unmuted'} for actor ${actorId} by user ${userId}`);
 
             // Dispatch custom event for immediate UI updates
             document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
@@ -1393,18 +1266,15 @@ class CyberpunkAgent {
     /**
      * Save user's mute settings to localStorage
      */
-    _saveUserMuteSettings(userId) {
+    _saveUserMuteSettings(userId, userMuteSettings) {
         try {
             // Ensure _userMuteSettings exists
             if (!this._userMuteSettings) {
                 this._userMuteSettings = new Map();
             }
 
-            const userMutes = this._userMuteSettings.get(userId);
-            if (userMutes) {
-                const muteData = Object.fromEntries(userMutes);
-                localStorage.setItem(`cyberpunk-agent-mutes-${userId}`, JSON.stringify(muteData));
-            }
+            const muteData = Object.fromEntries(userMuteSettings);
+            localStorage.setItem(`cyberpunk-agent-mutes-${userId}`, JSON.stringify(muteData));
         } catch (error) {
             console.warn("Cyberpunk Agent | Error saving user mute settings:", error);
         }
@@ -1482,8 +1352,17 @@ class CyberpunkAgent {
      * Add contact to actor's network
      */
     addContactToActor(actorId, contactActorId) {
+        // Only GMs can add contacts since contact-networks is a world-scoped setting
+        if (!game.user.isGM) {
+            console.error("Cyberpunk Agent | Only GMs can add contacts to actors");
+            return false;
+        }
+
         const contact = game.actors.get(contactActorId);
-        if (!contact) return false;
+        if (!contact) {
+            console.error("Cyberpunk Agent | Contact actor not found:", contactActorId);
+            return false;
+        }
 
         if (!this.contactNetworks.has(actorId)) {
             this.contactNetworks.set(actorId, []);
@@ -1506,18 +1385,22 @@ class CyberpunkAgent {
                 contactActorId: contactActorId
             };
 
-            this.saveContactNetworks(actionDetails);
+            try {
+                this.saveContactNetworks(actionDetails);
+                console.log(`Cyberpunk Agent | Contact ${contact.name} added to ${actorId} successfully`);
 
-            // Convert anonymous contact to regular contact if it exists
-            this._convertAnonymousToRegularContact(actorId, contactActorId);
+                // Update any existing messages from this contact to show their real name
+                this._updateMessagesForContact(actorId, contactActorId, contact.name);
 
-            // Update any existing messages from this contact to show their real name
-            this._updateMessagesForContact(actorId, contactActorId, contact.name);
-
-            return true;
+                return true;
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error saving contact networks:", error);
+                return false;
+            }
         }
 
-        return false;
+        console.log(`Cyberpunk Agent | Contact ${contact.name} already exists for ${actorId}`);
+        return true; // Return true since the contact is already there
     }
 
     /**
@@ -1529,24 +1412,7 @@ class CyberpunkAgent {
         console.log(`Cyberpunk Agent | Contact ${contactName} (${contactActorId}) added to ${actorId}'s contacts. Messages will now show real name.`);
     }
 
-    /**
-     * Convert anonymous contact to regular contact
-     */
-    _convertAnonymousToRegularContact(actorId, contactActorId) {
-        try {
-            // Remove the anonymous contact from storage
-            let anonymousContacts = this.agentData.get('anonymousContacts');
-            if (anonymousContacts && anonymousContacts.has(contactActorId)) {
-                anonymousContacts.delete(contactActorId);
-                console.log(`Cyberpunk Agent | Anonymous contact converted to regular contact for ${contactActorId}`);
-            }
 
-            // Update messages to reflect the new contact name
-            this._updateMessagesForContact(actorId, contactActorId, game.actors.get(contactActorId)?.name);
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error converting anonymous contact:", error);
-        }
-    }
 
     /**
      * Delete messages from a conversation
@@ -1936,7 +1802,19 @@ class CyberpunkAgent {
      */
     saveContactNetworks(actionDetails = null) {
         try {
+            // Ensure we have permission to modify world settings
+            if (!game.user.isGM) {
+                throw new Error("Only GMs can modify contact networks");
+            }
+
             const networksObject = Object.fromEntries(this.contactNetworks);
+
+            // Verify the setting is registered before trying to set it
+            const setting = game.settings.settings.get('cyberpunk-agent.contact-networks');
+            if (!setting) {
+                throw new Error("Contact networks setting not registered");
+            }
+
             game.settings.set('cyberpunk-agent', 'contact-networks', networksObject);
 
             console.log("Cyberpunk Agent | Contact networks saved to settings:", networksObject);
@@ -1951,6 +1829,7 @@ class CyberpunkAgent {
             this.loadAgentData();
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving contact networks:", error);
+            throw error; // Re-throw to allow calling code to handle it
         }
     }
 
@@ -1989,6 +1868,116 @@ class CyberpunkAgent {
         } catch (error) {
             console.error("Cyberpunk Agent | Error clearing data:", error);
             ui.notifications.error("Erro ao limpar dados: " + error.message);
+        }
+    }
+
+    /**
+     * Clear all messages for all actors (GM only)
+     */
+    async clearAllMessages() {
+        if (!game.user.isGM) {
+            throw new Error("Only GMs can clear all messages");
+        }
+
+        try {
+            console.log("Cyberpunk Agent | Clearing all messages for all actors...");
+
+            // Clear messages from localStorage for all users
+            this.messages.clear();
+
+            // Remove all message-related localStorage items
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('cyberpunk-agent-messages-')) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`Cyberpunk Agent | Removed messages from localStorage: ${key}`);
+            });
+
+            // Clear read timestamps for all users
+            this.lastReadTimestamps.clear();
+            const timestampKeysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('cyberpunk-agent-read-timestamps-')) {
+                    timestampKeysToRemove.push(key);
+                }
+            }
+
+            timestampKeysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`Cyberpunk Agent | Removed read timestamps from localStorage: ${key}`);
+            });
+
+            // Notify all clients about the message clearing
+            if (this._isSocketLibAvailable()) {
+                try {
+                    await this.socketLibIntegration.socket.executeAsGM('broadcastUpdate', {
+                        type: 'allMessagesCleared',
+                        timestamp: Date.now()
+                    });
+                    console.log("Cyberpunk Agent | Notified all clients about message clearing");
+                } catch (error) {
+                    console.warn("Cyberpunk Agent | Failed to notify clients about message clearing:", error);
+                }
+            }
+
+            // Update all open interfaces
+            this._updateChatInterfacesImmediately();
+            this.updateOpenInterfaces();
+
+            console.log("Cyberpunk Agent | All messages cleared successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing all messages:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Clear all contacts for all actors (GM only)
+     */
+    async clearAllContacts() {
+        if (!game.user.isGM) {
+            throw new Error("Only GMs can clear all contacts");
+        }
+
+        try {
+            console.log("Cyberpunk Agent | Clearing all contacts for all actors...");
+
+            // Clear contact networks
+            this.contactNetworks.clear();
+            game.settings.set('cyberpunk-agent', 'contact-networks', {});
+
+            // Clear all messages (since contacts are being removed)
+            await this.clearAllMessages();
+
+            // Notify all clients about the contact clearing
+            if (this._isSocketLibAvailable()) {
+                try {
+                    await this.socketLibIntegration.socket.executeAsGM('broadcastUpdate', {
+                        type: 'allContactsCleared',
+                        timestamp: Date.now()
+                    });
+                    console.log("Cyberpunk Agent | Notified all clients about contact clearing");
+                } catch (error) {
+                    console.warn("Cyberpunk Agent | Failed to notify clients about contact clearing:", error);
+                }
+            }
+
+            // Update all open interfaces
+            this._updateChatInterfacesImmediately();
+            this._updateContactManagerImmediately();
+            this.updateOpenInterfaces();
+
+            console.log("Cyberpunk Agent | All contacts cleared successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing all contacts:", error);
+            throw error;
         }
     }
 
@@ -2186,7 +2175,7 @@ class CyberpunkAgent {
             socketLibIntegration: !!this.socketLibIntegration,
             integrationAvailable: this.socketLibIntegration ? this.socketLibIntegration.isAvailable : false,
             socketlibGlobal: typeof socketlib !== 'undefined',
-            socketlibConnected: socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false
+            socketAvailable: !!window.socket
         });
 
         // Don't show notifications since SocketLib is actually working
@@ -2459,7 +2448,10 @@ class CyberpunkAgent {
         // Strategy 3: Update all open interfaces
         this.updateOpenInterfaces();
 
-        // Strategy 4: Dispatch custom event for backward compatibility
+        // Strategy 4: Force Chat7 interfaces to refresh unread counts specifically
+        this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
+
+        // Strategy 5: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
                 timestamp: Date.now(),
@@ -2489,6 +2481,37 @@ class CyberpunkAgent {
         }
 
         console.log("Cyberpunk Agent | Message update processed successfully");
+    }
+
+    /**
+     * Force Chat7 interfaces to refresh their unread count data and re-render
+     * This ensures that when a new message arrives, the unread count chip appears immediately
+     */
+    _forceChat7UnreadCountUpdate(senderId, receiverId) {
+        console.log("Cyberpunk Agent | Forcing Chat7 unread count update for message from", senderId, "to", receiverId);
+
+        // Find all open AgentApplication windows that are showing Chat7 view
+        const openWindows = Object.values(ui.windows);
+        let updatedCount = 0;
+
+        openWindows.forEach(window => {
+            if (window && window.rendered && window.constructor.name === 'AgentApplication') {
+                // Check if this is a Chat7 view for the receiver
+                if (window.currentView === 'chat7' && window.actor && window.actor.id === receiverId) {
+                    console.log("Cyberpunk Agent | Found Chat7 view for receiver, forcing re-render for unread count update");
+                    try {
+                        // Force a complete re-render to refresh the unread count data
+                        window.render(true);
+                        updatedCount++;
+                        console.log("Cyberpunk Agent | Chat7 view re-rendered successfully for unread count update");
+                    } catch (error) {
+                        console.warn("Cyberpunk Agent | Error re-rendering Chat7 view:", error);
+                    }
+                }
+            }
+        });
+
+        console.log(`Cyberpunk Agent | Re-rendered ${updatedCount} Chat7 interfaces for unread count updates`);
     }
 
     /**
@@ -2884,11 +2907,11 @@ class CyberpunkAgent {
             const isRegistered = modules.includes('cyberpunk-agent');
             console.log("✅ Module registered:", isRegistered);
 
-            // Test connection
-            const isConnected = socketlib && typeof socketlib.isConnected === 'function' ? socketlib.isConnected() : false;
-            console.log("✅ SocketLib connected:", isConnected);
+            // Test connection - SocketLib doesn't have a persistent connection state
+            const socketAvailable = !!window.socket;
+            console.log("✅ Socket available:", socketAvailable);
 
-            if (isConnected && isRegistered) {
+            if (socketAvailable && isRegistered) {
                 console.log("✅ All checks passed - SocketLib should be working");
 
                 // Test a simple broadcast
@@ -2904,7 +2927,7 @@ class CyberpunkAgent {
                 });
             } else {
                 console.error("❌ SocketLib not properly configured");
-                console.log("❌ Connection status:", isConnected);
+                console.log("❌ Socket availability:", socketAvailable);
                 console.log("❌ Registration status:", isRegistered);
             }
 
@@ -2928,17 +2951,9 @@ class CyberpunkAgent {
             console.log("🔍 SocketLib properties:", Object.keys(socketlib).filter(key => typeof socketlib[key] !== 'function'));
 
             // Check specific methods
-            console.log("🔍 isConnected method:", typeof socketlib.isConnected);
             console.log("🔍 registerModule method:", typeof socketlib.registerModule);
             console.log("🔍 modules property:", socketlib.modules);
-
-            // Try to call isConnected safely
-            try {
-                const connected = socketlib.isConnected();
-                console.log("🔍 isConnected result:", connected);
-            } catch (error) {
-                console.log("🔍 isConnected error:", error.message);
-            }
+            console.log("🔍 socket object:", !!window.socket);
         }
 
         console.log("🔍 Window socket:", window.socket);
@@ -3564,36 +3579,7 @@ window.getConversationMessages = (actorId1, actorId2) => {
     }
 };
 
-window.testAnonymousContacts = () => {
-    if (CyberpunkAgent.instance) {
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
 
-            // Send a message from actor2 to actor1 (simulating anonymous contact)
-            const success = CyberpunkAgent.instance.sendMessage(actor2.id, actor1.id, "Olá! Esta é uma mensagem de um contato anônimo.");
-
-            if (success) {
-                console.log("Cyberpunk Agent | Anonymous contact test message sent successfully");
-                ui.notifications.info("Mensagem de contato anônimo enviada!");
-
-                // Check if actor2 appears as anonymous contact for actor1
-                const anonymousContacts = CyberpunkAgent.instance.getAnonymousContactsForActor(actor1.id);
-                console.log("Cyberpunk Agent | Anonymous contacts for", actor1.name, ":", anonymousContacts);
-            } else {
-                console.error("Cyberpunk Agent | Failed to send anonymous contact test message");
-                ui.notifications.error("Erro ao enviar mensagem de teste de contato anônimo");
-            }
-        } else {
-            console.error("Cyberpunk Agent | Need at least 2 character actors for anonymous contact test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar contatos anônimos");
-        }
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
 window.testRealtimeMessages = () => {
     if (CyberpunkAgent.instance) {
@@ -4114,107 +4100,9 @@ window.testDetailedContactUpdates = () => {
     }
 };
 
-window.testAnonymousContacts = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Anonymous Contacts System ===");
 
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
 
-            console.log(`📱 Testing anonymous contacts between ${actor1.name} and ${actor2.name}`);
 
-            // Test 1: Generate anonymous contact
-            console.log("🔍 Test 1: Generating anonymous contact...");
-            const anonymousContact = CyberpunkAgent.instance.getAnonymousContact(actor2.id);
-            console.log("Anonymous contact generated:", anonymousContact);
-            ui.notifications.info(`Contato anônimo gerado: ${anonymousContact.name}`);
-
-            // Test 2: Generate another anonymous contact (should be consistent)
-            setTimeout(() => {
-                console.log("🔍 Test 2: Generating same anonymous contact (should be consistent)...");
-                const sameAnonymousContact = CyberpunkAgent.instance.getAnonymousContact(actor2.id);
-                console.log("Same anonymous contact:", sameAnonymousContact);
-                ui.notifications.info(`Contato anônimo consistente: ${sameAnonymousContact.name}`);
-            }, 2000);
-
-            // Test 3: Generate different anonymous contact
-            setTimeout(() => {
-                console.log("🔍 Test 3: Generating different anonymous contact...");
-                const differentAnonymousContact = CyberpunkAgent.instance.getAnonymousContact(actor1.id);
-                console.log("Different anonymous contact:", differentAnonymousContact);
-                ui.notifications.info(`Contato anônimo diferente: ${differentAnonymousContact.name}`);
-            }, 4000);
-
-            // Test 4: Get anonymous contacts for actor
-            setTimeout(() => {
-                console.log("🔍 Test 4: Getting anonymous contacts for actor...");
-                const anonymousContacts = CyberpunkAgent.instance.getAnonymousContactsForActor(actor1.id);
-                console.log("Anonymous contacts for actor:", anonymousContacts);
-                ui.notifications.info(`${anonymousContacts.length} contato(s) anônimo(s) encontrado(s)`);
-            }, 6000);
-
-            console.log("Cyberpunk Agent | Anonymous contacts test started - running 4 tests over 6 seconds");
-            console.log("📱 Check the console for detailed results");
-        } else {
-            console.error("❌ Need at least 2 character actors for anonymous contacts test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar contatos anônimos");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testAnonymousContactChat = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Anonymous Contact Chat ===");
-
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing anonymous contact chat between ${actor1.name} and ${actor2.name}`);
-
-            // Test 1: Send message from actor2 to actor1 (creates anonymous contact)
-            console.log("🔍 Test 1: Sending message to create anonymous contact...");
-            CyberpunkAgent.instance.sendMessage(actor2.id, actor1.id, "Olá! Esta é uma mensagem de teste para criar um contato anônimo.").then((success) => {
-                if (success) {
-                    console.log("✅ Message sent successfully, anonymous contact should be created");
-                    ui.notifications.success("Mensagem enviada! Contato anônimo criado.");
-
-                    // Test 2: Check if anonymous contact appears in actor1's list
-                    setTimeout(() => {
-                        console.log("🔍 Test 2: Checking anonymous contacts list...");
-                        const anonymousContacts = CyberpunkAgent.instance.getAnonymousContactsForActor(actor1.id);
-                        console.log("Anonymous contacts found:", anonymousContacts);
-
-                        if (anonymousContacts.length > 0) {
-                            ui.notifications.info(`✅ ${anonymousContacts.length} contato(s) anônimo(s) encontrado(s)!`);
-                            console.log("📱 Open Chat7 for actor1 to see the anonymous contact");
-                        } else {
-                            ui.notifications.warn("⚠️ Nenhum contato anônimo encontrado");
-                        }
-                    }, 2000);
-                } else {
-                    console.error("❌ Failed to send message");
-                    ui.notifications.error("Falha ao enviar mensagem");
-                }
-            });
-
-            console.log("Cyberpunk Agent | Anonymous contact chat test started");
-            console.log("📱 Check if the anonymous contact appears in the Chat7 interface");
-        } else {
-            console.error("❌ Need at least 2 character actors for anonymous contact chat test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar chat anônimo");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 window.forceUpdateChatInterfaces = () => {
     if (CyberpunkAgent.instance) {
@@ -4638,7 +4526,7 @@ console.log("Cyberpunk Agent | New test functions:");
 console.log("  - testSystemMessage() - Test the new system message fallback");
 console.log("  - testMessageSystem() - Test the messaging system");
 console.log("  - getConversationMessages(actorId1, actorId2) - Get messages between two actors");
-console.log("  - testAnonymousContacts() - Test the anonymous contacts system");
+
 console.log("  - testRealtimeMessages() - Test real-time message updates");
 console.log("  - testFoundryChatIntegration() - Test FoundryVTT chat integration");
 console.log("  - testMessageSaving() - Test message saving system");
@@ -4649,8 +4537,8 @@ console.log("  - testChatEventSystem() - Test chat event system");
 console.log("  - testUserSpecificEvents() - Test user-specific events");
 console.log("  - testAutoScroll() - Test auto-scroll functionality");
 console.log("  - testDetailedContactUpdates() - Test detailed contact update messages");
-console.log("  - testAnonymousContacts() - Test anonymous contacts system");
-console.log("  - testAnonymousContactChat() - Test anonymous contact chat functionality");
+
+
 console.log("  - testDeleteMessages() - Test message deletion functionality");
 console.log("  - testSimpleDelete() - Test simple delete system");
 console.log("  - testMessageDeletionSync() - Test message deletion synchronization");

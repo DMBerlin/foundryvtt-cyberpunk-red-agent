@@ -65,11 +65,9 @@ class AgentApplication extends FormApplication {
     if (this.currentView === 'chat7') {
       // Get contacts for the actor
       const contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
-      const allContacts = [...contacts, ...anonymousContacts];
 
       // Add unread counts and mute status to contacts
-      const contactsWithData = allContacts.map(contact => {
+      const contactsWithData = contacts.map(contact => {
         const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCount(this.actor.id, contact.id) || 0;
         const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
 
@@ -359,8 +357,13 @@ class AgentApplication extends FormApplication {
       if (type === 'messageUpdate' || type === 'contactUpdate' || type === 'contactMuteToggle') {
         console.log("AgentApplication | Chat7 received update:", type);
 
+        // For message updates, we need to force a complete re-render to refresh unread counts
+        if (type === 'messageUpdate') {
+          console.log("AgentApplication | Message update detected, forcing re-render for unread count update");
+          this.render(true);
+        }
         // For mute toggle, we need to force a complete re-render to show the mute status
-        if (type === 'contactMuteToggle') {
+        else if (type === 'contactMuteToggle') {
           console.log("AgentApplication | Contact mute toggle detected, forcing re-render");
           this.render(true);
         } else {
@@ -636,8 +639,7 @@ class AgentApplication extends FormApplication {
       }));
 
       // Show user feedback
-      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId) ||
-        window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id).find(c => c.id === contactId);
+      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId);
 
       if (contact) {
         ui.notifications.info(`Contato ${contact.name} ${newMuteStatus ? 'mutado' : 'desmutado'}!`);
@@ -650,13 +652,8 @@ class AgentApplication extends FormApplication {
    */
   _showContactInfo(contactId) {
     // Get contact data
-    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
-    let contact = contacts.find(c => c.id === contactId);
-
-    if (!contact) {
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
-      contact = anonymousContacts.find(c => c.id === contactId);
-    }
+    const contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    const contact = contacts.find(c => c.id === contactId);
 
     if (contact) {
       new Dialog({
@@ -665,7 +662,7 @@ class AgentApplication extends FormApplication {
           <div class="cp-contact-info-dialog">
             <p><strong>Nome:</strong> ${contact.name}</p>
             <p><strong>Telefone:</strong> ${contact.phoneNumber || 'N/A'}</p>
-            <p><strong>Tipo:</strong> ${contact.isAnonymous ? 'Contato Anônimo' : 'Contato Regular'}</p>
+            <p><strong>Tipo:</strong> Contato Regular</p>
           </div>
         `,
         buttons: {
@@ -716,8 +713,7 @@ class AgentApplication extends FormApplication {
   async _clearConversationHistory(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       // Show confirmation dialog
-      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId) ||
-        window.CyberpunkAgent.instance.getAnonymousContactsForActor(this.actor.id).find(c => c.id === contactId);
+      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId);
 
       if (!contact) {
         ui.notifications.error("Contato não encontrado");

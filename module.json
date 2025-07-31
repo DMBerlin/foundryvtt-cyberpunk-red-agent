@@ -1,9 +1,9 @@
 {
   "name": "cyberpunk-agent",
   "title": "Cyberpunk Agent",
-  "description": "A comprehensive communication and contact management system for Cyberpunk RED",
-  "version": "1.0.43",
-  "author": "Daniel",
+  "description": "A comprehensive phone system for Cyberpunk RED characters",
+  "version": "1.0.51",
+  "author": "Daniel Marinho",
   "minimumCoreVersion": "10",
   "compatibleCoreVersion": "11",
   "scripts": [

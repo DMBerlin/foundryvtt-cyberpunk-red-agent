@@ -582,29 +582,50 @@ class ContactSearchModal extends FormApplication {
     resultElement.style.opacity = '0.5';
     resultElement.style.transform = 'scale(0.95)';
 
-    if (window.CyberpunkAgent?.instance?.addContactToActor(this.actorId, actorId)) {
-      // Show success notification
-      ui.notifications.info(`Contato "${actorName}" adicionado com sucesso!`);
-
-      // Play closing sound effect
-      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+    try {
+      // Check if CyberpunkAgent instance is available
+      if (!window.CyberpunkAgent?.instance) {
+        throw new Error("CyberpunkAgent instance not available");
       }
 
-      this.close();
-
-      // The real-time update system will handle the refresh automatically
-      // But we can also provide immediate feedback to the parent app
-      if (this.parentApp && this.parentApp._handleRealtimeUpdate) {
-        setTimeout(() => {
-          this.parentApp._handleRealtimeUpdate();
-        }, 100);
+      // Check if addContactToActor method exists
+      if (typeof window.CyberpunkAgent.instance.addContactToActor !== 'function') {
+        throw new Error("addContactToActor method not available");
       }
-    } else {
+
+      const success = window.CyberpunkAgent.instance.addContactToActor(this.actorId, actorId);
+
+      if (success) {
+        // Show success notification
+        ui.notifications.info(`Contato "${actorName}" adicionado com sucesso!`);
+
+        // Play closing sound effect
+        if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+          window.CyberpunkAgent.instance.playSoundEffect('closing-window');
+        }
+
+        this.close();
+
+        // The real-time update system will handle the refresh automatically
+        // But we can also provide immediate feedback to the parent app
+        if (this.parentApp && this.parentApp._handleRealtimeUpdate) {
+          setTimeout(() => {
+            this.parentApp._handleRealtimeUpdate();
+          }, 100);
+        }
+      } else {
+        // Restore visual state on error
+        resultElement.style.opacity = '1';
+        resultElement.style.transform = 'scale(1)';
+        ui.notifications.error("Erro ao adicionar contato! Verifique se você tem permissão de GM.");
+      }
+    } catch (error) {
       // Restore visual state on error
       resultElement.style.opacity = '1';
       resultElement.style.transform = 'scale(1)';
-      ui.notifications.error("Erro ao adicionar contato!");
+
+      console.error("Cyberpunk Agent | Error adding contact:", error);
+      ui.notifications.error(`Erro ao adicionar contato: ${error.message}`);
     }
   }
 
@@ -640,8 +661,146 @@ window.ContactManagerMenu = ContactManagerMenu;
 
 console.log("Cyberpunk Agent | ContactManagerApplication and ContactManagerMenu made globally available");
 
+/**
+ * GM Data Management Menu
+ * Provides buttons for GM to clear all messages and contacts
+ */
+class GMDataManagementMenu extends FormApplication {
+  constructor(options = {}) {
+    super(options);
+  }
+
+  static get defaultOptions() {
+    return mergeObject(super.defaultOptions, {
+      id: 'gm-data-management-menu',
+      template: 'modules/cyberpunk-agent/templates/gm-data-management.html',
+      title: 'GM Data Management',
+      width: 400,
+      height: 300,
+      resizable: true,
+      closeOnSubmit: false
+    });
+  }
+
+  getData(options = {}) {
+    return {
+      canManage: game.user.isGM
+    };
+  }
+
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    html.find('.clear-all-messages').on('click', this._onClearAllMessages.bind(this));
+    html.find('.clear-all-contacts').on('click', this._onClearAllContacts.bind(this));
+  }
+
+  async _onClearAllMessages(event) {
+    event.preventDefault();
+
+    if (!game.user.isGM) {
+      ui.notifications.error("Only GMs can clear all messages");
+      return;
+    }
+
+    const confirmed = await new Promise((resolve) => {
+      new Dialog({
+        title: "Clear All Messages",
+        content: `
+          <p><strong>Warning:</strong> This will delete ALL chat message histories for ALL actors.</p>
+          <p>This action cannot be undone.</p>
+          <p>Are you sure you want to proceed?</p>
+        `,
+        buttons: {
+          yes: {
+            label: "Yes, Clear All Messages",
+            callback: () => resolve(true)
+          },
+          no: {
+            label: "Cancel",
+            callback: () => resolve(false)
+          }
+        },
+        default: "no"
+      }).render(true);
+    });
+
+    if (confirmed) {
+      try {
+        if (window.CyberpunkAgent?.instance?.clearAllMessages) {
+          await window.CyberpunkAgent.instance.clearAllMessages();
+          ui.notifications.info("All chat message histories have been cleared successfully!");
+        } else {
+          throw new Error("clearAllMessages method not available");
+        }
+      } catch (error) {
+        console.error("Cyberpunk Agent | Error clearing all messages:", error);
+        ui.notifications.error(`Error clearing all messages: ${error.message}`);
+      }
+    }
+  }
+
+  async _onClearAllContacts(event) {
+    event.preventDefault();
+
+    if (!game.user.isGM) {
+      ui.notifications.error("Only GMs can clear all contacts");
+      return;
+    }
+
+    const confirmed = await new Promise((resolve) => {
+      new Dialog({
+        title: "Clear All Contacts",
+        content: `
+          <p><strong>Warning:</strong> This will delete ALL contact connections for ALL actors.</p>
+          <p>This will also delete ALL chat message histories.</p>
+          <p>This action cannot be undone.</p>
+          <p>Are you sure you want to proceed?</p>
+        `,
+        buttons: {
+          yes: {
+            label: "Yes, Clear All Contacts",
+            callback: () => resolve(true)
+          },
+          no: {
+            label: "Cancel",
+            callback: () => resolve(false)
+          }
+        },
+        default: "no"
+      }).render(true);
+    });
+
+    if (confirmed) {
+      try {
+        if (window.CyberpunkAgent?.instance?.clearAllContacts) {
+          await window.CyberpunkAgent.instance.clearAllContacts();
+          ui.notifications.info("All contact connections and messages have been cleared successfully!");
+        } else {
+          throw new Error("clearAllContacts method not available");
+        }
+      } catch (error) {
+        console.error("Cyberpunk Agent | Error clearing all contacts:", error);
+        ui.notifications.error(`Error clearing all contacts: ${error.message}`);
+      }
+    }
+  }
+
+  async _updateObject(event, formData) {
+    // Not needed for this menu
+  }
+}
+
+// Make classes globally available
+window.ContactManagerApplication = ContactManagerApplication;
+window.ContactManagerMenu = ContactManagerMenu;
+window.GMDataManagementMenu = GMDataManagementMenu;
+
+console.log("Cyberpunk Agent | ContactManagerApplication, ContactManagerMenu, and GMDataManagementMenu made globally available");
+
 // Simple hook registration
 Hooks.once('ready', () => {
   console.log("Cyberpunk Agent | Contact manager ready hook triggered");
   console.log("Cyberpunk Agent | ContactManagerApplication available:", typeof ContactManagerApplication);
+  console.log("Cyberpunk Agent | GMDataManagementMenu available:", typeof GMDataManagementMenu);
 }); 
