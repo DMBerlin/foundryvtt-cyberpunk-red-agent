@@ -77,9 +77,40 @@ class ContactSearchModal extends Application {
    * Handle phone input changes
    */
   _onPhoneInput(event) {
-    this.phoneNumber = event.target.value;
+    const input = event.target;
+    const rawValue = input.value.replace(/\D/g, ''); // Remove non-digits
+
+    // Apply US phone number mask
+    const maskedValue = this._applyPhoneMask(rawValue);
+    input.value = maskedValue;
+
+    // Store the raw number (without mask) for processing
+    this.phoneNumber = rawValue;
     this._updateSearchButton();
     this._clearResults();
+  }
+
+  /**
+   * Apply US phone number mask
+   * @param {string} rawNumber - Raw digits only
+   * @returns {string} Masked phone number
+   */
+  _applyPhoneMask(rawNumber) {
+    if (!rawNumber) return '';
+
+    // Limit to 11 digits (1 + area code + prefix + line number)
+    const limited = rawNumber.substring(0, 11);
+
+    if (limited.length <= 3) {
+      return `(${limited}`;
+    } else if (limited.length <= 6) {
+      return `(${limited.substring(0, 3)}) ${limited.substring(3)}`;
+    } else if (limited.length <= 10) {
+      return `(${limited.substring(0, 3)}) ${limited.substring(3, 6)}-${limited.substring(6)}`;
+    } else {
+      // 11 digits - add +1 prefix
+      return `+1 (${limited.substring(1, 4)}) ${limited.substring(4, 7)}-${limited.substring(7)}`;
+    }
   }
 
   /**

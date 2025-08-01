@@ -563,7 +563,7 @@ class CyberpunkAgent {
     /**
      * Add control button to the scene controls based on equipped agents
      */
-    addControlButton(controls) {
+    async addControlButton(controls) {
         // Safety check: ensure controls is an array
         if (!Array.isArray(controls)) {
             console.warn("Cyberpunk Agent | addControlButton: controls is not an array:", controls);
@@ -583,7 +583,7 @@ class CyberpunkAgent {
             tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
 
             // Get equipped agents for the current user (works for both GM and players)
-            const equippedAgents = this.getEquippedAgentsForUser();
+            const equippedAgents = await this.getEquippedAgentsForUser();
 
             if (equippedAgents.length > 0) {
                 // If only one equipped agent, show it directly
@@ -627,6 +627,24 @@ class CyberpunkAgent {
                 changes.system?.equipped !== undefined) {
 
                 console.log(`Cyberpunk Agent | Agent equipment status changed for ${item.name}: ${changes.system.equipped}`);
+
+                // Find the actor that owns this item
+                const actor = item.parent;
+                if (actor) {
+                    // If the item is being equipped, ensure it has a phone number
+                    if (changes.system.equipped) {
+                        const deviceId = `device-${actor.id}-${item.id}`;
+                        if (this.devices.has(deviceId)) {
+                            // Ensure phone number is assigned
+                            this.getDevicePhoneNumber(deviceId).then(() => {
+                                console.log(`Cyberpunk Agent | Phone number ensured for equipped device: ${item.name}`);
+                                this.savePhoneNumberData();
+                            }).catch(error => {
+                                console.error(`Cyberpunk Agent | Error ensuring phone number for equipped device ${deviceId}:`, error);
+                            });
+                        }
+                    }
+                }
 
                 // Update token controls after a short delay to ensure the change is processed
                 setTimeout(() => {
@@ -719,10 +737,11 @@ class CyberpunkAgent {
 
                 const deviceName = item.name || `Agent ${item.id.slice(-4)}`;
 
-                // Create device data
+                // Create device data with owner name
                 const deviceData = {
                     id: deviceId,
                     ownerActorId: actor.id,
+                    ownerName: actor.name,  // 🆕 Include owner name
                     itemId: item.id,
                     deviceName: deviceName,
                     contacts: [],
@@ -744,6 +763,14 @@ class CyberpunkAgent {
                 }
                 this.deviceMappings.get(actor.id).push(deviceId);
 
+                // Immediately assign a phone number to the device
+                try {
+                    await this.getDevicePhoneNumber(deviceId);
+                    console.log(`Cyberpunk Agent | Phone number assigned to device: ${deviceName} for actor ${actor.name}`);
+                } catch (phoneError) {
+                    console.error(`Cyberpunk Agent | Error assigning phone number to device ${deviceId}:`, phoneError);
+                }
+
                 devicesCreated++;
                 console.log(`Cyberpunk Agent | Auto-created device: ${deviceName} for actor ${actor.name}`);
             }
@@ -751,6 +778,7 @@ class CyberpunkAgent {
             // Save the new device data if any devices were created
             if (devicesCreated > 0) {
                 await this.saveDeviceData();
+                await this.savePhoneNumberData();
                 console.log(`Cyberpunk Agent | Auto-created ${devicesCreated} new devices for actor ${actor.name}`);
             }
         } catch (error) {
@@ -876,7 +904,7 @@ class CyberpunkAgent {
     /**
      * Get equipped agents for the current user
      */
-    getEquippedAgentsForUser() {
+    async getEquippedAgentsForUser() {
         const equippedAgents = [];
 
         try {
@@ -926,6 +954,18 @@ class CyberpunkAgent {
 
                     if (isEquipped) {
                         const deviceId = this.generateDeviceId(actor.id, item.id);
+
+                        // Ensure the device has a phone number assigned
+                        await this.getDevicePhoneNumber(deviceId);
+
+                        // 🆕 Check and update owner name if needed
+                        const device = this.devices.get(deviceId);
+                        if (device && device.ownerName !== actor.name) {
+                            device.ownerName = actor.name;
+                            ownerNamesUpdated++;
+                            console.log(`Cyberpunk Agent | Updated owner name for device ${deviceId}: ${device.ownerName} → ${actor.name}`);
+                        }
+
                         equippedAgents.push({
                             deviceId: deviceId,
                             actorId: actor.id,
@@ -1212,7 +1252,7 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | openAgentInterface called");
 
         // For both GM and players: Show equipped agents
-        const equippedAgents = this.getEquippedAgentsForUser();
+        const equippedAgents = await this.getEquippedAgentsForUser();
         console.log("Cyberpunk Agent | openAgentInterface - equippedAgents:", equippedAgents);
         console.log("Cyberpunk Agent | openAgentInterface - equippedAgents.length:", equippedAgents.length);
 
@@ -2602,6 +2642,80 @@ class CyberpunkAgent {
     }
 
     /**
+     * Debug method to log all available contact numbers
+     * This method can be called from the browser console to help debug phone number matching
+     */
+    debugAllContactNumbers() {
+        console.log("=== Cyberpunk Agent | All Available Contact Numbers ===");
+        console.log(`Total phone number mappings: ${this.phoneNumberDictionary.size}`);
+
+        if (this.phoneNumberDictionary.size === 0) {
+            console.log("No phone numbers found in the system.");
+            return;
+        }
+
+        console.log("\nPhone Number Mappings:");
+        console.log("Phone Number (Raw) | Device ID | Device Name | Formatted Display");
+        console.log("-------------------|-----------|-------------|------------------");
+
+        for (const [phoneNumber, deviceId] of this.phoneNumberDictionary) {
+            const device = this.devices.get(deviceId);
+            const deviceName = device ? device.deviceName : 'Unknown Device';
+            const formattedNumber = this.formatPhoneNumberForDisplay(phoneNumber);
+
+            console.log(`${phoneNumber.padEnd(17)} | ${deviceId.padEnd(9)} | ${deviceName.padEnd(11)} | ${formattedNumber}`);
+        }
+
+        console.log("\nDevice Phone Numbers:");
+        console.log("Device ID | Phone Number (Raw) | Formatted Display");
+        console.log("----------|-------------------|------------------");
+
+        for (const [deviceId, phoneNumber] of this.devicePhoneNumbers) {
+            const formattedNumber = this.formatPhoneNumberForDisplay(phoneNumber);
+            console.log(`${deviceId.padEnd(9)} | ${phoneNumber.padEnd(17)} | ${formattedNumber}`);
+        }
+
+        console.log("\n=== End Debug Info ===");
+    }
+
+    /**
+     * Debug method to search for a specific phone number
+     * @param {string} searchNumber - The phone number to search for (can be raw or formatted)
+     */
+    debugSearchPhoneNumber(searchNumber) {
+        console.log(`=== Cyberpunk Agent | Debug Search for: ${searchNumber} ===`);
+
+        // Clean the search number
+        const rawSearch = searchNumber.replace(/\D/g, '');
+        console.log(`Raw search number: ${rawSearch}`);
+
+        // Try different variations
+        const variations = [
+            rawSearch,
+            rawSearch.startsWith('1') ? rawSearch : `1${rawSearch}`,
+            rawSearch.startsWith('1') ? rawSearch.substring(1) : rawSearch
+        ];
+
+        console.log("Searching variations:", variations);
+
+        for (const variation of variations) {
+            const deviceId = this.getDeviceIdFromPhoneNumber(variation);
+            if (deviceId) {
+                const device = this.devices.get(deviceId);
+                const deviceName = device ? device.deviceName : 'Unknown Device';
+                const formattedNumber = this.formatPhoneNumberForDisplay(variation);
+
+                console.log(`✅ FOUND: ${variation} -> Device: ${deviceName} (${deviceId})`);
+                console.log(`   Formatted: ${formattedNumber}`);
+                return;
+            }
+        }
+
+        console.log("❌ No match found for any variation");
+        console.log("Available numbers:", Array.from(this.phoneNumberDictionary.keys()));
+    }
+
+    /**
      * Load phone number data from settings
      */
     loadPhoneNumberData() {
@@ -2666,7 +2780,352 @@ class CyberpunkAgent {
         }
     }
 
+    /**
+     * Main sync function that scans all actors and ensures their equipped agents are registered
+     */
+    async syncAllAgents() {
+        console.log("\n🔍 Starting agent sync process...");
 
+        // Get initial counts
+        const initialDeviceCount = this.devices.size;
+        const initialPhoneCount = this.devicePhoneNumbers.size;
+
+        console.log(`📊 Initial state:`);
+        console.log(`   Devices registered: ${initialDeviceCount}`);
+        console.log(`   Phone numbers registered: ${initialPhoneCount}`);
+
+        let totalAgentsFound = 0;
+        let agentsAlreadyRegistered = 0;
+        let agentsNewlyRegistered = 0;
+        let agentsWithPhoneNumbers = 0;
+        let agentsMissingPhoneNumbers = 0;
+        let ownerNamesUpdated = 0;  // 🆕 Track owner name updates
+
+        // Get all actors
+        const allActors = game.actors.contents;
+        console.log(`\n🎭 Scanning ${allActors.length} actors for equipped agent items...`);
+
+        for (const actor of allActors) {
+            console.log(`\n--- Actor: ${actor.name} (${actor.id}) ---`);
+
+            // Get all agent items from this actor's inventory
+            const agentItems = actor.items.filter(item =>
+                item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent')
+            );
+
+            if (agentItems.length === 0) {
+                console.log(`   No agent items found`);
+                continue;
+            }
+
+            console.log(`   Found ${agentItems.length} agent item(s):`);
+
+            for (const item of agentItems) {
+                const isEquipped = item.system?.equipped || item.flags?.equipped || item.system?.equippedState === 'equipped';
+                const deviceId = `device-${actor.id}-${item.id}`;
+                const deviceExists = this.devices.has(deviceId);
+                const phoneNumberExists = this.devicePhoneNumbers.has(deviceId);
+
+                console.log(`     📱 ${item.name} (${item.id})`);
+                console.log(`        Equipped: ${isEquipped ? '✅' : '❌'}`);
+                console.log(`        Device registered: ${deviceExists ? '✅' : '❌'}`);
+                console.log(`        Phone number assigned: ${phoneNumberExists ? '✅' : '❌'}`);
+
+                if (isEquipped) {
+                    totalAgentsFound++;
+
+                    if (deviceExists) {
+                        agentsAlreadyRegistered++;
+
+                        if (phoneNumberExists) {
+                            agentsWithPhoneNumbers++;
+                            const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+                            console.log(`        📞 Phone: ${this.formatPhoneNumberForDisplay(phoneNumber)}`);
+                        } else {
+                            agentsMissingPhoneNumbers++;
+                            console.log(`        ⚠️  Missing phone number - will assign now`);
+
+                            try {
+                                await this.getDevicePhoneNumber(deviceId);
+                                console.log(`        ✅ Phone number assigned`);
+                                agentsWithPhoneNumbers++;
+                                agentsMissingPhoneNumbers--;
+                            } catch (error) {
+                                console.error(`        ❌ Failed to assign phone number:`, error);
+                            }
+                        }
+                    } else {
+                        agentsNewlyRegistered++;
+                        console.log(`        🔧 Device not registered - creating now`);
+
+                        try {
+                            // Create the device
+                            const deviceName = `${actor.name} - Agent`;
+                            this.devices.set(deviceId, {
+                                id: deviceId,
+                                name: deviceName,
+                                actorId: actor.id,
+                                itemId: item.id,
+                                owner: actor.ownership.default || 0
+                            });
+
+                            // Add to device mappings
+                            if (!this.deviceMappings.has(actor.id)) {
+                                this.deviceMappings.set(actor.id, []);
+                            }
+                            this.deviceMappings.get(actor.id).push(deviceId);
+
+                            // Assign phone number
+                            await this.getDevicePhoneNumber(deviceId);
+                            agentsWithPhoneNumbers++;
+
+                            console.log(`        ✅ Device created and phone number assigned`);
+
+                        } catch (error) {
+                            console.error(`        ❌ Failed to create device:`, error);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Save all data
+        console.log(`\n💾 Saving device and phone number data...`);
+        try {
+            await this.saveDeviceData();
+            await this.savePhoneNumberData();
+            console.log(`✅ Data saved successfully`);
+        } catch (error) {
+            console.error(`❌ Error saving data:`, error);
+        }
+
+        // Final counts
+        const finalDeviceCount = this.devices.size;
+        const finalPhoneCount = this.devicePhoneNumbers.size;
+
+        console.log(`\n📊 Sync Results:`);
+        console.log(`   Total equipped agents found: ${totalAgentsFound}`);
+        console.log(`   Agents already registered: ${agentsAlreadyRegistered}`);
+        console.log(`   Agents newly registered: ${agentsNewlyRegistered}`);
+        console.log(`   Agents with phone numbers: ${agentsWithPhoneNumbers}`);
+        console.log(`   Agents missing phone numbers: ${agentsMissingPhoneNumbers}`);
+        console.log(`   Owner names updated: ${ownerNamesUpdated}`);  // 🆕 Show owner name updates
+        console.log(`   Devices before sync: ${initialDeviceCount}`);
+        console.log(`   Devices after sync: ${finalDeviceCount}`);
+        console.log(`   Phone numbers before sync: ${initialPhoneCount}`);
+        console.log(`   Phone numbers after sync: ${finalPhoneCount}`);
+        console.log(`   New devices added: ${finalDeviceCount - initialDeviceCount}`);
+        console.log(`   New phone numbers added: ${finalPhoneCount - initialPhoneCount}`);
+
+        if (agentsNewlyRegistered > 0) {
+            console.log(`\n🎉 Successfully registered ${agentsNewlyRegistered} new agent(s)!`);
+        } else {
+            console.log(`\n✅ All agents were already properly registered`);
+        }
+
+        // List all registered devices
+        console.log(`\n📋 All Registered Devices:`);
+        console.log(`Device ID | Actor Name | Phone Number`);
+        console.log(`----------|-------------|-------------`);
+
+        for (const [deviceId, device] of this.devices) {
+            const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+            const formattedPhone = phoneNumber ? this.formatPhoneNumberForDisplay(phoneNumber) : 'No phone';
+            const ownerName = this.getDeviceOwnerName(deviceId);  // 🆕 Use helper function with fallback
+            console.log(`${deviceId} | ${ownerName} | ${formattedPhone}`);
+        }
+
+        console.log(`\n=== Agent Sync Complete ===`);
+    }
+
+    /**
+     * Migrate existing devices to include owner names
+     */
+    async migrateOwnerNames() {
+        console.log("\n🔄 Starting owner name migration...");
+
+        let devicesMigrated = 0;
+        let devicesSkipped = 0;
+
+        for (const [deviceId, device] of this.devices) {
+            if (device.ownerName) {
+                devicesSkipped++;
+                continue; // Already has owner name
+            }
+
+            // Extract actor ID from device ID
+            const actorId = device.ownerActorId;
+            if (!actorId) {
+                console.warn(`⚠️  Device ${deviceId} has no ownerActorId, skipping`);
+                devicesSkipped++;
+                continue;
+            }
+
+            // Get actor from game
+            const actor = game.actors.get(actorId);
+            if (!actor) {
+                console.warn(`⚠️  Actor ${actorId} not found for device ${deviceId}, skipping`);
+                devicesSkipped++;
+                continue;
+            }
+
+            // Update device with owner name
+            device.ownerName = actor.name;
+            devicesMigrated++;
+            console.log(`✅ Migrated device ${deviceId}: ${actor.name}`);
+        }
+
+        if (devicesMigrated > 0) {
+            await this.saveDeviceData();
+            console.log(`\n💾 Saved ${devicesMigrated} migrated devices`);
+        }
+
+        console.log(`\n📊 Migration Results:`);
+        console.log(`   Devices migrated: ${devicesMigrated}`);
+        console.log(`   Devices skipped (already had names): ${devicesSkipped}`);
+        console.log(`   Total devices processed: ${devicesMigrated + devicesSkipped}`);
+
+        if (devicesMigrated > 0) {
+            console.log(`\n🎉 Migration completed successfully!`);
+        } else {
+            console.log(`\n✅ All devices already have owner names`);
+        }
+    }
+
+    /**
+     * Force update all owner names from current actor data
+     */
+    async updateAllOwnerNames() {
+        console.log("\n🔄 Force updating all owner names...");
+
+        let devicesUpdated = 0;
+        let devicesSkipped = 0;
+        let devicesError = 0;
+
+        for (const [deviceId, device] of this.devices) {
+            const actorId = device.ownerActorId;
+            if (!actorId) {
+                console.warn(`⚠️  Device ${deviceId} has no ownerActorId, skipping`);
+                devicesSkipped++;
+                continue;
+            }
+
+            const actor = game.actors.get(actorId);
+            if (!actor) {
+                console.warn(`⚠️  Actor ${actorId} not found for device ${deviceId}, skipping`);
+                devicesError++;
+                continue;
+            }
+
+            const oldName = device.ownerName || 'Unknown';
+            const newName = actor.name;
+
+            if (oldName !== newName) {
+                device.ownerName = newName;
+                devicesUpdated++;
+                console.log(`✅ Updated device ${deviceId}: ${oldName} → ${newName}`);
+            } else {
+                devicesSkipped++;
+            }
+        }
+
+        if (devicesUpdated > 0) {
+            await this.saveDeviceData();
+            console.log(`\n💾 Saved ${devicesUpdated} updated devices`);
+        }
+
+        console.log(`\n📊 Update Results:`);
+        console.log(`   Devices updated: ${devicesUpdated}`);
+        console.log(`   Devices skipped (no change): ${devicesSkipped}`);
+        console.log(`   Devices with errors: ${devicesError}`);
+        console.log(`   Total devices processed: ${devicesUpdated + devicesSkipped + devicesError}`);
+
+        if (devicesUpdated > 0) {
+            console.log(`\n🎉 Owner name update completed successfully!`);
+        } else {
+            console.log(`\n✅ All owner names are up to date`);
+        }
+    }
+
+    /**
+     * Quick sync function that only checks for missing registrations
+     */
+    async quickSyncAgents() {
+        console.log("\n⚡ Quick Agent Sync - Checking for missing registrations only...");
+
+        let missingRegistrations = 0;
+        let fixedRegistrations = 0;
+
+        // Get all actors
+        const allActors = game.actors.contents;
+
+        for (const actor of allActors) {
+            // Get equipped agent items
+            const equippedAgentItems = actor.items.filter(item =>
+                item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent') &&
+                (item.system?.equipped || item.flags?.equipped || item.system?.equippedState === 'equipped')
+            );
+
+            for (const item of equippedAgentItems) {
+                const deviceId = `device-${actor.id}-${item.id}`;
+                const deviceExists = this.devices.has(deviceId);
+                const phoneNumberExists = this.devicePhoneNumbers.has(deviceId);
+
+                if (!deviceExists || !phoneNumberExists) {
+                    missingRegistrations++;
+                    console.log(`🔧 Fixing missing registration for ${actor.name} - ${item.name}`);
+
+                    try {
+                        // Create device if missing
+                        if (!deviceExists) {
+                            const deviceName = `${actor.name} - Agent`;
+                            this.devices.set(deviceId, {
+                                id: deviceId,
+                                name: deviceName,
+                                actorId: actor.id,
+                                itemId: item.id,
+                                owner: actor.ownership.default || 0
+                            });
+
+                            if (!this.deviceMappings.has(actor.id)) {
+                                this.deviceMappings.set(actor.id, []);
+                            }
+                            this.deviceMappings.get(actor.id).push(deviceId);
+                        }
+
+                        // Assign phone number if missing
+                        if (!phoneNumberExists) {
+                            await this.getDevicePhoneNumber(deviceId);
+                        }
+
+                        fixedRegistrations++;
+                        console.log(`✅ Fixed registration for ${actor.name} - ${item.name}`);
+
+                    } catch (error) {
+                        console.error(`❌ Failed to fix registration for ${actor.name} - ${item.name}:`, error);
+                    }
+                }
+            }
+        }
+
+        if (fixedRegistrations > 0) {
+            await this.saveDeviceData();
+            await this.savePhoneNumberData();
+            console.log(`\n💾 Data saved`);
+        }
+
+        console.log(`\n📊 Quick Sync Results:`);
+        console.log(`   Missing registrations found: ${missingRegistrations}`);
+        console.log(`   Registrations fixed: ${fixedRegistrations}`);
+
+        if (fixedRegistrations === 0) {
+            console.log(`✅ All agents are properly registered!`);
+        } else {
+            console.log(`🎉 Fixed ${fixedRegistrations} registration(s)!`);
+        }
+    }
 
     /**
      * Notify about message updates
@@ -2749,6 +3208,58 @@ class CyberpunkAgent {
             const contacts = this.contactNetworks.get(actor.id);
             // Update contact names in other actors' networks
             this.updateContactNames(actor.id, changes.name);
+        }
+
+        // 🆕 Update device registry when actor name changes
+        if (changes.name) {
+            this.updateDeviceOwnerNames(actor.id, changes.name);
+        }
+    }
+
+    /**
+     * Get owner name for a device with fallback
+     */
+    getDeviceOwnerName(deviceId) {
+        const device = this.devices.get(deviceId);
+        if (!device) return 'Unknown Device';
+
+        // First try to get from device data
+        if (device.ownerName) {
+            return device.ownerName;
+        }
+
+        // Fallback: get from actor
+        if (device.ownerActorId) {
+            const actor = game.actors.get(device.ownerActorId);
+            if (actor) {
+                // Update the device data for future use
+                device.ownerName = actor.name;
+                return actor.name;
+            }
+        }
+
+        return 'Unknown Owner';
+    }
+
+    /**
+     * Update device owner names when actor name changes
+     */
+    updateDeviceOwnerNames(actorId, newName) {
+        let devicesUpdated = 0;
+
+        // Find all devices owned by this actor
+        for (const [deviceId, device] of this.devices) {
+            if (device.ownerActorId === actorId) {
+                device.ownerName = newName;
+                devicesUpdated++;
+                console.log(`Cyberpunk Agent | Updated device ${deviceId} owner name to: ${newName}`);
+            }
+        }
+
+        if (devicesUpdated > 0) {
+            // Save the updated device data
+            this.saveDeviceData();
+            console.log(`Cyberpunk Agent | Updated ${devicesUpdated} devices with new owner name: ${newName}`);
         }
     }
 
@@ -5283,6 +5794,9 @@ Hooks.once('ready', () => {
     CyberpunkAgent.instance = new CyberpunkAgent();
     CyberpunkAgent.instance.setupAgentSystem();
 
+    // Make the instance globally available
+    window.cyberpunkAgent = CyberpunkAgent.instance;
+
     // Hook for when a user joins
     Hooks.on('userJoined', (user) => {
         console.log(`Cyberpunk Agent | User ${user.name} joined the session`);
@@ -6402,6 +6916,10 @@ console.log("  - forceUpdateChatInterfaces() - Force update all chat interfaces"
 console.log("  - debugAgentEquipment() - Debug equipment structure for Agent items");
 console.log("  - triggerDeviceDiscovery() - Manually trigger device discovery");
 console.log("  - checkDeviceStatus() - Check device status and details");
+console.log("  - window.cyberpunkAgent.syncAllAgents() - Full agent synchronization");
+console.log("  - window.cyberpunkAgent.quickSyncAgents() - Quick agent sync for missing registrations");
+console.log("  - window.cyberpunkAgent.migrateOwnerNames() - Migrate existing devices with owner names");
+console.log("  - window.cyberpunkAgent.updateAllOwnerNames() - Force update all owner names from actors");
 
 // Debug function for equipment issues
 window.debugAgentEquipment = function () {

@@ -11,6 +11,17 @@ All notable changes to this project will be documented in this file.
   - **Consistent Logic**: Same behavior for GM and players - based on equipment status
   - **Automatic vs Manual Selection**: Single Agent opens directly, multiple Agents show selection menu
   - **Clean Interface**: Removed irrelevant devices and confusing labels
+- **Phone Number Assignment Timing**: Enhanced phone number management for better user experience:
+  - **Immediate Assignment**: Phone numbers are assigned immediately when agent items are added to actor gear
+  - **Automatic Cleanup**: Phone numbers are automatically removed when agent items are deleted from actor gear
+  - **Equipment Status Monitoring**: Enhanced hooks to monitor equipment status changes
+  - **Proactive Management**: Phone numbers are ensured when items are equipped
+  - **Agent Sync Functions**: New synchronization tools for ensuring all equipped agents are properly registered:
+    - **Comprehensive Scanning**: Scans all actors and their equipped agent items
+    - **Automatic Registration**: Creates devices and assigns phone numbers for missing agents
+    - **Detailed Reporting**: Provides comprehensive logs of the sync process
+    - **Quick Sync Option**: Fast verification mode for checking missing registrations
+    - **Console Integration**: Available via `window.cyberpunkAgent.syncAllAgents()` and `window.cyberpunkAgent.quickSyncAgents()`
 
 ### Fixed
 - **GM Token Controls**: Fixed GM phone icon showing all devices with "(Unknown)" labels:
@@ -35,11 +46,13 @@ All notable changes to this project will be documented in this file.
 - **Better Security**: Respects character ownership permissions
 
 ### Files Modified
-- `scripts/module.js`: Updated `addControlButton()` and `openAgentInterface()` functions
+- `scripts/module.js`: Updated `addControlButton()`, `openAgentInterface()`, `checkAndCreateDevicesForActor()`, `setupItemUpdateHooks()` functions, and added `syncAllAgents()` and `quickSyncAgents()` methods
 - `scripts/test-gm-agent-improvements.js`: New comprehensive test script
+- `scripts/test-phone-assignment-timing.js`: New test script for phone number assignment timing
 - `docs/GM-AGENT-IMPROVEMENTS.md`: New documentation file
-- `README.md`: Updated GM usage instructions
+- `README.md`: Updated GM usage instructions, phone number management details, and sync function documentation
 - `CHANGELOG.md`: Added version 2.1.0 entry
+- `package.json`: Removed `sync` npm script (functionality moved to console)
 
 ## [1.0.55] - 2025-01-30
 

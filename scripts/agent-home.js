@@ -1004,15 +1004,46 @@ class AgentApplication extends FormApplication {
    * Handle phone input changes
    */
   _onPhoneInput(event) {
-    const phoneNumber = event.target.value.replace(/\D/g, ''); // Remove non-digits
-    event.target.value = phoneNumber; // Update input with cleaned value
+    const input = event.target;
+    const rawValue = input.value.replace(/\D/g, ''); // Remove non-digits
 
-    this.addContactState.phoneNumber = phoneNumber;
+    // Apply US phone number mask
+    const maskedValue = this._applyPhoneMask(rawValue);
+    input.value = maskedValue;
+
+    // Store the raw number (without mask) for processing
+    this.addContactState.phoneNumber = rawValue;
+    console.log('AgentApplication | _onPhoneInput - Raw value stored:', rawValue);
+    console.log('AgentApplication | _onPhoneInput - Masked value displayed:', maskedValue);
+
     this.addContactState.errorMessage = null;
     this.addContactState.successMessage = null;
     this.addContactState.searchResult = null;
 
     this._updateSearchButton();
+  }
+
+  /**
+   * Apply US phone number mask
+   * @param {string} rawNumber - Raw digits only
+   * @returns {string} Masked phone number
+   */
+  _applyPhoneMask(rawNumber) {
+    if (!rawNumber) return '';
+
+    // Limit to 11 digits (1 + area code + prefix + line number)
+    const limited = rawNumber.substring(0, 11);
+
+    if (limited.length <= 3) {
+      return `(${limited}`;
+    } else if (limited.length <= 6) {
+      return `(${limited.substring(0, 3)}) ${limited.substring(3)}`;
+    } else if (limited.length <= 10) {
+      return `(${limited.substring(0, 3)}) ${limited.substring(3, 6)}-${limited.substring(6)}`;
+    } else {
+      // 11 digits - add +1 prefix
+      return `+1 (${limited.substring(1, 4)}) ${limited.substring(4, 7)}-${limited.substring(7)}`;
+    }
   }
 
   /**
@@ -1041,14 +1072,20 @@ class AgentApplication extends FormApplication {
     this.render(true);
 
     try {
+      // Debug: Log the raw phone number
+      console.log('AgentApplication | _onSearchClick - Raw phone number:', this.addContactState.phoneNumber);
+
       // Normalize the phone number before searching
       const normalizedPhone = window.CyberpunkAgent?.instance?.normalizePhoneNumber(this.addContactState.phoneNumber);
+      console.log('AgentApplication | _onSearchClick - Normalized phone number:', normalizedPhone);
 
       // Search for the phone number
       const contactDeviceId = window.CyberpunkAgent?.instance?.getDeviceIdFromPhoneNumber(normalizedPhone);
+      console.log('AgentApplication | _onSearchClick - Contact device ID found:', contactDeviceId);
 
       if (!contactDeviceId) {
         const displayNumber = window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(normalizedPhone) || normalizedPhone;
+        console.log('AgentApplication | _onSearchClick - No contact found for:', displayNumber);
         this._showError(`Nenhum contato encontrado para o número ${displayNumber}`);
         return;
       }

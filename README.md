@@ -102,6 +102,9 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 - Os números são exibidos no formato `+1 (415) 212-0002` na tela inicial
 - Para adicionar contatos, use o formato não formatado: `14152120002`
 - Adições são recíprocas: se A adiciona B, B também recebe A como contato
+- **Atribuição Imediata**: Números são atribuídos automaticamente quando um Agent é adicionado ao equipamento do ator
+- **Limpeza Automática**: Quando um Agent é removido do equipamento, seu número é automaticamente removido do sistema
+- **Sincronização Manual**: Script de sincronização disponível para registrar Agents que possam ter sido perdidos
 
 ### Configurações
 
@@ -116,6 +119,42 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 - **Consistência**: Mesma lógica para GM e jogadores - baseada em equipamento
 - **Seleção Automática**: Se GM tem apenas um Agent equipado, abre diretamente
 - **Menu de Seleção**: Se GM tem múltiplos Agents, mostra menu para escolher
+
+### Sincronização de Agents
+
+O Cyberpunk Agent inclui funções de sincronização para garantir que todos os Agents equipados estejam devidamente registrados:
+
+**Executando a Sincronização:**
+1. Abra o console do navegador no FoundryVTT (F12)
+2. Execute: `window.cyberpunkAgent.syncAllAgents()` para sincronização completa
+3. Ou execute: `window.cyberpunkAgent.quickSyncAgents()` para verificação rápida
+
+**O que as funções fazem:**
+- Escaneiam todos os atores na campanha
+- Identificam Agents equipados que não estão registrados
+- Criam dispositivos e atribuem números de telefone automaticamente
+- Salvam todos os dados no sistema
+- Exibem relatório detalhado do processo
+
+### Sistema Híbrido de Nomes de Proprietários
+
+O sistema agora inclui um mecanismo híbrido para gerenciar os nomes dos proprietários dos devices:
+
+#### **Atualizações em Tempo Real**
+- Quando um ator é renomeado, todos os devices associados são atualizados automaticamente
+- As mudanças são salvas imediatamente no registro
+
+#### **Funções de Console Disponíveis**
+- `window.cyberpunkAgent.migrateOwnerNames()` - Migra devices existentes para incluir nomes de proprietários
+- `window.cyberpunkAgent.updateAllOwnerNames()` - Força atualização de todos os nomes de proprietários
+- `window.cyberpunkAgent.getDeviceOwnerName(deviceId)` - Obtém nome do proprietário com fallback
+
+#### **Mecanismo de Fallback**
+- Se um device não tem o nome do proprietário armazenado, o sistema busca automaticamente no ator
+- Garante que os nomes sempre estejam atualizados mesmo se houver falhas na sincronização
+
+#### **Teste do Sistema**
+Execute no console: `window.cyberpunkAgent.syncAllAgents()` para ver os nomes dos proprietários no registro.
 
 ### Sistema de Requisições GM
 
