@@ -1,21 +1,48 @@
 <div class="cp-contact-search-modal">
-  <div class="cp-search-header">
-    <h3><i class="fas fa-search"></i> BUSCAR CONTATOS</h3>
-    <p>Digite o nome do contato que deseja adicionar</p>
+  <div class="cp-modal-header">
+    <h2><i class="fas fa-user-plus"></i> ADICIONAR CONTATO</h2>
+    <button class="cp-modal-close" data-action="close" title="Fechar">
+      <i class="fas fa-times"></i>
+    </button>
   </div>
 
-  <div class="cp-search-content">
-    <div class="cp-search-input-container">
-      <input type="text" class="cp-search-input" placeholder="Digite o nome do contato..." />
-      <i class="fas fa-search cp-search-icon"></i>
+  <div class="cp-modal-content">
+    <div class="cp-search-instructions">
+      <p>Digite o número de telefone do contato que deseja adicionar:</p>
+      <p class="cp-format-hint">Formato: 14152120002 (apenas números, sem formatação)</p>
     </div>
 
-    <div class="cp-search-results">
-      <!-- Results will be populated dynamically -->
+    <div class="cp-phone-input-container">
+      <div class="cp-phone-input-wrapper">
+        <i class="fas fa-phone cp-phone-icon"></i>
+        <input type="tel" class="cp-phone-input" placeholder="14152120002" maxlength="11" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="cp-search-result" style="display: none;">
+      <div class="cp-result-content">
+        <div class="cp-result-avatar">
+          <i class="fas fa-user"></i>
+        </div>
+        <div class="cp-result-info">
+          <h3 class="cp-result-name">Nome do Contato</h3>
+          <p class="cp-result-number">+1 (415) 212-0002</p>
+        </div>
+        <button class="cp-add-contact-btn" data-action="add-contact">
+          <i class="fas fa-plus"></i>
+          ADICIONAR
+        </button>
+      </div>
+    </div>
+
+    <div class="cp-error-message" style="display: none;">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span class="cp-error-text">Nenhum contato encontrado para este número.</span>
     </div>
   </div>
 
-  <div class="cp-search-footer">
-    <button class="cp-cancel-search">CANCELAR</button>
+  <div class="cp-modal-footer">
+    <button class="cp-btn-secondary" data-action="close">CANCELAR</button>
+    <button class="cp-btn-primary" data-action="search" disabled>BUSCAR</button>
   </div>
 </div>

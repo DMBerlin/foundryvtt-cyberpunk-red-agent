@@ -117,7 +117,7 @@ class DeviceSystemTester {
     console.log("Cyberpunk Agent | Testing device data persistence...");
 
     // Save current data
-    this.agent.saveDeviceData();
+    await this.agent.saveDeviceData();
 
     // Clear in-memory data
     const originalDevices = new Map(this.agent.devices);
@@ -158,7 +158,7 @@ class DeviceSystemTester {
     const device2 = devices[1];
 
     // Test adding contact
-    const addResult = this.agent.addContactToDevice(device1.id, device2.id);
+    const addResult = await this.agent.addContactToDevice(device1.id, device2.id);
     if (!addResult) {
       throw new Error(`Failed to add contact from ${device1.id} to ${device2.id}`);
     }
@@ -170,7 +170,7 @@ class DeviceSystemTester {
     }
 
     // Test removing contact
-    const removeResult = this.agent.removeContactFromDevice(device1.id, device2.id);
+    const removeResult = await this.agent.removeContactFromDevice(device1.id, device2.id);
     if (!removeResult) {
       throw new Error(`Failed to remove contact from ${device1.id} to ${device2.id}`);
     }

@@ -221,6 +221,10 @@ class CyberpunkAgent {
         this.devices = new Map(); // Map: deviceId -> deviceData
         this.deviceMappings = new Map(); // Map: actorId -> [deviceIds]
 
+        // Phone number system
+        this.phoneNumberDictionary = new Map(); // Map: phoneNumber -> deviceId
+        this.devicePhoneNumbers = new Map(); // Map: deviceId -> phoneNumber
+
         // Messages and settings per device
         this.messages = new Map(); // deviceId -> conversationKey -> [messages]
         this._userMuteSettings = new Map(); // userId -> deviceId -> {contactDeviceId -> muted}
@@ -256,6 +260,16 @@ class CyberpunkAgent {
             config: false,
             type: Object,
             default: { devices: {}, deviceMappings: {} }
+        });
+
+        // Register phone number data setting
+        game.settings.register('cyberpunk-agent', 'phone-number-data', {
+            name: 'Phone Number Data',
+            hint: 'Internal storage for phone number mappings',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: { phoneNumberDictionary: {}, devicePhoneNumbers: {} }
         });
 
         // Register a custom settings menu for Cyberpunk Agent (Contact Manager only)
@@ -539,7 +553,7 @@ class CyberpunkAgent {
 
         // Save the new device data if any devices were created
         if (devicesCreated > 0) {
-            this.saveDeviceData();
+            await this.saveDeviceData();
             console.log(`Cyberpunk Agent | Device discovery created ${devicesCreated} new devices`);
         } else {
             console.log("Cyberpunk Agent | No new devices discovered");
@@ -641,6 +655,9 @@ class CyberpunkAgent {
             if (changes.items) {
                 console.log("Cyberpunk Agent | Actor items updated, checking for equipment changes");
 
+                // Check for new agent items and create devices automatically
+                this.checkAndCreateDevicesForActor(actor);
+
                 // Update token controls after a short delay
                 setTimeout(() => {
                     this.updateTokenControls();
@@ -648,7 +665,169 @@ class CyberpunkAgent {
             }
         });
 
+        // Monitor item creation to catch new agent items
+        Hooks.on('createItem', (item, options, userId) => {
+            if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                console.log(`Cyberpunk Agent | New agent item created: ${item.name}`);
+
+                // Find the actor that owns this item
+                const actor = item.parent;
+                if (actor) {
+                    console.log(`Cyberpunk Agent | Agent item belongs to actor: ${actor.name}`);
+
+                    // Check and create devices for this actor
+                    setTimeout(() => {
+                        this.checkAndCreateDevicesForActor(actor);
+                        this.updateTokenControls();
+                    }, 100);
+                }
+            }
+        });
+
+        // Monitor item deletion to clean up devices
+        Hooks.on('deleteItem', (item, options, userId) => {
+            if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                console.log(`Cyberpunk Agent | Agent item deleted: ${item.name}`);
+
+                // Find the actor that owned this item
+                const actor = item.parent;
+                if (actor) {
+                    console.log(`Cyberpunk Agent | Agent item belonged to actor: ${actor.name}`);
+
+                    // Clean up devices for this actor
+                    setTimeout(() => {
+                        this.cleanupDevicesForActor(actor);
+                        this.updateTokenControls();
+                    }, 100);
+                }
+            }
+        });
+
         console.log("Cyberpunk Agent | Item update hooks configured");
+    }
+
+    /**
+     * Check and create devices for an actor's agent items
+     * @param {Actor} actor - The actor to check
+     */
+    async checkAndCreateDevicesForActor(actor) {
+        try {
+            if (!actor.items) return;
+
+            // Look for agent items in the actor's inventory
+            const agentItems = actor.items.filter(item =>
+                item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent')
+            );
+
+            let devicesCreated = 0;
+
+            for (const item of agentItems) {
+                const deviceId = `device-${actor.id}-${item.id}`;
+
+                // Check if device already exists
+                if (this.devices.has(deviceId)) {
+                    console.log(`Cyberpunk Agent | Device ${deviceId} already exists, skipping`);
+                    continue;
+                }
+
+                const deviceName = item.name || `Agent ${item.id.slice(-4)}`;
+
+                // Create device data
+                const deviceData = {
+                    id: deviceId,
+                    ownerActorId: actor.id,
+                    itemId: item.id,
+                    deviceName: deviceName,
+                    contacts: [],
+                    settings: {
+                        muteAll: false,
+                        notificationSounds: true,
+                        autoOpen: false
+                    },
+                    createdAt: Date.now(),
+                    lastUsed: Date.now()
+                };
+
+                // Add to devices map
+                this.devices.set(deviceId, deviceData);
+
+                // Update device mappings
+                if (!this.deviceMappings.has(actor.id)) {
+                    this.deviceMappings.set(actor.id, []);
+                }
+                this.deviceMappings.get(actor.id).push(deviceId);
+
+                devicesCreated++;
+                console.log(`Cyberpunk Agent | Auto-created device: ${deviceName} for actor ${actor.name}`);
+            }
+
+            // Save the new device data if any devices were created
+            if (devicesCreated > 0) {
+                await this.saveDeviceData();
+                console.log(`Cyberpunk Agent | Auto-created ${devicesCreated} new devices for actor ${actor.name}`);
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error checking/creating devices for actor ${actor.id}:`, error);
+        }
+    }
+
+    /**
+     * Clean up devices for an actor when agent items are removed
+     * @param {Actor} actor - The actor to check
+     */
+    async cleanupDevicesForActor(actor) {
+        try {
+            if (!actor.items) return;
+
+            // Get current agent items
+            const currentAgentItems = actor.items.filter(item =>
+                item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent')
+            );
+
+            // Get all devices for this actor
+            const actorDevices = this.deviceMappings.get(actor.id) || [];
+            let devicesRemoved = 0;
+
+            for (const deviceId of actorDevices) {
+                const device = this.devices.get(deviceId);
+                if (!device) continue;
+
+                // Check if the corresponding item still exists
+                const itemStillExists = currentAgentItems.some(item =>
+                    `device-${actor.id}-${item.id}` === deviceId
+                );
+
+                if (!itemStillExists) {
+                    // Remove the device
+                    this.devices.delete(deviceId);
+
+                    // Remove from phone number mappings if exists
+                    const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+                    if (phoneNumber) {
+                        this.phoneNumberDictionary.delete(phoneNumber);
+                        this.devicePhoneNumbers.delete(deviceId);
+                    }
+
+                    devicesRemoved++;
+                    console.log(`Cyberpunk Agent | Removed orphaned device: ${deviceId}`);
+                }
+            }
+
+            // Update device mappings
+            if (devicesRemoved > 0) {
+                this.deviceMappings.set(actor.id, actorDevices.filter(deviceId =>
+                    this.devices.has(deviceId)
+                ));
+
+                await this.saveDeviceData();
+                await this.savePhoneNumberData();
+                console.log(`Cyberpunk Agent | Cleaned up ${devicesRemoved} orphaned devices for actor ${actor.name}`);
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error cleaning up devices for actor ${actor.id}:`, error);
+        }
     }
 
     /**
@@ -1096,7 +1275,9 @@ class CyberpunkAgent {
      * Show the agent home screen
      */
     async showAgentHome(device) {
-        console.log("Cyberpunk Agent | Attempting to show agent home for device:", device.deviceName);
+        console.log("Cyberpunk Agent | Attempting to show agent home for device:", device);
+        console.log("Cyberpunk Agent | Device ID:", device?.id);
+        console.log("Cyberpunk Agent | Device Name:", device?.deviceName);
         console.log("Cyberpunk Agent | AgentApplication available:", typeof AgentApplication);
         console.log("Cyberpunk Agent | Window AgentApplication:", typeof window.AgentApplication);
 
@@ -1438,6 +1619,9 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Device data loaded successfully");
             console.log("Cyberpunk Agent | Final this.devices.size:", this.devices.size);
             console.log("Cyberpunk Agent | Final this.deviceMappings.size:", this.deviceMappings.size);
+
+            // Load phone number data
+            this.loadPhoneNumberData();
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading device data:", error);
         }
@@ -1446,7 +1630,7 @@ class CyberpunkAgent {
     /**
      * Save device data to game settings
      */
-    saveDeviceData() {
+    async saveDeviceData() {
         try {
             console.log("Cyberpunk Agent | Saving device data...");
 
@@ -1459,10 +1643,29 @@ class CyberpunkAgent {
                 deviceMappings: mappingsObject
             };
 
-            // Save to game settings
-            game.settings.set('cyberpunk-agent', 'device-data', deviceData);
+            // If user is GM, save directly
+            if (game.user.isGM) {
+                game.settings.set('cyberpunk-agent', 'device-data', deviceData);
+                console.log(`Cyberpunk Agent | GM saved ${this.devices.size} devices and ${this.deviceMappings.size} mappings`);
+                return;
+            }
 
-            console.log(`Cyberpunk Agent | Saved ${this.devices.size} devices and ${this.deviceMappings.size} mappings`);
+            // If user is not GM, request GM to save via SocketLib
+            console.log("Cyberpunk Agent | Non-GM user, requesting GM to save device data");
+
+            if (this._isSocketLibAvailable() && this.socketLibIntegration) {
+                const success = await this.socketLibIntegration.requestGMDeviceDataSave(deviceData);
+                if (success) {
+                    console.log("Cyberpunk Agent | Device data save request sent to GM successfully");
+                    ui.notifications.info("Device data save request sent to GM");
+                } else {
+                    console.warn("Cyberpunk Agent | Failed to send device data save request to GM");
+                    ui.notifications.warn("Failed to send device data save request to GM");
+                }
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available, cannot request GM save");
+                ui.notifications.warn("Cannot save device data - GM action required");
+            }
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving device data:", error);
         }
@@ -1624,9 +1827,95 @@ class CyberpunkAgent {
     }
 
     /**
+     * Add a contact to a device by phone number
+     * @param {string} deviceId - The device ID to add contact to
+     * @param {string} phoneNumber - The phone number to add
+     * @returns {object} Result object with success status and message
+     */
+    addContactByPhoneNumber(deviceId, phoneNumber) {
+        try {
+            // Normalize phone number format
+            const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+
+            // Check if phone number exists in the system
+            const contactDeviceId = this.getDeviceIdFromPhoneNumber(normalizedPhone);
+            if (!contactDeviceId) {
+                const displayNumber = this.formatPhoneNumberForDisplay(normalizedPhone) || phoneNumber;
+                return {
+                    success: false,
+                    message: `Nenhum contato encontrado para o número ${displayNumber}`
+                };
+            }
+
+            // Check if trying to add self
+            if (contactDeviceId === deviceId) {
+                return {
+                    success: false,
+                    message: "Você não pode adicionar seu próprio número aos contatos"
+                };
+            }
+
+            // Add contact to the device
+            const added = this.addContactToDevice(deviceId, contactDeviceId);
+            if (added) {
+                // Add reciprocal contact (add the current device to the contact's list)
+                this.addContactToDevice(contactDeviceId, deviceId);
+
+                // Notify real-time updates
+                this.notifyContactUpdate({
+                    action: 'add',
+                    deviceId: deviceId,
+                    contactDeviceId: contactDeviceId,
+                    phoneNumber: normalizedPhone
+                });
+
+                return {
+                    success: true,
+                    message: `Contato adicionado com sucesso!`,
+                    contactDeviceId: contactDeviceId
+                };
+            } else {
+                return {
+                    success: false,
+                    message: "Contato já existe na lista"
+                };
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error adding contact by phone number:`, error);
+            return {
+                success: false,
+                message: "Erro ao adicionar contato"
+            };
+        }
+    }
+
+    /**
+     * Normalize phone number format
+     * @param {string} phoneNumber - The phone number to normalize
+     * @returns {string} Normalized phone number
+     */
+    normalizePhoneNumber(phoneNumber) {
+        // Remove all non-digit characters
+        const digits = phoneNumber.replace(/\D/g, '');
+
+        // If it's 10 digits, add 1 prefix
+        if (digits.length === 10) {
+            return `1${digits}`;
+        }
+
+        // If it's 11 digits and starts with 1, return as is
+        if (digits.length === 11 && digits.startsWith('1')) {
+            return digits;
+        }
+
+        // Return as is if it doesn't match expected patterns
+        return phoneNumber;
+    }
+
+    /**
      * Add a contact to a device
      */
-    addContactToDevice(deviceId, contactDeviceId) {
+    async addContactToDevice(deviceId, contactDeviceId) {
         try {
             const device = this.devices.get(deviceId);
             if (!device) {
@@ -1641,7 +1930,7 @@ class CyberpunkAgent {
             if (!device.contacts.includes(contactDeviceId)) {
                 device.contacts.push(contactDeviceId);
                 console.log(`Cyberpunk Agent | Added contact ${contactDeviceId} to device ${deviceId}`);
-                this.saveDeviceData();
+                await this.saveDeviceData();
                 return true;
             } else {
                 console.log(`Cyberpunk Agent | Contact ${contactDeviceId} already exists in device ${deviceId}`);
@@ -1655,8 +1944,9 @@ class CyberpunkAgent {
 
     /**
      * Remove a contact from a device
+     * Note: This only removes the contact from this device's list, not from the other device's list
      */
-    removeContactFromDevice(deviceId, contactDeviceId) {
+    async removeContactFromDevice(deviceId, contactDeviceId) {
         try {
             const device = this.devices.get(deviceId);
             if (!device) {
@@ -1672,7 +1962,15 @@ class CyberpunkAgent {
             if (index > -1) {
                 device.contacts.splice(index, 1);
                 console.log(`Cyberpunk Agent | Removed contact ${contactDeviceId} from device ${deviceId}`);
-                this.saveDeviceData();
+                await this.saveDeviceData();
+
+                // Notify real-time updates
+                this.notifyContactUpdate({
+                    action: 'remove',
+                    deviceId: deviceId,
+                    contactDeviceId: contactDeviceId
+                });
+
                 return true;
             } else {
                 console.log(`Cyberpunk Agent | Contact ${contactDeviceId} not found in device ${deviceId}`);
@@ -1682,6 +1980,17 @@ class CyberpunkAgent {
             console.error(`Cyberpunk Agent | Error removing contact from device:`, error);
             return false;
         }
+    }
+
+    /**
+     * Check if a device is a contact of another device
+     * @param {string} deviceId - The device to check
+     * @param {string} contactDeviceId - The potential contact device
+     * @returns {boolean} True if the contact exists
+     */
+    isDeviceContact(deviceId, contactDeviceId) {
+        const device = this.devices.get(deviceId);
+        return device && device.contacts && device.contacts.includes(contactDeviceId);
     }
 
     /**
@@ -2110,6 +2419,26 @@ class CyberpunkAgent {
             return false;
         }
 
+        // Check if receiver is in sender's contacts, if not, add them
+        if (!this.isDeviceContact(senderDeviceId, receiverDeviceId)) {
+            console.log(`Cyberpunk Agent | Adding ${receiverDeviceId} to ${senderDeviceId} contacts automatically`);
+            this.addContactToDevice(senderDeviceId, receiverDeviceId);
+        }
+
+        // Check if sender is in receiver's contacts, if not, add them
+        if (!this.isDeviceContact(receiverDeviceId, senderDeviceId)) {
+            console.log(`Cyberpunk Agent | Adding ${senderDeviceId} to ${receiverDeviceId} contacts automatically`);
+            this.addContactToDevice(receiverDeviceId, senderDeviceId);
+
+            // Notify real-time updates for the receiver
+            this.notifyContactUpdate({
+                action: 'auto-add',
+                deviceId: receiverDeviceId,
+                contactDeviceId: senderDeviceId,
+                reason: 'message-received'
+            });
+        }
+
         const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
 
         if (!this.messages.has(conversationKey)) {
@@ -2212,6 +2541,32 @@ class CyberpunkAgent {
     /**
      * Generate random American phone number
      */
+    /**
+     * Generate a deterministic phone number from an agent key
+     * @param {string} agentKey - The agent key to generate phone number from
+     * @returns {string} Phone number in US format +1 (XXX) XXX-XXXX
+     */
+    async generatePhoneNumberFromKey(agentKey) {
+        // Create a hash from the agent key for deterministic generation
+        let hash = 0;
+        for (let i = 0; i < agentKey.length; i++) {
+            const char = agentKey.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+
+        // Use the hash to generate consistent area code, prefix, and line number
+        const areaCode = Math.abs(hash % 900) + 100; // 100-999
+        const prefix = Math.abs((hash >> 8) % 900) + 100; // 100-999
+        const lineNumber = Math.abs((hash >> 16) % 9000) + 1000; // 1000-9999
+
+        // Return unformatted number (e.g., "14152120002")
+        return `1${areaCode}${prefix}${lineNumber}`;
+    }
+
+    /**
+     * Generate a random phone number (legacy function)
+     */
     _generateRandomPhoneNumber() {
         // Format: (XXX) XXX-XXXX
         const areaCode = Math.floor(Math.random() * 900) + 100; // 100-999
@@ -2219,6 +2574,131 @@ class CyberpunkAgent {
         const lineNumber = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
 
         return `(${areaCode}) ${prefix}-${lineNumber}`;
+    }
+
+    /**
+     * Format phone number for display
+     * @param {string} phoneNumber - Unformatted phone number (e.g., "14152120002")
+     * @returns {string} Formatted phone number (e.g., "+1 (415) 212-0002")
+     */
+    formatPhoneNumberForDisplay(phoneNumber) {
+        if (!phoneNumber || phoneNumber.length !== 11) {
+            return phoneNumber;
+        }
+
+        // Format: +1 (XXX) XXX-XXXX
+        const areaCode = phoneNumber.substring(1, 4);
+        const prefix = phoneNumber.substring(4, 7);
+        const lineNumber = phoneNumber.substring(7);
+
+        return `+1 (${areaCode}) ${prefix}-${lineNumber}`;
+    }
+
+    /**
+     * Get or generate phone number for a device
+     * @param {string} deviceId - The device ID
+     * @returns {string} Phone number for the device (unformatted)
+     */
+    async getDevicePhoneNumber(deviceId) {
+        // Check if device already has a phone number
+        if (this.devicePhoneNumbers.has(deviceId)) {
+            return this.devicePhoneNumbers.get(deviceId);
+        }
+
+        // Generate phone number from device ID
+        const phoneNumber = await this.generatePhoneNumberFromKey(deviceId);
+
+        // Store the mapping
+        this.devicePhoneNumbers.set(deviceId, phoneNumber);
+        this.phoneNumberDictionary.set(phoneNumber, deviceId);
+
+        // Save the phone number data
+        await this.savePhoneNumberData();
+
+        return phoneNumber;
+    }
+
+    /**
+     * Get device ID from phone number
+     * @param {string} phoneNumber - The phone number to look up
+     * @returns {string|null} Device ID or null if not found
+     */
+    getDeviceIdFromPhoneNumber(phoneNumber) {
+        return this.phoneNumberDictionary.get(phoneNumber) || null;
+    }
+
+    /**
+     * Check if a phone number exists in the system
+     * @param {string} phoneNumber - The phone number to check
+     * @returns {boolean} True if the phone number exists
+     */
+    phoneNumberExists(phoneNumber) {
+        return this.phoneNumberDictionary.has(phoneNumber);
+    }
+
+    /**
+     * Load phone number data from settings
+     */
+    loadPhoneNumberData() {
+        try {
+            const phoneData = game.settings.get('cyberpunk-agent', 'phone-number-data') || {};
+
+            // Load phone number dictionary
+            if (phoneData.phoneNumberDictionary) {
+                Object.entries(phoneData.phoneNumberDictionary).forEach(([phoneNumber, deviceId]) => {
+                    this.phoneNumberDictionary.set(phoneNumber, deviceId);
+                });
+            }
+
+            // Load device phone numbers
+            if (phoneData.devicePhoneNumbers) {
+                Object.entries(phoneData.devicePhoneNumbers).forEach(([deviceId, phoneNumber]) => {
+                    this.devicePhoneNumbers.set(deviceId, phoneNumber);
+                });
+            }
+
+            console.log(`Cyberpunk Agent | Loaded ${this.phoneNumberDictionary.size} phone number mappings`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading phone number data:", error);
+        }
+    }
+
+    /**
+     * Save phone number data to settings
+     */
+    async savePhoneNumberData() {
+        try {
+            const phoneData = {
+                phoneNumberDictionary: Object.fromEntries(this.phoneNumberDictionary),
+                devicePhoneNumbers: Object.fromEntries(this.devicePhoneNumbers)
+            };
+
+            // If user is GM, save directly
+            if (game.user.isGM) {
+                game.settings.set('cyberpunk-agent', 'phone-number-data', phoneData);
+                console.log(`Cyberpunk Agent | GM saved ${this.phoneNumberDictionary.size} phone number mappings`);
+                return;
+            }
+
+            // If user is not GM, request GM to save via SocketLib
+            console.log("Cyberpunk Agent | Non-GM user, requesting GM to save phone number data");
+
+            if (this._isSocketLibAvailable() && this.socketLibIntegration) {
+                const success = await this.socketLibIntegration.requestGMPhoneNumberSave(phoneData);
+                if (success) {
+                    console.log("Cyberpunk Agent | Phone number save request sent to GM successfully");
+                    ui.notifications.info("Phone number data save request sent to GM");
+                } else {
+                    console.warn("Cyberpunk Agent | Failed to send phone number save request to GM");
+                    ui.notifications.warn("Failed to send phone number save request to GM");
+                }
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available, cannot request GM save");
+                ui.notifications.warn("Cannot save phone number data - GM action required");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving phone number data:", error);
+        }
     }
 
 
@@ -2568,7 +3048,7 @@ class CyberpunkAgent {
     /**
      * Add contact to actor's network
      */
-    addContactToActor(actorId, contactActorId) {
+    async addContactToActor(actorId, contactActorId) {
         // Only GMs can add contacts since contact-networks is a world-scoped setting
         if (!game.user.isGM) {
             console.error("Cyberpunk Agent | Only GMs can add contacts to actors");
@@ -2603,7 +3083,7 @@ class CyberpunkAgent {
             };
 
             try {
-                this.saveContactNetworks(actionDetails);
+                await this.saveContactNetworks(actionDetails);
                 console.log(`Cyberpunk Agent | Contact ${contact.name} added to ${actorId} successfully`);
 
                 // Update any existing messages from this contact to show their real name
@@ -3075,7 +3555,7 @@ class CyberpunkAgent {
     /**
  * Remove contact from actor's network
  */
-    removeContactFromActor(actorId, contactActorId) {
+    async removeContactFromActor(actorId, contactActorId) {
         if (this.contactNetworks.has(actorId)) {
             const contacts = this.contactNetworks.get(actorId);
             const index = contacts.findIndex(c => c.id === contactActorId);
@@ -3090,7 +3570,7 @@ class CyberpunkAgent {
                     contactActorId: contactActorId
                 };
 
-                this.saveContactNetworks(actionDetails);
+                await this.saveContactNetworks(actionDetails);
                 return true;
             }
         }
@@ -3100,7 +3580,7 @@ class CyberpunkAgent {
     /**
      * Update multiple contacts in bulk (for operations that affect multiple contacts)
      */
-    updateContactsBulk(actorId, action, count = null, description = null) {
+    async updateContactsBulk(actorId, action, count = null, description = null) {
         const actionDetails = {
             action: 'bulk',
             count: count,
@@ -3108,19 +3588,14 @@ class CyberpunkAgent {
             actorId: actorId
         };
 
-        this.saveContactNetworks(actionDetails);
+        await this.saveContactNetworks(actionDetails);
     }
 
     /**
      * Save contact networks to settings
      */
-    saveContactNetworks(actionDetails = null) {
+    async saveContactNetworks(actionDetails = null) {
         try {
-            // Ensure we have permission to modify world settings
-            if (!game.user.isGM) {
-                throw new Error("Only GMs can modify contact networks");
-            }
-
             const networksObject = Object.fromEntries(this.contactNetworks);
 
             // Verify the setting is registered before trying to set it
@@ -3129,18 +3604,42 @@ class CyberpunkAgent {
                 throw new Error("Contact networks setting not registered");
             }
 
-            game.settings.set('cyberpunk-agent', 'contact-networks', networksObject);
+            // If user is GM, save directly
+            if (game.user.isGM) {
+                game.settings.set('cyberpunk-agent', 'contact-networks', networksObject);
+                console.log("Cyberpunk Agent | GM saved contact networks to settings:", networksObject);
 
-            console.log("Cyberpunk Agent | Contact networks saved to settings:", networksObject);
+                // Notify all clients about the contact update
+                this.notifyContactUpdate(actionDetails);
 
-            // Notify all clients about the contact update
-            this.notifyContactUpdate(actionDetails);
+                // Also trigger immediate update for local interfaces
+                this._updateContactManagerImmediately();
 
-            // Also trigger immediate update for local interfaces
-            this._updateContactManagerImmediately();
+                // Force reload of agent data to ensure consistency
+                this.loadAgentData();
+                return;
+            }
 
-            // Force reload of agent data to ensure consistency
-            this.loadAgentData();
+            // If user is not GM, request GM to save via SocketLib
+            console.log("Cyberpunk Agent | Non-GM user, requesting GM to save contact networks");
+
+            if (this._isSocketLibAvailable() && this.socketLibIntegration) {
+                const success = await this.socketLibIntegration.requestGMContactNetworkSave(networksObject);
+                if (success) {
+                    console.log("Cyberpunk Agent | Contact networks save request sent to GM successfully");
+                    ui.notifications.info("Contact networks save request sent to GM");
+
+                    // Notify all clients about the contact update (this will work for local updates)
+                    this.notifyContactUpdate(actionDetails);
+                    this._updateContactManagerImmediately();
+                } else {
+                    console.warn("Cyberpunk Agent | Failed to send contact networks save request to GM");
+                    ui.notifications.warn("Failed to send contact networks save request to GM");
+                }
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available, cannot request GM save");
+                ui.notifications.warn("Cannot save contact networks - GM action required");
+            }
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving contact networks:", error);
             throw error; // Re-throw to allow calling code to handle it
@@ -4573,7 +5072,7 @@ class CyberpunkAgent {
      * Test function to verify Contact Manager save functionality
      * Run this in GM console to test the actual Contact Manager save method
      */
-    testContactManagerSave() {
+    async testContactManagerSave() {
         try {
             console.log("=== TESTING CONTACT MANAGER SAVE FUNCTIONALITY ===");
 
@@ -4601,7 +5100,7 @@ class CyberpunkAgent {
             console.log("Added test contact to memory:", testContact);
 
             // Save using the Contact Manager method
-            this.saveContactNetworks({ action: 'test', actorId: testActorId, contactId: testContactId });
+            await this.saveContactNetworks({ action: 'test', actorId: testActorId, contactId: testContactId });
 
             // Check if it was saved to settings
             const savedSetting = game.settings.get('cyberpunk-agent', 'contact-networks') || {};

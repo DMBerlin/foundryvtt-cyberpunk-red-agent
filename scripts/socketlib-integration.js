@@ -69,6 +69,12 @@ function initializeSocketLib() {
     socket.register("ping", handlePing);
     socket.register("testConnection", handleTestConnection);
     socket.register("broadcastUpdate", handleBroadcastUpdate);
+    socket.register("requestGMPhoneNumberSave", handleRequestGMPhoneNumberSave);
+    socket.register("requestGMDeviceDataSave", handleRequestGMDeviceDataSave);
+    socket.register("requestGMContactNetworkSave", handleRequestGMContactNetworkSave);
+    socket.register("gmPhoneNumberSaveResponse", handleGMPhoneNumberSaveResponse);
+    socket.register("gmDeviceDataSaveResponse", handleGMDeviceDataSaveResponse);
+    socket.register("gmContactNetworkSaveResponse", handleGMContactNetworkSaveResponse);
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
@@ -752,6 +758,180 @@ async function handleTestConnection(data) {
   };
 }
 
+/**
+ * Handle GM phone number save request from players
+ */
+async function handleRequestGMPhoneNumberSave(data) {
+  console.log("Cyberpunk Agent | GM phone number save request received:", data);
+  
+  try {
+    // Only GMs can process this request
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received GM phone number save request, ignoring");
+      return;
+    }
+
+    const { phoneData, requestUserId, requestUserName } = data;
+    
+    // Save the phone number data
+    game.settings.set('cyberpunk-agent', 'phone-number-data', phoneData);
+    
+    console.log(`Cyberpunk Agent | GM saved phone number data for user ${requestUserName} (${requestUserId})`);
+    
+    // Send success response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(requestUserId, 'gmPhoneNumberSaveResponse', {
+        success: true,
+        timestamp: Date.now(),
+        message: 'Phone number data saved successfully by GM'
+      });
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling GM phone number save request:", error);
+    
+    // Send error response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(data.requestUserId, 'gmPhoneNumberSaveResponse', {
+        success: false,
+        timestamp: Date.now(),
+        error: error.message,
+        message: 'Failed to save phone number data'
+      });
+    }
+  }
+}
+
+/**
+ * Handle GM device data save request from players
+ */
+async function handleRequestGMDeviceDataSave(data) {
+  console.log("Cyberpunk Agent | GM device data save request received:", data);
+  
+  try {
+    // Only GMs can process this request
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received GM device data save request, ignoring");
+      return;
+    }
+
+    const { deviceData, requestUserId, requestUserName } = data;
+    
+    // Save the device data
+    game.settings.set('cyberpunk-agent', 'device-data', deviceData);
+    
+    console.log(`Cyberpunk Agent | GM saved device data for user ${requestUserName} (${requestUserId})`);
+    
+    // Send success response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(requestUserId, 'gmDeviceDataSaveResponse', {
+        success: true,
+        timestamp: Date.now(),
+        message: 'Device data saved successfully by GM'
+      });
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling GM device data save request:", error);
+    
+    // Send error response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(data.requestUserId, 'gmDeviceDataSaveResponse', {
+        success: false,
+        timestamp: Date.now(),
+        error: error.message,
+        message: 'Failed to save device data'
+      });
+    }
+  }
+}
+
+/**
+ * Handle GM contact network save request from players
+ */
+async function handleRequestGMContactNetworkSave(data) {
+  console.log("Cyberpunk Agent | GM contact network save request received:", data);
+  
+  try {
+    // Only GMs can process this request
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received GM contact network save request, ignoring");
+      return;
+    }
+
+    const { contactNetworks, requestUserId, requestUserName } = data;
+    
+    // Save the contact networks data
+    game.settings.set('cyberpunk-agent', 'contact-networks', contactNetworks);
+    
+    console.log(`Cyberpunk Agent | GM saved contact networks for user ${requestUserName} (${requestUserId})`);
+    
+    // Send success response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(requestUserId, 'gmContactNetworkSaveResponse', {
+        success: true,
+        timestamp: Date.now(),
+        message: 'Contact networks saved successfully by GM'
+      });
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling GM contact network save request:", error);
+    
+    // Send error response back to the requesting user
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(data.requestUserId, 'gmContactNetworkSaveResponse', {
+        success: false,
+        timestamp: Date.now(),
+        error: error.message,
+        message: 'Failed to save contact networks'
+      });
+    }
+  }
+}
+
+/**
+ * Handle GM phone number save response (for players)
+ */
+async function handleGMPhoneNumberSaveResponse(data) {
+  console.log("Cyberpunk Agent | GM phone number save response received:", data);
+  
+  if (data.success) {
+    console.log("Cyberpunk Agent | Phone number data saved successfully by GM");
+    ui.notifications.info("Phone number data saved successfully by GM");
+  } else {
+    console.error("Cyberpunk Agent | GM failed to save phone number data:", data.error);
+    ui.notifications.error(`Failed to save phone number data: ${data.error}`);
+  }
+}
+
+/**
+ * Handle GM device data save response (for players)
+ */
+async function handleGMDeviceDataSaveResponse(data) {
+  console.log("Cyberpunk Agent | GM device data save response received:", data);
+  
+  if (data.success) {
+    console.log("Cyberpunk Agent | Device data saved successfully by GM");
+    ui.notifications.info("Device data saved successfully by GM");
+  } else {
+    console.error("Cyberpunk Agent | GM failed to save device data:", data.error);
+    ui.notifications.error(`Failed to save device data: ${data.error}`);
+  }
+}
+
+/**
+ * Handle GM contact network save response (for players)
+ */
+async function handleGMContactNetworkSaveResponse(data) {
+  console.log("Cyberpunk Agent | GM contact network save response received:", data);
+  
+  if (data.success) {
+    console.log("Cyberpunk Agent | Contact networks saved successfully by GM");
+    ui.notifications.info("Contact networks saved successfully by GM");
+  } else {
+    console.error("Cyberpunk Agent | GM failed to save contact networks:", data.error);
+    ui.notifications.error(`Failed to save contact networks: ${data.error}`);
+  }
+}
+
 class SocketLibIntegration {
   constructor() {
     this.socketlib = socket;
@@ -1100,6 +1280,81 @@ class SocketLibIntegration {
       return true;
     } catch (error) {
       console.error("Cyberpunk Agent | Error sending message to GM via SocketLib:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Request GM to save phone number data
+   */
+  async requestGMPhoneNumberSave(phoneData) {
+    if (!this.isAvailable || !socket) return false;
+
+    try {
+      const requestData = {
+        phoneData: phoneData,
+        requestUserId: game.user.id,
+        requestUserName: game.user.name,
+        timestamp: Date.now()
+      };
+
+      // Send request to GM
+      await socket.executeAsGM('requestGMPhoneNumberSave', requestData);
+
+      console.log("Cyberpunk Agent | Phone number save request sent to GM via SocketLib");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending phone number save request to GM:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Request GM to save device data
+   */
+  async requestGMDeviceDataSave(deviceData) {
+    if (!this.isAvailable || !socket) return false;
+
+    try {
+      const requestData = {
+        deviceData: deviceData,
+        requestUserId: game.user.id,
+        requestUserName: game.user.name,
+        timestamp: Date.now()
+      };
+
+      // Send request to GM
+      await socket.executeAsGM('requestGMDeviceDataSave', requestData);
+
+      console.log("Cyberpunk Agent | Device data save request sent to GM via SocketLib");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending device data save request to GM:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Request GM to save contact networks
+   */
+  async requestGMContactNetworkSave(contactNetworks) {
+    if (!this.isAvailable || !socket) return false;
+
+    try {
+      const requestData = {
+        contactNetworks: contactNetworks,
+        requestUserId: game.user.id,
+        requestUserName: game.user.name,
+        timestamp: Date.now()
+      };
+
+      // Send request to GM
+      await socket.executeAsGM('requestGMContactNetworkSave', requestData);
+
+      console.log("Cyberpunk Agent | Contact network save request sent to GM via SocketLib");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending contact network save request to GM:", error);
       return false;
     }
   }

@@ -10,6 +10,7 @@
     "scripts/module.js",
     "scripts/agent-home.js",
     "scripts/contact-manager.js",
+    "scripts/contact-search.js",
     "scripts/socketlib-integration.js",
     "scripts/test-device-system.js"
   ],

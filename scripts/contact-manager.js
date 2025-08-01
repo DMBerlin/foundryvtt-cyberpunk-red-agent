@@ -160,6 +160,7 @@ class ContactManagerApplication extends FormApplication {
     // Add custom event listeners
     html.find('.cp-add-contact-btn').click(this._onAddContactClick.bind(this));
     html.find('.cp-remove-contact').click(this._onRemoveContactClick.bind(this));
+    html.find('.cp-add-contact-by-phone-btn').click(this._onAddContactByPhoneClick.bind(this));
 
     // Add filter functionality
     html.find('.cp-search-filter').on('input', this._onFilterInput.bind(this));
@@ -436,6 +437,29 @@ class ContactManagerApplication extends FormApplication {
 
     const modal = new ContactSearchModal(actorId, this);
     modal.render(true);
+  }
+
+  /**
+   * Handle add contact by phone button click
+   */
+  _onAddContactByPhoneClick(event) {
+    event.preventDefault();
+    const actorId = event.currentTarget.dataset.actorId;
+    console.log("ContactManagerApplication | Add contact by phone clicked for actor:", actorId);
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
+    // Check if ContactSearchModal is available
+    if (typeof window.ContactSearchModal !== 'undefined') {
+      const searchModal = new window.ContactSearchModal(actorId);
+      searchModal.render(true);
+    } else {
+      console.error("Cyberpunk Agent | ContactSearchModal not loaded!");
+      ui.notifications.error("Erro ao carregar o modal de busca por telefone. Tente recarregar a página (F5).");
+    }
   }
 
   /**

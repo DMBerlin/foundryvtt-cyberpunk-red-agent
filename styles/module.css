@@ -401,6 +401,32 @@
   font-size: 0.9em;
 }
 
+/* Phone Number Display */
+.cp-phone-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 15px;
+  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  color: var(--cp-text-blue);
+}
+
+.cp-phone-number i {
+  color: var(--cp-primary);
+  font-size: 1.1em;
+}
+
+.cp-phone-number span {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
 /* Apps Container */
 .cp-apps-container {
   flex: 1;
@@ -2757,4 +2783,265 @@
   color: var(--cp-text);
   font-weight: bold;
   text-shadow: 0 0 5px var(--cp-glow-weak);
+}
+
+/* ===== PHONE NUMBER SYSTEM STYLES ===== */
+
+/* Modal Header */
+.cp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--cp-border-weak);
+}
+
+.cp-modal-header h2 {
+  margin: 0;
+  color: var(--cp-text);
+  font-family: 'Orbitron', monospace;
+  font-size: 1.3em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--cp-border-weak);
+  border-radius: 8px;
+  color: var(--cp-text);
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--cp-border);
+}
+
+/* Modal Content */
+.cp-modal-content {
+  margin-bottom: 20px;
+}
+
+.cp-search-instructions {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.cp-search-instructions p {
+  margin: 5px 0;
+  color: var(--cp-text-dim);
+  font-size: 0.9em;
+}
+
+.cp-format-hint {
+  color: var(--cp-text-muted) !important;
+  font-size: 0.8em !important;
+  font-style: italic;
+}
+
+/* Phone Input */
+.cp-phone-input-container {
+  margin-bottom: 20px;
+}
+
+.cp-phone-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cp-phone-icon {
+  position: absolute;
+  left: 15px;
+  color: var(--cp-primary);
+  font-size: 1.2em;
+  z-index: 1;
+}
+
+.cp-phone-input {
+  width: 100%;
+  padding: 15px 15px 15px 45px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--cp-border-weak);
+  border-radius: 10px;
+  color: var(--cp-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.cp-phone-input:focus {
+  outline: none;
+  border-color: var(--cp-border);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px var(--cp-glow-weak);
+}
+
+.cp-phone-input::placeholder {
+  color: var(--cp-text-muted);
+}
+
+/* Search Result */
+.cp-search-result {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cp-border-weak);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.cp-result-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cp-result-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--cp-gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cp-text);
+  font-size: 1.5em;
+  flex-shrink: 0;
+}
+
+.cp-result-info {
+  flex: 1;
+}
+
+.cp-result-name {
+  margin: 0 0 5px 0;
+  color: var(--cp-text);
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.cp-result-number {
+  margin: 0;
+  color: var(--cp-text-blue);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+}
+
+.cp-add-contact-btn {
+  background: var(--cp-gradient-primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--cp-text);
+  padding: 10px 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-add-contact-btn:hover {
+  background: var(--cp-secondary);
+  transform: scale(1.05);
+  box-shadow: var(--cp-shadow);
+}
+
+/* Error Message */
+.cp-error-message {
+  background: rgba(255, 0, 51, 0.1);
+  border: 1px solid var(--cp-error);
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--cp-error);
+}
+
+.cp-error-message i {
+  font-size: 1.2em;
+}
+
+/* Modal Footer */
+.cp-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.cp-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--cp-border-weak);
+  border-radius: 8px;
+  color: var(--cp-text);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--cp-border);
+}
+
+.cp-btn-primary {
+  background: var(--cp-gradient-primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--cp-text);
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cp-btn-primary:hover:not(:disabled) {
+  background: var(--cp-secondary);
+  transform: scale(1.05);
+  box-shadow: var(--cp-shadow);
+}
+
+.cp-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Add Contact Section */
+.cp-add-contact-section {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--cp-border-weak);
+}
+
+.cp-add-contact-by-phone-btn {
+  width: 100%;
+  background: var(--cp-gradient-primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--cp-text);
+  padding: 12px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.cp-add-contact-by-phone-btn:hover {
+  background: var(--cp-secondary);
+  transform: scale(1.02);
+  box-shadow: var(--cp-shadow);
 }

@@ -18,6 +18,7 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 - **Integração com FoundryVTT**: Sincronização com o chat do FoundryVTT
 - **Sistema de Mute Isolado**: Mute contatos específicos para cada dispositivo independentemente
 - **Histórico Isolado**: Cada dispositivo mantém seu próprio histórico de conversas
+- **Sistema de Requisições GM**: Jogadores podem solicitar ações GM via SocketLib para salvar dados do mundo
 
 ## Requisitos
 
@@ -89,6 +90,19 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 
 - **Mensagens Privadas**: Torna as mensagens visíveis apenas para os participantes
 - **Som de Notificação**: Ativa/desativa sons para novas mensagens
+
+### Sistema de Requisições GM
+
+O Cyberpunk Agent implementa um sistema inteligente de requisições GM que permite que jogadores executem ações que requerem permissões de GM de forma transparente:
+
+- **Salvamento Automático**: Quando um jogador adiciona contatos ou modifica dados, o sistema automaticamente solicita ao GM para salvar as alterações
+- **Notificações em Tempo Real**: Jogadores recebem feedback imediato sobre o status de suas requisições
+- **Fallback Gracioso**: Se o SocketLib não estiver disponível, o sistema notifica o jogador sobre a necessidade de ação GM
+- **Segurança Mantida**: Apenas GMs podem modificar configurações do mundo, mantendo a integridade dos dados
+
+**Para GMs**: As requisições são processadas automaticamente - não é necessária ação manual.
+
+**Para Jogadores**: Continue usando o sistema normalmente. As requisições GM são enviadas automaticamente quando necessário.
 
 ## Comunicação
 

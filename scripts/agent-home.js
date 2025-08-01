@@ -43,7 +43,7 @@ class AgentApplication extends FormApplication {
   /**
    * Get data for the template
    */
-  getData(options = {}) {
+      async getData(options = {}) {
     const data = super.getData(options);
 
     // Get current time
@@ -53,9 +53,21 @@ class AgentApplication extends FormApplication {
       minute: '2-digit'
     });
 
+    // Get or generate phone number for the device
+                    const unformattedPhoneNumber = await window.CyberpunkAgent?.instance?.getDevicePhoneNumber(this.device.id) || 'N/A';
+    const phoneNumber = window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(unformattedPhoneNumber) || 'N/A';
+
+    // Get actor name from the device's owner
+    const actor = this.device.ownerActorId ? game.actors.get(this.device.ownerActorId) : null;
+    const actorName = actor ? actor.name : 'Unknown Actor';
+
     let templateData = {
       ...data,
-      device: this.device,
+      device: {
+        ...this.device,
+        phoneNumber: phoneNumber,
+        actorName: actorName
+      },
       currentTime: currentTime,
       currentView: this.currentView,
       currentContact: this.currentContact
