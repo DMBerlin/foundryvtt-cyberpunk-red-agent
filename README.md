@@ -5,6 +5,7 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 ## Características
 
 - **Sistema de Mensagens em Tempo Real**: Comunicação instantânea entre jogadores usando SocketLib
+- **Sincronização Automática**: Mensagens são automaticamente sincronizadas quando o agente é aberto
 - **Interface Cyberpunk**: Design moderno e temático para o sistema de mensagens
 - **Gerenciamento de Contatos**: Adicione, remova e organize seus contatos
 - **Mensagens Privadas**: Opção para tornar as mensagens privadas entre participantes
@@ -78,6 +79,12 @@ Para problemas ou dúvidas:
 MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## Changelog
+
+### v1.0.54
+- **Sistema de Sincronização de Mensagens**: Implementada sincronização automática de mensagens quando o agente é aberto
+- **Comunicação Cross-Client**: Sistema busca mensagens de outros clientes automaticamente
+- **Prevenção de Duplicatas**: Verificações para evitar mensagens duplicadas durante sincronização
+- **Testes Automatizados**: Scripts de teste para verificar a sincronização funcionando corretamente
 
 ### v1.0.52
 - **Sistema de Isolamento por Actor**: Implementado isolamento completo de configurações de mute e histórico de mensagens por personagem

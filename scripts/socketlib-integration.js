@@ -64,6 +64,8 @@ function initializeSocketLib() {
     socket.register("sendMessage", handleSendMessage);
     socket.register("saveMessages", handleSaveMessages);
     socket.register("saveMessagesResponse", handleSaveMessagesResponse);
+    socket.register("requestMessageSync", handleMessageSyncRequest);
+    socket.register("messageSyncResponse", handleMessageSyncResponse);
     socket.register("ping", handlePing);
     socket.register("testConnection", handleTestConnection);
     socket.register("broadcastUpdate", handleBroadcastUpdate);
@@ -216,8 +218,11 @@ async function handleMessageUpdate(data) {
           // Add the message
           conversation.push(data.message);
 
-          // Save messages
-          await window.CyberpunkAgent.instance.saveMessages();
+          // Save messages for both sender and receiver actors
+          await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
+          if (data.senderId !== data.receiverId) {
+            await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+          }
           console.log("Cyberpunk Agent | Message added to local conversation via SocketLib successfully");
         } else {
           console.log("Cyberpunk Agent | Message already exists in conversation via SocketLib, skipping");
@@ -515,8 +520,11 @@ async function handleSendMessage(data) {
 
       conversation.push(message);
 
-      // Save messages
-      await window.CyberpunkAgent.instance.saveMessages();
+      // Save messages for both sender and receiver actors
+      await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
+      if (data.senderId !== data.receiverId) {
+        await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+      }
 
       console.log("Cyberpunk Agent | Message added to conversation:", message);
 
@@ -625,6 +633,66 @@ async function handleSaveMessagesResponse(data) {
   } else {
     console.error("Cyberpunk Agent | Failed to save messages:", data.error);
     ui.notifications.error("Erro ao salvar mensagens: " + data.error);
+  }
+}
+
+/**
+ * Handle message synchronization request from other clients
+ */
+async function handleMessageSyncRequest(data) {
+  console.log("Cyberpunk Agent | Received message sync request via SocketLib:", data);
+
+  // Prevent processing our own requests
+  if (data.requestingUserId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own message sync request");
+    return;
+  }
+
+  // Check if this is a recent request to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore requests older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old message sync request (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing message sync request from:", data.requestingUserName);
+
+  // Handle the sync request through CyberpunkAgent
+  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    await window.CyberpunkAgent.instance.handleMessageSyncRequest(data);
+  } else {
+    console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for message sync request");
+  }
+}
+
+/**
+ * Handle message synchronization response from other clients
+ */
+async function handleMessageSyncResponse(data) {
+  console.log("Cyberpunk Agent | Received message sync response via SocketLib:", data);
+
+  // Check if this response is for us
+  if (data.requestingUserId !== game.user.id) {
+    console.log("Cyberpunk Agent | Message sync response not for us, ignoring");
+    return;
+  }
+
+  // Check if this is a recent response to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore responses older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old message sync response (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing message sync response from:", data.respondingUserName);
+
+  // Handle the sync response through CyberpunkAgent
+  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    await window.CyberpunkAgent.instance.handleMessageSyncResponse(data);
+  } else {
+    console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for message sync response");
   }
 }
 

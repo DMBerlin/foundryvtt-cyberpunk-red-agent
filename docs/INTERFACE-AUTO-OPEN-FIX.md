@@ -96,7 +96,7 @@ if (window && window.rendered && window.element && window.element.is(':visible')
 ## Testes Implementados
 
 ### Script de Teste
-**Arquivo**: `scripts/test-interface-auto-open-fix.js`
+**Arquivo**: `__tests__/test-interface-auto-open-fix.js`
 
 O script inclui testes para:
 - Verificar se a interface não abre automaticamente após `clearAllContacts()`

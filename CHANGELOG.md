@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.54] - 2025-01-30
+
+### Added
+- **Message Synchronization System**: Implemented automatic message synchronization when opening agents:
+  - **Automatic Sync**: When an agent is opened, it automatically synchronizes with other clients to receive new messages
+  - **Cross-Client Communication**: Uses SocketLib to request messages from all other active users
+  - **Duplicate Prevention**: Implements checks to avoid adding duplicate messages during synchronization
+  - **Real-time Updates**: Messages sent while agents are closed are automatically received when agents are opened
+
+### Fixed
+- **Message Persistence Issue**: Fixed messages not appearing in chat when agent is closed during reception:
+  - **Root Cause**: SocketLib handlers were using `saveMessages()` instead of `saveMessagesForActor()`
+  - **Solution**: Corrected handlers to save messages to actor-specific localStorage locations
+  - **Impact**: Messages now persist correctly and appear in chat when agent is reopened
+  - **Technical Details**: Fixed `handleSendMessage()` and `handleMessageUpdate()` in SocketLib integration
+
+### Technical Details
+- **New Functions**: Added `synchronizeMessagesWithServer()`, `handleMessageSyncRequest()`, `handleMessageSyncResponse()`
+- **SocketLib Integration**: Registered new handlers `requestMessageSync` and `messageSyncResponse`
+- **Message Filtering**: Only synchronizes messages from the last 24 hours to prevent excessive data transfer
+- **Access Control**: Validates user access to actors before sharing messages
+- **Test Suite**: Added comprehensive test scripts `test-message-sync.js` and `test-message-persistence-fix.js`
+- **Documentation**: Created `MESSAGE-SYNC.md` and `MESSAGE-PERSISTENCE-FIX.md` with detailed explanations
+
+### Benefits
+- **No Message Loss**: Messages sent while agents are closed are automatically received when opened
+- **Transparent Operation**: Synchronization happens automatically without user intervention
+- **Performance Optimized**: Only synchronizes when agents are opened, not continuously
+- **Robust Communication**: Uses SocketLib for reliable cross-client communication
+- **Reliable Persistence**: Messages are saved to the correct storage location for each actor
+
+### Files Modified
+- `scripts/module.js`: Added message synchronization functions and integrated with `showAgentHome()`
+- `scripts/socketlib-integration.js`: Added new SocketLib handlers and fixed message persistence
+- `__tests__/test-message-sync.js`: New comprehensive test script for synchronization
+- `__tests__/test-message-persistence-fix.js`: New test script for persistence fix verification
+- `docs/MESSAGE-SYNC.md`: New documentation file for synchronization system
+- `docs/MESSAGE-PERSISTENCE-FIX.md`: New documentation file for persistence fix
+
 ## [1.0.53] - 2025-01-30
 
 ### Fixed
@@ -20,7 +59,7 @@ All notable changes to this project will be documented in this file.
 ### Files Modified
 - `scripts/agent-home.js`: Added event listener cleanup and visibility checks
 - `scripts/module.js`: Modified update functions to be more selective
-- `scripts/test-interface-auto-open-fix.js`: New test script for verification
+- `__tests__/test-interface-auto-open-fix.js`: New test script for verification
 - `docs/INTERFACE-AUTO-OPEN-FIX.md`: Documentation of the fix
 
 ## [1.0.52] - 2025-01-30

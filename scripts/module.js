@@ -608,6 +608,10 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Loading messages for actor:", actor.id);
             await this.loadMessagesForActor(actor.id);
 
+            // Synchronize messages with server to get any new messages from other clients
+            console.log("Cyberpunk Agent | Synchronizing messages with server for actor:", actor.id);
+            await this.synchronizeMessagesWithServer(actor.id);
+
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
             const agentApp = new AgentClass(actor);
@@ -621,6 +625,266 @@ class CyberpunkAgent {
         } catch (error) {
             console.error("Cyberpunk Agent | Error creating AgentApplication:", error);
             ui.notifications.error("Erro ao criar a interface do Agent: " + error.message);
+        }
+    }
+
+    /**
+     * Synchronize messages with server to get any new messages from other clients
+     * This ensures that when an agent is opened, it receives all messages that may have been sent
+     * by other clients while the agent was closed
+     */
+    async synchronizeMessagesWithServer(actorId) {
+        try {
+            console.log("Cyberpunk Agent | Starting message synchronization for actor:", actorId);
+
+            // Only synchronize if there are multiple users and SocketLib is available
+            if (!this._needsCrossClientCommunication()) {
+                console.log("Cyberpunk Agent | Single user session, skipping message synchronization");
+                return;
+            }
+
+            if (!this._isSocketLibAvailable()) {
+                console.log("Cyberpunk Agent | SocketLib not available, skipping message synchronization");
+                return;
+            }
+
+            // Get all users in the session
+            const users = Array.from(game.users.values()).filter(user => user.active);
+            console.log("Cyberpunk Agent | Active users for synchronization:", users.map(u => u.name));
+
+            // Request message synchronization from all other users
+            const syncPromises = users
+                .filter(user => user.id !== game.user.id) // Exclude current user
+                .map(async (user) => {
+                    try {
+                        console.log(`Cyberpunk Agent | Requesting message sync from user: ${user.name}`);
+
+                        const syncData = {
+                            requestingUserId: game.user.id,
+                            requestingUserName: game.user.name,
+                            actorId: actorId,
+                            timestamp: Date.now()
+                        };
+
+                        // Send sync request to specific user
+                        const success = await this.socketLibIntegration.sendMessageToUser(
+                            user.id,
+                            'requestMessageSync',
+                            syncData
+                        );
+
+                        if (success) {
+                            console.log(`Cyberpunk Agent | Message sync request sent to ${user.name}`);
+                            return { user: user.name, success: true };
+                        } else {
+                            console.warn(`Cyberpunk Agent | Failed to send sync request to ${user.name}`);
+                            return { user: user.name, success: false };
+                        }
+                    } catch (error) {
+                        console.error(`Cyberpunk Agent | Error requesting sync from ${user.name}:`, error);
+                        return { user: user.name, success: false, error: error.message };
+                    }
+                });
+
+            // Wait for all sync requests to complete
+            const syncResults = await Promise.all(syncPromises);
+
+            const successfulSyncs = syncResults.filter(result => result.success);
+            const failedSyncs = syncResults.filter(result => !result.success);
+
+            console.log("Cyberpunk Agent | Message synchronization results:", {
+                successful: successfulSyncs.length,
+                failed: failedSyncs.length,
+                total: syncResults.length
+            });
+
+            if (successfulSyncs.length > 0) {
+                console.log("Cyberpunk Agent | Message synchronization completed successfully");
+                ui.notifications.info(`Sincronização de mensagens concluída com ${successfulSyncs.length} usuário(s)`);
+            }
+
+            if (failedSyncs.length > 0) {
+                console.warn("Cyberpunk Agent | Some message sync requests failed:", failedSyncs);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error during message synchronization:", error);
+            // Don't show error notification to user as this is a background sync operation
+        }
+    }
+
+    /**
+     * Handle message synchronization request from other clients
+     * This function is called when another client requests our messages for synchronization
+     */
+    async handleMessageSyncRequest(data) {
+        try {
+            console.log("Cyberpunk Agent | Received message sync request from:", data.requestingUserName);
+
+            // Prevent processing our own requests
+            if (data.requestingUserId === game.user.id) {
+                console.log("Cyberpunk Agent | Ignoring own message sync request");
+                return;
+            }
+
+            // Check if this is a recent request to avoid duplicates
+            const now = Date.now();
+            const timeDiff = now - data.timestamp;
+            if (timeDiff > 30000) { // Ignore requests older than 30 seconds
+                console.log("Cyberpunk Agent | Ignoring old message sync request (age:", timeDiff, "ms)");
+                return;
+            }
+
+            const actorId = data.actorId;
+            console.log("Cyberpunk Agent | Processing message sync request for actor:", actorId);
+
+            // Get all messages for the requested actor from our local storage
+            const userActors = this.getUserActors();
+            const hasAccessToActor = userActors.some(actor => actor.id === actorId);
+
+            if (!hasAccessToActor) {
+                console.log("Cyberpunk Agent | User doesn't have access to actor:", actorId);
+                return;
+            }
+
+            // Collect all messages for this actor
+            const messagesToSync = [];
+
+            // Get messages from localStorage for this user and actor
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${actorId}`;
+            const storedData = localStorage.getItem(storageKey);
+
+            if (storedData) {
+                try {
+                    const messagesData = JSON.parse(storedData);
+
+                    // Convert messages to sync format
+                    Object.entries(messagesData).forEach(([conversationKey, conversation]) => {
+                        if (Array.isArray(conversation)) {
+                            conversation.forEach(message => {
+                                // Only include messages that are not older than 24 hours
+                                const messageAge = now - message.timestamp;
+                                if (messageAge < 24 * 60 * 60 * 1000) { // 24 hours
+                                    messagesToSync.push({
+                                        conversationKey: conversationKey,
+                                        message: message
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error parsing stored messages for sync:", error);
+                }
+            }
+
+            console.log(`Cyberpunk Agent | Sending ${messagesToSync.length} messages for synchronization`);
+
+            // Send the messages back to the requesting user
+            if (messagesToSync.length > 0) {
+                const syncResponseData = {
+                    respondingUserId: game.user.id,
+                    respondingUserName: game.user.name,
+                    requestingUserId: data.requestingUserId,
+                    actorId: actorId,
+                    messages: messagesToSync,
+                    timestamp: Date.now()
+                };
+
+                const success = await this.socketLibIntegration.sendMessageToUser(
+                    data.requestingUserId,
+                    'messageSyncResponse',
+                    syncResponseData
+                );
+
+                if (success) {
+                    console.log("Cyberpunk Agent | Message sync response sent successfully");
+                } else {
+                    console.error("Cyberpunk Agent | Failed to send message sync response");
+                }
+            } else {
+                console.log("Cyberpunk Agent | No messages to sync");
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error handling message sync request:", error);
+        }
+    }
+
+    /**
+     * Handle message synchronization response from other clients
+     * This function is called when another client responds to our sync request
+     */
+    async handleMessageSyncResponse(data) {
+        try {
+            console.log("Cyberpunk Agent | Received message sync response from:", data.respondingUserName);
+
+            // Check if this response is for us
+            if (data.requestingUserId !== game.user.id) {
+                console.log("Cyberpunk Agent | Message sync response not for us, ignoring");
+                return;
+            }
+
+            // Check if this is a recent response to avoid duplicates
+            const now = Date.now();
+            const timeDiff = now - data.timestamp;
+            if (timeDiff > 30000) { // Ignore responses older than 30 seconds
+                console.log("Cyberpunk Agent | Ignoring old message sync response (age:", timeDiff, "ms)");
+                return;
+            }
+
+            const actorId = data.actorId;
+            const messages = data.messages || [];
+
+            console.log(`Cyberpunk Agent | Processing ${messages.length} synchronized messages for actor:`, actorId);
+
+            let newMessagesCount = 0;
+
+            // Process each synchronized message
+            for (const syncData of messages) {
+                try {
+                    const { conversationKey, message } = syncData;
+
+                    // Get or create conversation
+                    if (!this.messages.has(conversationKey)) {
+                        this.messages.set(conversationKey, []);
+                    }
+
+                    const conversation = this.messages.get(conversationKey);
+
+                    // Check if message already exists to avoid duplicates
+                    const messageExists = conversation.some(msg => msg.id === message.id);
+                    if (!messageExists) {
+                        // Add the message
+                        conversation.push(message);
+                        newMessagesCount++;
+
+                        console.log("Cyberpunk Agent | Added synchronized message:", message.id);
+                    } else {
+                        console.log("Cyberpunk Agent | Synchronized message already exists, skipping:", message.id);
+                    }
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Error processing synchronized message:", error);
+                }
+            }
+
+            // Save the updated messages
+            if (newMessagesCount > 0) {
+                await this.saveMessagesForActor(actorId);
+                console.log(`Cyberpunk Agent | Saved ${newMessagesCount} new synchronized messages for actor:`, actorId);
+
+                // Update interfaces to show new messages
+                this._updateChatInterfacesImmediately();
+                this.updateOpenInterfaces();
+
+                // Show notification to user
+                ui.notifications.info(`Recebidas ${newMessagesCount} nova(s) mensagem(ns) sincronizada(s)`);
+            } else {
+                console.log("Cyberpunk Agent | No new messages found during synchronization");
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error handling message sync response:", error);
         }
     }
 

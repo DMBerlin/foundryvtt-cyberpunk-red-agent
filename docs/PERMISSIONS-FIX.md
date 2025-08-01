@@ -161,7 +161,7 @@ _loadReadTimestamps() {
 
 ## Testes
 
-Criado script de teste `scripts/test-permissions-fix.js` com funções para verificar o fix:
+Criado script de teste `__tests__/test-permissions-fix.js` com funções para verificar o fix:
 
 - `testPermissionsFix()` - Testa o fix completo
 - `testOriginalPermissionError()` - Simula o erro original

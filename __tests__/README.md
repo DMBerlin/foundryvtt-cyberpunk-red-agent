@@ -15,12 +15,51 @@ Esta pasta contém todos os scripts de teste para o módulo Cyberpunk Agent.
 - **`test-filter-preservation.js`** - Testes de preservação de filtros
 - **`test-chat-messages.js`** - Testes de mensagens de chat
 - **`test-communication-methods.js`** - Testes de métodos de comunicação
+- **`test-chat7-rendering.js`** - Testes de renderização do Chat7
+- **`test-conversation-view.js`** - Testes da visualização de conversas
+- **`test-conversation-clear.js`** - Testes de limpeza de conversas
+- **`test-flutter-ui-system.js`** - Testes do sistema de UI Flutter
+- **`test-single-instance.js`** - Testes de instância única
+- **`test-business-rules.js`** - Testes de regras de negócio
+
+### 📱 Testes de Mensagens e Comunicação
+- **`test-message-sync.js`** - Testes de sincronização de mensagens
+- **`test-message-sending.js`** - Testes de envio de mensagens
+- **`test-message-persistence-fix.js`** - Testes de persistência de mensagens
+- **`test-message-loop-fix.js`** - Testes de correção de loop de mensagens
+- **`test-realtime-message-fix.js`** - Testes de correção de mensagens em tempo real
+- **`test-realtime-unread-count.js`** - Testes de contagem de não lidas em tempo real
 
 ### 🔌 Testes de SocketLib
 - **`test-socketlib-simple.js`** - Teste simples da SocketLib
 - **`test-socketlib-debug.js`** - Debug completo da SocketLib
 - **`test-socketlib-propagation.js`** - Testes de propagação via SocketLib
 - **`test-socketlib-comparison.js`** - Comparação entre métodos de comunicação
+- **`test-socketlib-fix.js`** - Testes de correção da SocketLib
+- **`test-socketlib-fix-comprehensive.js`** - Testes abrangentes de correção da SocketLib
+
+### 🔐 Testes de Permissões e Segurança
+- **`test-permissions-fix.js`** - Testes de correção de permissões
+- **`test-actor-isolation.js`** - Testes de isolamento de atores
+
+### 🎨 Testes de Interface e UX
+- **`test-interface-auto-open-fix.js`** - Testes de correção de abertura automática
+- **`test-scroll-behavior.js`** - Testes de comportamento de scroll
+- **`test-scroll-behavior-fix.js`** - Testes de correção de scroll
+- **`test-smart-scroll.js`** - Testes de scroll inteligente
+- **`test-simple-scroll.js`** - Testes de scroll simples
+- **`test-scroll-issue.js`** - Testes de problemas de scroll
+- **`test-unread-chip-fix.js`** - Testes de correção de chip de não lidas
+
+### 🔔 Testes de Notificações
+- **`test-notification-sound.js`** - Testes de som de notificação
+- **`test-notification-sound-comprehensive.js`** - Testes abrangentes de som de notificação
+- **`test-notification-cleanup.js`** - Testes de limpeza de notificações
+
+### 📊 Testes de Contagem e Status
+- **`test-unread-count.js`** - Testes de contagem de não lidas
+- **`test-unread-count-comprehensive.js`** - Testes abrangentes de contagem de não lidas
+- **`test-mark-as-read.js`** - Testes de marcação como lida
 
 ## 🚀 Como Usar
 

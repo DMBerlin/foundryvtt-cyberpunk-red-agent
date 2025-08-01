@@ -74,7 +74,7 @@ console.warn("Cyberpunk Agent | SocketLib message sending failed, but message wa
 
 ## Testes
 
-Criado script de teste `scripts/test-socketlib-fix.js` com funções para verificar o fix:
+Criado script de teste `__tests__/test-socketlib-fix-comprehensive.js` com funções para verificar o fix:
 
 - `testSocketLibFix()` - Testa o fix completo
 - `checkSocketLibStatus()` - Verifica status detalhado do SocketLib

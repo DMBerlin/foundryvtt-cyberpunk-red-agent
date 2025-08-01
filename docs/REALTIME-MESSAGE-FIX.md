@@ -144,7 +144,7 @@ async function handleMessageUpdate(data) {
 
 ## Teste da Correção
 
-Foi criado um script de teste (`scripts/test-realtime-message-fix.js`) que:
+Foi criado um script de teste (`__tests__/test-realtime-message-fix.js`) que:
 
 1. Simula uma mensagem de teste
 2. Chama `handleMessageUpdate` diretamente
@@ -170,7 +170,7 @@ testRealtimeMessageFix()
 
 - `scripts/module.js` - Método `handleMessageUpdate` corrigido
 - `scripts/socketlib-integration.js` - Método `handleMessageUpdate` corrigido
-- `scripts/test-realtime-message-fix.js` - Script de teste criado
+- `__tests__/test-realtime-message-fix.js` - Script de teste criado
 - `module.json` - Script de teste adicionado
 - `docs/REALTIME-MESSAGE-FIX.md` - Documentação criada
 
