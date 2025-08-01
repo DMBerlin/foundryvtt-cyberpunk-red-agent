@@ -2719,3 +2719,42 @@
   border: 1px solid var(--cp-border-weak);
   box-shadow: 0 0 10px var(--cp-glow-weak);
 }
+
+/* ===== CHARACTER SHEET INTEGRATION ===== */
+.agent-button {
+  background: var(--cp-gradient-primary);
+  border: 2px solid var(--cp-border);
+  color: var(--cp-text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: bold;
+  font-size: 0.9em;
+  box-shadow: var(--cp-shadow);
+  text-decoration: none;
+  margin-left: 10px;
+}
+
+.agent-button:hover {
+  background: linear-gradient(135deg, #ff0066 0%, #ff0033 100%);
+  transform: scale(1.05);
+  box-shadow: var(--cp-shadow-strong);
+  color: var(--cp-text);
+  text-decoration: none;
+}
+
+.agent-button i {
+  font-size: 1em;
+  color: var(--cp-text);
+}
+
+.agent-button span {
+  color: var(--cp-text);
+  font-weight: bold;
+  text-shadow: 0 0 5px var(--cp-glow-weak);
+}

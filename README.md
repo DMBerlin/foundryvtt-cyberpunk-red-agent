@@ -1,19 +1,23 @@
-# Cyberpunk Agent
+# Cyberpunk Agent v2.0.0
 
 Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk para que os jogadores se comuniquem através dos agentes de seus personagens.
 
 ## Características
 
+- **Sistema Baseado em Equipamento**: O Agent só aparece nos controles quando equipado
+- **Dispositivos Únicos**: Cada item "Agent" no inventário se torna um dispositivo separado
+- **Controles Dinâmicos**: O ícone do telefone aparece/desaparece automaticamente baseado no estado de equipamento
+- **Tooltips Informativos**: Mostra o nome do personagem ao passar o mouse sobre o ícone
+- **Acesso GM Completo**: GM sempre tem acesso a todos os dispositivos via controles de token
 - **Sistema de Mensagens em Tempo Real**: Comunicação instantânea entre jogadores usando SocketLib
 - **Sincronização Automática**: Mensagens são automaticamente sincronizadas quando o agente é aberto
 - **Interface Cyberpunk**: Design moderno e temático para o sistema de mensagens
-- **Gerenciamento de Contatos**: Adicione, remova e organize seus contatos
+- **Gerenciamento de Contatos**: Adicione, remova e organize seus contatos por dispositivo
 - **Mensagens Privadas**: Opção para tornar as mensagens privadas entre participantes
 - **Notificações Sonoras**: Sons de notificação para novas mensagens
 - **Integração com FoundryVTT**: Sincronização com o chat do FoundryVTT
-- **Sistema de Mute Isolado**: Mute contatos específicos para cada personagem independentemente
-- **Histórico Isolado**: Cada personagem mantém seu próprio histórico de conversas
-- **Isolamento por Actor**: Configurações e dados são isolados por personagem/actor
+- **Sistema de Mute Isolado**: Mute contatos específicos para cada dispositivo independentemente
+- **Histórico Isolado**: Cada dispositivo mantém seu próprio histórico de conversas
 
 ## Requisitos
 
@@ -34,10 +38,25 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 
 ## Uso
 
+### Sistema Baseado em Equipamento
+
+O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Agent":
+
+- **Equipado**: O ícone do telefone aparece nos controles do token
+- **Não Equipado**: O ícone do telefone desaparece dos controles
+- **Múltiplos Agentes**: Se você tem mais de um Agent equipado, aparece um menu de seleção
+
 ### Acessando o Agent
 
-1. Clique no botão "Agent" na barra de controles do token
-2. Ou use o comando `/agent` no chat
+**Para Jogadores:**
+- **Token Controls**: O ícone do telefone aparece automaticamente quando um Agent está equipado
+- **Chat Command**: Digite `/agent` no chat para acessar seus dispositivos equipados
+- **Tooltip**: Passando o mouse sobre o ícone mostra o nome do personagem
+
+**Para GMs:**
+- **Token Controls**: O ícone do telefone sempre aparece, permitindo acesso a todos os dispositivos
+- **Chat Command**: Digite `/agent` no chat para acessar todos os dispositivos
+- **Acesso Completo**: GM pode acessar dispositivos de todos os personagens
 
 ### Enviando Mensagens
 
@@ -45,6 +64,20 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 2. Selecione um contato da sua lista
 3. Digite sua mensagem
 4. Pressione Enter para enviar
+
+### Gerenciando Equipamento
+
+**Para Jogadores:**
+1. Abra a ficha do seu personagem
+2. Vá para a aba "Gear" (Equipamento)
+3. Encontre o item "Agent" no seu inventário
+4. Clique no ícone de equipar (⚔️) para equipar o Agent
+5. O ícone do telefone aparecerá automaticamente nos controles do token
+
+**Para GMs:**
+- O ícone do telefone sempre está disponível nos controles de token
+- Pode acessar dispositivos de qualquer personagem
+- Útil para gerenciar múltiplos personagens simultaneamente
 
 ### Gerenciando Contatos
 

@@ -2,7 +2,7 @@
   "name": "cyberpunk-agent",
   "title": "Cyberpunk Agent",
   "description": "A comprehensive phone system for Cyberpunk RED characters",
-  "version": "1.0.55",
+  "version": "2.0.0",
   "author": "Daniel Marinho",
   "minimumCoreVersion": "10",
   "compatibleCoreVersion": "11",
@@ -10,7 +10,9 @@
     "scripts/module.js",
     "scripts/agent-home.js",
     "scripts/contact-manager.js",
-    "scripts/socketlib-integration.js"
+    "scripts/socketlib-integration.js",
+    "scripts/migrate-to-device-system.js",
+    "scripts/test-device-system.js"
   ],
   "styles": [
     "styles/module.css"

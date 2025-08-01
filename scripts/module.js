@@ -215,22 +215,28 @@ class CyberpunkAgent {
     constructor() {
         this.id = "cyberpunk-agent";
         this.title = "Cyberpunk Agent";
-        this.version = "1.0.0";
-        this.agentData = new Map(); // Store agent data per actor
-        this.contactNetworks = new Map(); // Store contact networks per actor
-        this.messages = new Map();
+        this.version = "2.0.0";
+
+        // Device-based system properties
+        this.devices = new Map(); // Map: deviceId -> deviceData
+        this.deviceMappings = new Map(); // Map: actorId -> [deviceIds]
+
+        // Legacy properties (kept for backward compatibility during migration)
+        this.agentData = new Map(); // Store agent data per actor (legacy)
+        this.contactNetworks = new Map(); // Store contact networks per actor (legacy)
+        this.messages = new Map(); // Messages per device
         this.socketLibIntegration = null; // SocketLib integration
-        this._userMuteSettings = new Map(); // Store mute settings per user
+        this._userMuteSettings = new Map(); // Store mute settings per user per device
         this._lastMessageNotifications = {};
-        this.contacts = new Map();
-        this.lastReadTimestamps = new Map(); // Novo: rastreia quando cada conversa foi lida pela última vez
-        this.unreadCounts = new Map(); // Novo: cache de contadores de mensagens não lidas
+        this.lastReadTimestamps = new Map(); // Per device conversation timestamps
+        this.unreadCounts = new Map(); // Per device unread counts
         this._isInitialized = false;
         this._socketLibReadyHookSet = false;
         this._openInterfaces = new Set();
         this._openChatInterfaces = new Set();
         this._muteSettings = new Map();
         this._muteSystemInitialized = false;
+        this._deviceDiscoveryInProgress = false;
     }
 
     /**
@@ -239,10 +245,20 @@ class CyberpunkAgent {
     static registerSettings() {
         console.log("Cyberpunk Agent | Registering settings...");
 
-        // Only keep contact networks setting for GM management
+        // Register device data setting for the new device-based system
+        game.settings.register('cyberpunk-agent', 'device-data', {
+            name: 'Device Data',
+            hint: 'Internal storage for device-based agent system',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: { devices: {}, deviceMappings: {} }
+        });
+
+        // Legacy contact networks setting (kept for migration)
         game.settings.register('cyberpunk-agent', 'contact-networks', {
-            name: 'Redes de Contatos',
-            hint: 'Configure as redes de contatos para cada Actor',
+            name: 'Redes de Contatos (Legacy)',
+            hint: 'Legacy contact networks - will be migrated to device system',
             scope: 'world',
             config: false,
             type: Object,
@@ -282,6 +298,12 @@ class CyberpunkAgent {
         setTimeout(() => {
             this._setupAgentSystemInternal();
         }, 500);
+
+        // Setup chat command and character sheet integration
+        setTimeout(() => {
+            this.setupChatCommand();
+            this.setupCharacterSheetIntegration();
+        }, 1000);
     }
 
     /**
@@ -292,7 +314,58 @@ class CyberpunkAgent {
         // Chat integration removed - all communication now goes through SocketLib
     }
 
-    // Chat integration methods removed - using SocketLib only
+    /**
+     * Setup chat command for /agent
+     */
+    setupChatCommand() {
+        console.log("Cyberpunk Agent | Setting up chat command...");
+
+        // Try to use lib-chatcommands if available
+        if (game.modules.get('lib-chatcommands')?.active) {
+            console.log("Cyberpunk Agent | Using lib-chatcommands for /agent command");
+            // This would be handled by lib-chatcommands
+        } else {
+            // Fallback: use Hooks.on('chatMessage')
+            console.log("Cyberpunk Agent | Using fallback chat message hook for /agent command");
+            Hooks.on('chatMessage', (chatLog, messageText, chatData) => {
+                if (messageText.startsWith('/agent')) {
+                    // Prevent the message from being sent to chat
+                    return false;
+                }
+            });
+        }
+    }
+
+    /**
+     * Setup character sheet integration
+     */
+    setupCharacterSheetIntegration() {
+        console.log("Cyberpunk Agent | Setting up character sheet integration...");
+
+        Hooks.on('renderActorSheet', (app, html, data) => {
+            // Only add button for owned characters
+            if (data.actor.isOwner) {
+                const header = html.find('.sheet-header');
+                if (header.length > 0) {
+                    // Check if button already exists
+                    if (header.find('.agent-button').length === 0) {
+                        const button = $(`
+                            <button class="agent-button" title="Open Agent Interface">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Agent</span>
+                            </button>
+                        `);
+
+                        button.on('click', () => {
+                            this.openAgentInterface();
+                        });
+
+                        header.append(button);
+                    }
+                }
+            }
+        });
+    }
 
     /**
      * Internal setup method
@@ -323,8 +396,12 @@ class CyberpunkAgent {
             console.error("Cyberpunk Agent | ContactManagerApplication not loaded!");
         }
 
-        // Load agent data
-        this.loadAgentData();
+        // Load device data
+        this.loadDeviceData();
+        console.log('Cyberpunk Agent | After loadDeviceData, this.devices.size:', this.devices?.size);
+
+        // Check if migration is needed and run it if necessary
+        this.checkAndRunMigration();
 
         // Load user's mute settings
         this._loadUserMuteSettings(game.user.id);
@@ -366,21 +443,184 @@ class CyberpunkAgent {
             Hooks.on('updateActor', this.handleActorUpdate.bind(this));
         }
 
-        // Setup settings change hook to reload contact networks when they change
+        // Setup settings change hook to reload device data when it changes
         Hooks.on('updateSetting', (moduleId, settingKey, value, options) => {
-            if (moduleId === 'cyberpunk-agent' && settingKey === 'contact-networks') {
-                console.log("Cyberpunk Agent | Contact networks setting updated, reloading data...");
-                this.loadAgentData();
+            if (moduleId === 'cyberpunk-agent' && settingKey === 'device-data') {
+                console.log("Cyberpunk Agent | Device data setting updated, reloading data...");
+                this.loadDeviceData();
                 this.updateOpenInterfaces();
             }
         });
+
+        // Setup item update hooks for equipment changes
+        this.setupItemUpdateHooks();
 
         this._agentSystemSetupComplete = true;
         console.log("Cyberpunk Agent | Agent system setup complete");
     }
 
     /**
-     * Add control button to the scene controls
+     * Check if migration is needed and run it if necessary
+     */
+    checkAndRunMigration() {
+        // Only run migration for GM
+        if (!game.user.isGM) {
+            console.log("Cyberpunk Agent | Skipping migration check for non-GM user");
+            return;
+        }
+
+        // Check if migration is needed
+        const migrationVersion = "2.0.0";
+        const migrationKey = `cyberpunk-agent-migration-${migrationVersion}`;
+        const hasMigrated = localStorage.getItem(migrationKey);
+
+        if (!hasMigrated) {
+            console.log("Cyberpunk Agent | Migration needed, running migration...");
+
+            // Run migration after a short delay to ensure everything is loaded
+            setTimeout(async () => {
+                try {
+                    await this.runMigration();
+                } catch (error) {
+                    console.error("Cyberpunk Agent | Migration failed:", error);
+                }
+            }, 1000);
+        } else {
+            console.log("Cyberpunk Agent | Migration already completed");
+        }
+    }
+
+    /**
+     * Run the migration process
+     */
+    async runMigration() {
+        console.log("Cyberpunk Agent | Starting migration to device-based system...");
+
+        try {
+            // Step 1: Discover existing agent items and create devices
+            await this.migrateExistingAgents();
+
+            // Step 2: Migrate existing data if any
+            await this.migrateExistingData();
+
+            // Step 3: Mark migration as complete
+            const migrationVersion = "2.0.0";
+            const migrationKey = `cyberpunk-agent-migration-${migrationVersion}`;
+            localStorage.setItem(migrationKey, Date.now().toString());
+
+            // Step 4: Reload device data
+            this.loadDeviceData();
+
+            console.log("Cyberpunk Agent | Migration completed successfully!");
+            ui.notifications.info("Cyberpunk Agent v2.0.0 migration completed! The new device-based system is now active.");
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Migration failed:", error);
+            ui.notifications.error("Migration failed. Please check the console for details.");
+        }
+    }
+
+    /**
+     * Migrate existing agent items to devices
+     */
+    async migrateExistingAgents() {
+        console.log("Cyberpunk Agent | Migrating existing agent items...");
+
+        const actors = game.actors.filter(actor => actor.type === 'character');
+        let devicesCreated = 0;
+
+        for (const actor of actors) {
+            try {
+                if (!actor.items) continue;
+
+                // Look for agent items in the actor's inventory
+                const agentItems = actor.items.filter(item =>
+                    item.type === 'gear' &&
+                    item.name.toLowerCase().includes('agent')
+                );
+
+                for (const item of agentItems) {
+                    const deviceId = `device-${actor.id}-${item.id}`;
+                    const deviceName = item.name || `Agent ${item.id.slice(-4)}`;
+
+                    // Create device data
+                    const deviceData = {
+                        id: deviceId,
+                        ownerActorId: actor.id,
+                        itemId: item.id,
+                        deviceName: deviceName,
+                        contacts: [],
+                        settings: {
+                            muteAll: false,
+                            notificationSounds: true,
+                            autoOpen: false
+                        },
+                        createdAt: Date.now(),
+                        lastUsed: Date.now()
+                    };
+
+                    // Add to devices map
+                    this.devices.set(deviceId, deviceData);
+
+                    // Update device mappings
+                    if (!this.deviceMappings.has(actor.id)) {
+                        this.deviceMappings.set(actor.id, []);
+                    }
+                    this.deviceMappings.get(actor.id).push(deviceId);
+
+                    devicesCreated++;
+                    console.log(`Cyberpunk Agent | Created device: ${deviceName} for actor ${actor.name}`);
+                }
+            } catch (error) {
+                console.error(`Cyberpunk Agent | Error migrating agent items for actor ${actor.id}:`, error);
+            }
+        }
+
+        // Save the new device data
+        this.saveDeviceData();
+
+        console.log(`Cyberpunk Agent | Migration created ${devicesCreated} devices from existing agent items`);
+    }
+
+    /**
+     * Migrate existing data from old system
+     */
+    async migrateExistingData() {
+        console.log("Cyberpunk Agent | Migrating existing data...");
+
+        // Migrate contact networks if they exist
+        try {
+            const contactNetworks = game.settings.get('cyberpunk-agent', 'contact-networks') || {};
+
+            if (Object.keys(contactNetworks).length > 0) {
+                console.log("Cyberpunk Agent | Found existing contact networks, migrating...");
+
+                // For each actor with contacts, distribute them to their devices
+                for (const [actorId, contacts] of Object.entries(contactNetworks)) {
+                    const actorDevices = this.getDevicesForActor(actorId) || [];
+
+                    if (actorDevices.length > 0) {
+                        // Add contacts to the first device (primary device)
+                        const primaryDevice = actorDevices[0];
+                        primaryDevice.contacts = contacts;
+
+                        console.log(`Cyberpunk Agent | Migrated ${contacts.length} contacts to device ${primaryDevice.deviceName}`);
+                    }
+                }
+
+                // Save the migrated data
+                this.saveDeviceData();
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error migrating contact networks:", error);
+        }
+
+        // Note: Messages are stored per-user in localStorage, so they don't need migration
+        // Each user will see their own messages when they access their devices
+    }
+
+    /**
+     * Add control button to the scene controls based on equipped agents
      */
     addControlButton(controls) {
         // Safety check: ensure controls is an array
@@ -398,23 +638,354 @@ class CyberpunkAgent {
                 tokenControl.tools = [];
             }
 
-            // Check if agent tool already exists to avoid duplicates
-            const existingAgentTool = tokenControl.tools.find(tool => tool.name === "agent");
-            if (!existingAgentTool) {
-                // Add the agent tool to the token controls
+            // Remove any existing agent tools first
+            tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
+
+            // For GM: Always show agent tool for all devices
+            if (game.user.isGM) {
                 tokenControl.tools.push({
                     name: "agent",
-                    title: "Cyberpunk Agent",
+                    title: "Cyberpunk Agent (GM) - All Devices",
                     icon: "fas fa-mobile-alt",
                     onClick: () => {
                         this.openAgentInterface();
                     }
                 });
-                console.log("Cyberpunk Agent | Added agent button to token controls");
+                console.log("Cyberpunk Agent | Added GM agent button to token controls");
+                return;
+            }
+
+            // For players: Only show if they have equipped agents
+            const equippedAgents = this.getEquippedAgentsForUser();
+
+            if (equippedAgents.length > 0) {
+                // If only one equipped agent, show it directly
+                if (equippedAgents.length === 1) {
+                    const agent = equippedAgents[0];
+                    tokenControl.tools.push({
+                        name: "agent",
+                        title: `Agent: ${agent.actorName}`,
+                        icon: "fas fa-mobile-alt",
+                        onClick: () => {
+                            this.openSpecificAgent(agent.deviceId);
+                        }
+                    });
+                } else {
+                    // If multiple equipped agents, show a menu
+                    tokenControl.tools.push({
+                        name: "agent",
+                        title: `Agent (${equippedAgents.length} equipped)`,
+                        icon: "fas fa-mobile-alt",
+                        onClick: () => {
+                            this.showEquippedAgentMenu(equippedAgents);
+                        }
+                    });
+                }
+                console.log(`Cyberpunk Agent | Added agent button for ${equippedAgents.length} equipped agent(s)`);
             }
         } else {
             console.warn("Cyberpunk Agent | Token control not found in controls array");
         }
+    }
+
+    /**
+     * Setup hooks to monitor item equipment changes
+     */
+    setupItemUpdateHooks() {
+        // Monitor item updates to detect equipment changes
+        Hooks.on('updateItem', (item, changes, options, userId) => {
+            // Check if this is an agent item and if equipped status changed
+            if (item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent') &&
+                changes.system?.equipped !== undefined) {
+
+                console.log(`Cyberpunk Agent | Agent equipment status changed for ${item.name}: ${changes.system.equipped}`);
+
+                // Update token controls after a short delay to ensure the change is processed
+                setTimeout(() => {
+                    this.updateTokenControls();
+                }, 100);
+            }
+        });
+
+        // Monitor actor updates that might affect equipment
+        Hooks.on('updateActor', (actor, changes, options, userId) => {
+            // Check if items were updated
+            if (changes.items) {
+                console.log("Cyberpunk Agent | Actor items updated, checking for equipment changes");
+
+                // Update token controls after a short delay
+                setTimeout(() => {
+                    this.updateTokenControls();
+                }, 100);
+            }
+        });
+
+        console.log("Cyberpunk Agent | Item update hooks configured");
+    }
+
+    /**
+     * Update token controls to reflect current equipment state
+     */
+    updateTokenControls() {
+        // Force refresh of scene controls
+        if (game.scenes.active) {
+            // Trigger a refresh of the scene controls
+            const controls = ui.controls.controls;
+            if (controls) {
+                this.addControlButton(controls);
+                console.log("Cyberpunk Agent | Token controls updated for equipment changes");
+            }
+        }
+    }
+
+    /**
+     * Debug method to check item structure
+     */
+    debugItemStructure() {
+        console.log("=== Cyberpunk Agent Debug: Item Structure ===");
+
+        const userActors = this.getUserActors();
+        console.log(`Found ${userActors.length} user actors`);
+
+        for (const actor of userActors) {
+            console.log(`\n--- Actor: ${actor.name} ---`);
+            console.log(`Actor ID: ${actor.id}`);
+            console.log(`Actor type: ${actor.type}`);
+            console.log(`Actor items count: ${actor.items?.length || 0}`);
+
+            if (actor.items) {
+                for (const item of actor.items) {
+                    if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                        console.log(`\nAgent Item: ${item.name}`);
+                        console.log(`Item ID: ${item.id}`);
+                        console.log(`Item type: ${item.type}`);
+                        console.log(`Full item object:`, item);
+                        console.log(`Item system:`, item.system);
+                        console.log(`Item flags:`, item.flags);
+                        console.log(`Item data:`, item.data);
+
+                        // Check all possible equipped states
+                        console.log(`\nEquipped status checks:`);
+                        console.log(`- item.system?.equipped:`, item.system?.equipped);
+                        console.log(`- item.flags?.equipped:`, item.flags?.equipped);
+                        console.log(`- item.system?.equippedState:`, item.system?.equippedState);
+                        console.log(`- item.data?.equipped:`, item.data?.equipped);
+                        console.log(`- item.system?.equipped === true:`, item.system?.equipped === true);
+                        console.log(`- item.system?.equipped === 'equipped':`, item.system?.equipped === 'equipped');
+                    }
+                }
+            }
+        }
+
+        console.log("=== End Debug ===");
+    }
+
+    /**
+     * Get equipped agents for the current user
+     */
+    getEquippedAgentsForUser() {
+        const equippedAgents = [];
+
+        try {
+            // Get user's actors
+            const userActors = this.getUserActors();
+
+            for (const actor of userActors) {
+                if (!actor.items) continue;
+
+                console.log(`Cyberpunk Agent | Checking items for actor: ${actor.name}`);
+                console.log(`Cyberpunk Agent | Actor has ${actor.items.length} items`);
+
+                // Look for agent items
+                const agentItems = actor.items.filter(item =>
+                    item.type === 'gear' &&
+                    item.name.toLowerCase().includes('agent')
+                );
+
+                console.log(`Cyberpunk Agent | Found ${agentItems.length} agent items for ${actor.name}`);
+
+                for (const item of agentItems) {
+                    console.log(`Cyberpunk Agent | Checking agent item: ${item.name}`);
+                    console.log(`Cyberpunk Agent | Item system:`, item.system);
+                    console.log(`Cyberpunk Agent | Item equipped status:`, item.system?.equipped);
+                    console.log(`Cyberpunk Agent | Item flags:`, item.flags);
+
+                    // Check multiple possible equipped states (Foundry V10 compatible)
+                    const isEquipped =
+                        item.system?.equipped === true ||
+                        item.system?.equipped === 'equipped' ||
+                        item.flags?.equipped === true ||
+                        item.system?.equippedState === 'equipped' ||
+                        item.system?.equippedState === true ||
+                        item.system?.equipped === 1 ||
+                        item.system?.equipped === '1' ||
+                        item.system?.equipped === 'true';
+
+                    // Additional debugging for equipped status
+                    console.log(`Cyberpunk Agent | Detailed equipped check for ${item.name}:`);
+                    console.log(`  - item.system?.equipped: "${item.system?.equipped}" (type: ${typeof item.system?.equipped})`);
+                    console.log(`  - item.system?.equipped === 'equipped': ${item.system?.equipped === 'equipped'}`);
+                    console.log(`  - item.flags?.equipped: ${item.flags?.equipped}`);
+                    console.log(`  - item.system?.equippedState: ${item.system?.equippedState}`);
+                    console.log(`  - Final isEquipped result: ${isEquipped}`);
+
+                    console.log(`Cyberpunk Agent | Is equipped: ${isEquipped}`);
+
+                    if (isEquipped) {
+                        const deviceId = this.generateDeviceId(actor.id, item.id);
+                        equippedAgents.push({
+                            deviceId: deviceId,
+                            actorId: actor.id,
+                            actorName: actor.name,
+                            itemId: item.id,
+                            itemName: item.name
+                        });
+                        console.log(`Cyberpunk Agent | Added equipped agent: ${item.name} for ${actor.name}`);
+                    }
+                }
+            }
+
+            console.log(`Cyberpunk Agent | Found ${equippedAgents.length} equipped agents for user`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error getting equipped agents:", error);
+        }
+
+        return equippedAgents;
+    }
+
+    /**
+     * Open a specific agent device
+     */
+    async openSpecificAgent(deviceId) {
+        try {
+            console.log("Cyberpunk Agent | openSpecificAgent called with deviceId:", deviceId);
+            console.log("Cyberpunk Agent | this.devices:", this.devices);
+            console.log("Cyberpunk Agent | this.devices type:", typeof this.devices);
+            console.log("Cyberpunk Agent | this.devices size:", this.devices?.size);
+
+            if (!this.devices) {
+                console.error("Cyberpunk Agent | this.devices is undefined! Loading device data...");
+                this.loadDeviceData();
+            }
+
+            const device = this.devices.get(deviceId);
+            if (!device) {
+                console.error(`Cyberpunk Agent | Device ${deviceId} not found`);
+                console.log("Cyberpunk Agent | Available devices:", Array.from(this.devices.keys()));
+                ui.notifications.error("Agent device not found");
+                return;
+            }
+
+            // Load messages for this device
+            await this.loadMessagesForDevice(deviceId);
+            await this.synchronizeMessagesWithServer(deviceId);
+
+            // Show the agent interface for this specific device
+            await this.showAgentHome(device);
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error opening specific agent:", error);
+            ui.notifications.error("Failed to open agent");
+        }
+    }
+
+    /**
+     * Show menu for multiple equipped agents
+     */
+    async showEquippedAgentMenu(equippedAgents) {
+        const options = equippedAgents.map(agent => ({
+            label: `${agent.actorName} - ${agent.itemName}`,
+            value: agent.deviceId
+        }));
+
+        const selectedDeviceId = await new Promise((resolve) => {
+            new Dialog({
+                title: "Select Agent Device",
+                content: `
+                    <div style="margin-bottom: 1em;">
+                        <p>You have multiple equipped agents. Choose which one to open:</p>
+                    </div>
+                `,
+                buttons: {
+                    cancel: {
+                        label: "Cancel",
+                        callback: () => resolve(null)
+                    }
+                },
+                render: (html) => {
+                    const select = document.createElement('select');
+                    select.style.width = '100%';
+                    select.style.marginBottom = '1em';
+
+                    options.forEach(option => {
+                        const optionElement = document.createElement('option');
+                        optionElement.value = option.value;
+                        optionElement.textContent = option.label;
+                        select.appendChild(optionElement);
+                    });
+
+                    html.find('.dialog-content').append(select);
+
+                    const confirmButton = document.createElement('button');
+                    confirmButton.textContent = 'Open Agent';
+                    confirmButton.className = 'dialog-button';
+                    confirmButton.onclick = () => {
+                        resolve(select.value);
+                        dialog.close();
+                    };
+
+                    html.find('.dialog-buttons').prepend(confirmButton);
+                }
+            }).render(true);
+        });
+
+        if (selectedDeviceId) {
+            await this.openSpecificAgent(selectedDeviceId);
+        }
+    }
+
+    /**
+     * Get user's accessible devices
+     */
+    getUserAccessibleDevices() {
+        const accessibleDevices = [];
+
+        try {
+            if (game.user.isGM) {
+                // GM has access to all devices
+                accessibleDevices.push(...Array.from(this.devices.values()));
+            } else {
+                // Regular users only have access to their owned devices
+                const userActors = this.getUserActors();
+
+                for (const actor of userActors) {
+                    const actorDevices = this.getDevicesForActor(actor.id);
+                    accessibleDevices.push(...actorDevices);
+                }
+            }
+
+            console.log(`Cyberpunk Agent | User has access to ${accessibleDevices.length} devices`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error getting accessible devices:", error);
+        }
+
+        return accessibleDevices;
+    }
+
+    /**
+     * Get devices for a specific actor
+     */
+    getDevicesForActor(actorId) {
+        const deviceIds = this.deviceMappings.get(actorId) || [];
+        return deviceIds.map(deviceId => this.devices.get(deviceId)).filter(Boolean);
+    }
+
+    /**
+     * Generate device ID from actor and item IDs
+     */
+    generateDeviceId(actorId, itemId) {
+        return `device-${actorId}-${itemId}`;
     }
 
     /**
@@ -523,32 +1094,30 @@ class CyberpunkAgent {
      * Open the agent interface
      */
     async openAgentInterface() {
-        // Get user's actors using the correct method
-        const userActors = this.getUserActors();
+        // For GM: Show all devices
+        if (game.user.isGM) {
+            const accessibleDevices = this.getUserAccessibleDevices();
 
-        if (userActors.length === 0) {
-            ui.notifications.warn("Você não tem acesso a nenhum Actor para usar o Agent.");
-            return;
-        }
+            if (accessibleDevices.length === 0) {
+                ui.notifications.warn("Nenhum dispositivo Agent encontrado.");
+                return;
+            }
 
-        let selectedActor = null;
-
-        // If user has multiple actors, show selection dialog
-        if (userActors.length > 1) {
-            const actorOptions = userActors.map(actor => ({
-                label: actor.name,
-                value: actor.id
+            // Show device selection dialog for GM
+            const deviceOptions = accessibleDevices.map(device => ({
+                label: `${device.deviceName} (${device.ownerActorName || 'Unknown'})`,
+                value: device.id
             }));
 
-            const selectedActorId = await new Promise((resolve) => {
+            const selectedDeviceId = await new Promise((resolve) => {
                 new Dialog({
-                    title: "Selecionar Actor",
+                    title: "Selecionar Dispositivo Agent",
                     content: `
                         <form>
                             <div class="form-group">
-                                <label>Escolha qual Actor usar com o Agent:</label>
-                                <select id="actor-select">
-                                    ${actorOptions.map(option =>
+                                <label>Escolha qual dispositivo Agent abrir:</label>
+                                <select id="device-select">
+                                    ${deviceOptions.map(option =>
                         `<option value="${option.value}">${option.label}</option>`
                     ).join('')}
                                 </select>
@@ -559,8 +1128,8 @@ class CyberpunkAgent {
                         confirm: {
                             label: "Confirmar",
                             callback: (html) => {
-                                const actorId = html.find('#actor-select').val();
-                                resolve(actorId);
+                                const deviceId = html.find('#device-select').val();
+                                resolve(deviceId);
                             }
                         },
                         cancel: {
@@ -570,23 +1139,37 @@ class CyberpunkAgent {
                 }).render(true);
             });
 
-            if (selectedActorId) {
-                selectedActor = game.actors.get(selectedActorId);
+            if (selectedDeviceId) {
+                const device = this.devices.get(selectedDeviceId);
+                if (device) {
+                    await this.showAgentHome(device);
+                }
             }
-        } else {
-            selectedActor = userActors[0];
+            return;
         }
 
-        if (selectedActor) {
-            this.showAgentHome(selectedActor);
+        // For players: Show only equipped agents
+        const equippedAgents = this.getEquippedAgentsForUser();
+
+        if (equippedAgents.length === 0) {
+            ui.notifications.warn("Você não tem nenhum Agent equipado. Equipe um Agent para usá-lo.");
+            return;
+        }
+
+        // If only one equipped agent, open it directly
+        if (equippedAgents.length === 1) {
+            await this.openSpecificAgent(equippedAgents[0].deviceId);
+        } else {
+            // If multiple equipped agents, show selection menu
+            await this.showEquippedAgentMenu(equippedAgents);
         }
     }
 
     /**
      * Show the agent home screen
      */
-    async showAgentHome(actor) {
-        console.log("Cyberpunk Agent | Attempting to show agent home for actor:", actor.name);
+    async showAgentHome(device) {
+        console.log("Cyberpunk Agent | Attempting to show agent home for device:", device.deviceName);
         console.log("Cyberpunk Agent | AgentApplication available:", typeof AgentApplication);
         console.log("Cyberpunk Agent | Window AgentApplication:", typeof window.AgentApplication);
 
@@ -604,17 +1187,17 @@ class CyberpunkAgent {
         }
 
         try {
-            // Load actor-specific messages before opening the interface
-            console.log("Cyberpunk Agent | Loading messages for actor:", actor.id);
-            await this.loadMessagesForActor(actor.id);
+            // Load device-specific messages before opening the interface
+            console.log("Cyberpunk Agent | Loading messages for device:", device.id);
+            await this.loadMessagesForDevice(device.id);
 
             // Synchronize messages with server to get any new messages from other clients
-            console.log("Cyberpunk Agent | Synchronizing messages with server for actor:", actor.id);
-            await this.synchronizeMessagesWithServer(actor.id);
+            console.log("Cyberpunk Agent | Synchronizing messages with server for device:", device.id);
+            await this.synchronizeMessagesWithServer(device.id);
 
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
-            const agentApp = new AgentClass(actor);
+            const agentApp = new AgentClass(device);
             console.log("Cyberpunk Agent | AgentApplication instance created successfully");
 
             // Play opening sound effect
@@ -959,6 +1542,74 @@ class CyberpunkAgent {
     }
 
     /**
+     * Load device data from game settings
+     */
+    loadDeviceData() {
+        try {
+            console.log("Cyberpunk Agent | Loading device data...");
+
+            // Load devices and mappings from game settings
+            const deviceData = game.settings.get('cyberpunk-agent', 'device-data') || {};
+            console.log("Cyberpunk Agent | Raw device data from settings:", deviceData);
+
+            // Clear existing data
+            this.devices.clear();
+            this.deviceMappings.clear();
+
+            // Load devices
+            if (deviceData.devices) {
+                Object.entries(deviceData.devices).forEach(([deviceId, deviceInfo]) => {
+                    this.devices.set(deviceId, deviceInfo);
+                });
+                console.log(`Cyberpunk Agent | Loaded ${this.devices.size} devices`);
+            } else {
+                console.log("Cyberpunk Agent | No devices found in device data");
+            }
+
+            // Load device mappings
+            if (deviceData.deviceMappings) {
+                Object.entries(deviceData.deviceMappings).forEach(([actorId, deviceIds]) => {
+                    this.deviceMappings.set(actorId, deviceIds);
+                });
+                console.log(`Cyberpunk Agent | Loaded ${this.deviceMappings.size} device mappings`);
+            } else {
+                console.log("Cyberpunk Agent | No device mappings found in device data");
+            }
+
+            console.log("Cyberpunk Agent | Device data loaded successfully");
+            console.log("Cyberpunk Agent | Final this.devices.size:", this.devices.size);
+            console.log("Cyberpunk Agent | Final this.deviceMappings.size:", this.deviceMappings.size);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading device data:", error);
+        }
+    }
+
+    /**
+     * Save device data to game settings
+     */
+    saveDeviceData() {
+        try {
+            console.log("Cyberpunk Agent | Saving device data...");
+
+            // Convert Maps to objects for storage
+            const devicesObject = Object.fromEntries(this.devices);
+            const mappingsObject = Object.fromEntries(this.deviceMappings);
+
+            const deviceData = {
+                devices: devicesObject,
+                deviceMappings: mappingsObject
+            };
+
+            // Save to game settings
+            game.settings.set('cyberpunk-agent', 'device-data', deviceData);
+
+            console.log(`Cyberpunk Agent | Saved ${this.devices.size} devices and ${this.deviceMappings.size} mappings`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving device data:", error);
+        }
+    }
+
+    /**
      * Force reload contact networks from settings
      */
     reloadContactNetworks() {
@@ -1046,6 +1697,137 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Messages loaded successfully");
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading messages:", error);
+        }
+    }
+
+    /**
+     * Load messages for a specific device
+     */
+    async loadMessagesForDevice(deviceId) {
+        try {
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${deviceId}`;
+            const storedMessages = localStorage.getItem(storageKey);
+
+            if (storedMessages) {
+                const messages = JSON.parse(storedMessages);
+                this.messages.set(deviceId, messages);
+                console.log(`Cyberpunk Agent | Loaded ${messages.length} messages for device ${deviceId}`);
+            } else {
+                this.messages.set(deviceId, []);
+                console.log(`Cyberpunk Agent | No messages found for device ${deviceId}, initialized empty array`);
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error loading messages for device ${deviceId}:`, error);
+            this.messages.set(deviceId, []);
+        }
+    }
+
+    /**
+     * Save messages for a specific device
+     */
+    async saveMessagesForDevice(deviceId) {
+        try {
+            const messages = this.messages.get(deviceId) || [];
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${deviceId}`;
+            localStorage.setItem(storageKey, JSON.stringify(messages));
+            console.log(`Cyberpunk Agent | Saved ${messages.length} messages for device ${deviceId}`);
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error saving messages for device ${deviceId}:`, error);
+        }
+    }
+
+    /**
+     * Synchronize messages with server for a specific device
+     */
+    async synchronizeMessagesWithServer(deviceId) {
+        // This method would handle cross-client synchronization for the device
+        // For now, it's a placeholder that can be expanded later
+        console.log(`Cyberpunk Agent | Synchronizing messages for device ${deviceId}`);
+    }
+
+    /**
+     * Get conversation key for two device IDs
+     */
+    _getDeviceConversationKey(deviceId1, deviceId2) {
+        // Sort device IDs to ensure consistent conversation key
+        const sortedIds = [deviceId1, deviceId2].sort();
+        return `${sortedIds[0]}-${sortedIds[1]}`;
+    }
+
+    /**
+     * Get messages for a conversation between two devices
+     */
+    getMessagesForDeviceConversation(deviceId1, deviceId2) {
+        const conversationKey = this._getDeviceConversationKey(deviceId1, deviceId2);
+        return this.messages.get(conversationKey) || [];
+    }
+
+    /**
+     * Get contacts for a specific device
+     */
+    getContactsForDevice(deviceId) {
+        const device = this.devices.get(deviceId);
+        return device?.contacts || [];
+    }
+
+    /**
+     * Add a contact to a device
+     */
+    addContactToDevice(deviceId, contactDeviceId) {
+        try {
+            const device = this.devices.get(deviceId);
+            if (!device) {
+                console.error(`Cyberpunk Agent | Device ${deviceId} not found`);
+                return false;
+            }
+
+            if (!device.contacts) {
+                device.contacts = [];
+            }
+
+            if (!device.contacts.includes(contactDeviceId)) {
+                device.contacts.push(contactDeviceId);
+                console.log(`Cyberpunk Agent | Added contact ${contactDeviceId} to device ${deviceId}`);
+                this.saveDeviceData();
+                return true;
+            } else {
+                console.log(`Cyberpunk Agent | Contact ${contactDeviceId} already exists in device ${deviceId}`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error adding contact to device:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Remove a contact from a device
+     */
+    removeContactFromDevice(deviceId, contactDeviceId) {
+        try {
+            const device = this.devices.get(deviceId);
+            if (!device) {
+                console.error(`Cyberpunk Agent | Device ${deviceId} not found`);
+                return false;
+            }
+
+            if (!device.contacts) {
+                return false;
+            }
+
+            const index = device.contacts.indexOf(contactDeviceId);
+            if (index > -1) {
+                device.contacts.splice(index, 1);
+                console.log(`Cyberpunk Agent | Removed contact ${contactDeviceId} from device ${deviceId}`);
+                this.saveDeviceData();
+                return true;
+            } else {
+                console.log(`Cyberpunk Agent | Contact ${contactDeviceId} not found in device ${deviceId}`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error removing contact from device:`, error);
+            return false;
         }
     }
 
@@ -2702,9 +3484,9 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | Contact update processed successfully");
     }
 
-/**
- * Handle message update notifications from other clients
- */
+    /**
+     * Handle message update notifications from other clients
+     */
     async handleMessageUpdate(data) {
         console.log("Cyberpunk Agent | Received message update notification from:", data.userName);
 
@@ -4910,4 +5692,44 @@ console.log("  - testRealTimeDeletion() - Test real-time message deletion");
 console.log("  - testMessageSpacing() - Test message spacing between same/different types");
 console.log("  - testContactMute() - Test contact mute functionality");
 console.log("  - syncFoundryChat() - Sync with FoundryVTT chat");
-console.log("  - forceUpdateChatInterfaces() - Force update all chat interfaces"); 
+console.log("  - forceUpdateChatInterfaces() - Force update all chat interfaces");
+console.log("  - debugAgentEquipment() - Debug equipment structure for Agent items");
+console.log("  - triggerAgentMigration() - Manually trigger device migration");
+console.log("  - checkAgentMigrationStatus() - Check migration status and device data");
+
+// Debug function for equipment issues
+window.debugAgentEquipment = function () {
+    if (CyberpunkAgent.instance) {
+        CyberpunkAgent.instance.debugItemStructure();
+    } else {
+        console.error("Cyberpunk Agent instance not found");
+    }
+};
+
+// Global function to manually trigger migration
+window.triggerAgentMigration = () => {
+    if (CyberpunkAgent.instance) {
+        console.log("Cyberpunk Agent | Manually triggering migration...");
+        CyberpunkAgent.instance.runMigration();
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+// Global function to check migration status
+window.checkAgentMigrationStatus = () => {
+    const migrationVersion = "2.0.0";
+    const migrationKey = `cyberpunk-agent-migration-${migrationVersion}`;
+    const hasMigrated = localStorage.getItem(migrationKey);
+
+    console.log("Cyberpunk Agent | Migration status:");
+    console.log("  - Migration key:", migrationKey);
+    console.log("  - Has migrated:", hasMigrated);
+    console.log("  - Current devices count:", CyberpunkAgent.instance?.devices?.size || 0);
+    console.log("  - Current mappings count:", CyberpunkAgent.instance?.deviceMappings?.size || 0);
+
+    if (CyberpunkAgent.instance) {
+        console.log("  - Devices:", Array.from(CyberpunkAgent.instance.devices.keys()));
+        console.log("  - Mappings:", Object.fromEntries(CyberpunkAgent.instance.deviceMappings));
+    }
+}; 
