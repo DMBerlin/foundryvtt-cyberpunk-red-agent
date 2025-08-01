@@ -13,6 +13,8 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 - **Sincronização Automática**: Mensagens são automaticamente sincronizadas quando o agente é aberto
 - **Interface Cyberpunk**: Design moderno e temático para o sistema de mensagens
 - **Gerenciamento de Contatos**: Adicione, remova e organize seus contatos por dispositivo
+- **Adição de Contatos via Chat7**: Menu de contexto para adicionar contatos diretamente na interface Chat7
+- **Números de Telefone Únicos**: Cada Agent tem um número único derivado de sua chave
 - **Mensagens Privadas**: Opção para tornar as mensagens privadas entre participantes
 - **Notificações Sonoras**: Sons de notificação para novas mensagens
 - **Integração com FoundryVTT**: Sincronização com o chat do FoundryVTT
@@ -82,9 +84,24 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 
 ### Gerenciando Contatos
 
+**Adicionando Contatos via Chat7:**
+1. Abra o Agent e navegue para o Chat7
+2. Clique com o botão direito na área de fundo da lista de contatos
+3. Selecione "Adicionar Contato" no menu de contexto
+4. Digite o número de telefone no formato não formatado (ex: `14152120002`)
+5. Clique em "Buscar" ou pressione Enter
+6. Se o contato for encontrado, clique em "Adicionar Contato"
+
+**Adicionando Contatos via Contact Manager (GM):**
 1. Abra o Agent
 2. Clique em "Gerenciar Contatos"
 3. Adicione ou remova contatos conforme necessário
+
+**Números de Telefone:**
+- Cada Agent tem um número único derivado de sua chave
+- Os números são exibidos no formato `+1 (415) 212-0002` na tela inicial
+- Para adicionar contatos, use o formato não formatado: `14152120002`
+- Adições são recíprocas: se A adiciona B, B também recebe A como contato
 
 ### Configurações
 

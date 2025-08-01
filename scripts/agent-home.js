@@ -43,7 +43,7 @@ class AgentApplication extends FormApplication {
   /**
    * Get data for the template
    */
-      async getData(options = {}) {
+  async getData(options = {}) {
     const data = super.getData(options);
 
     // Get current time
@@ -54,7 +54,7 @@ class AgentApplication extends FormApplication {
     });
 
     // Get or generate phone number for the device
-                    const unformattedPhoneNumber = await window.CyberpunkAgent?.instance?.getDevicePhoneNumber(this.device.id) || 'N/A';
+    const unformattedPhoneNumber = await window.CyberpunkAgent?.instance?.getDevicePhoneNumber(this.device.id) || 'N/A';
     const phoneNumber = window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(unformattedPhoneNumber) || 'N/A';
 
     // Get actor name from the device's owner
@@ -511,6 +511,9 @@ class AgentApplication extends FormApplication {
     html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
     html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
 
+    // Add context menu for contacts list background
+    html.find('.cp-contacts-container').on('contextmenu', this._onContactsBackgroundContextMenu.bind(this));
+
     // Setup document click for context menu
     $(document).off('click.cyberpunk-agent-context').on('click.cyberpunk-agent-context', this._onDocumentClick.bind(this));
   }
@@ -598,6 +601,17 @@ class AgentApplication extends FormApplication {
   }
 
   /**
+   * Handle contacts background context menu
+   */
+  _onContactsBackgroundContextMenu(event) {
+    event.preventDefault();
+    console.log("Contacts background context menu for device:", this.device.id);
+
+    // Show context menu with add contact option
+    this._showContactsBackgroundContextMenu(event);
+  }
+
+  /**
    * Handle contact context menu
    */
   _onContactContextMenu(event) {
@@ -667,6 +681,57 @@ class AgentApplication extends FormApplication {
     });
 
     $('body').append(contextMenu);
+  }
+
+  /**
+   * Show contacts background context menu
+   */
+  _showContactsBackgroundContextMenu(event) {
+    // Remove any existing context menus
+    $('.cp-context-menu').remove();
+
+    const contextMenu = $(`
+      <div class="cp-context-menu" style="position: fixed; z-index: 10000; background: var(--cp-bg-secondary); border: 1px solid var(--cp-border); border-radius: 8px; box-shadow: var(--cp-shadow-strong); padding: 8px 0; min-width: 200px;">
+        <button class="cp-context-menu-item" data-action="add-contact">
+          <i class="fas fa-user-plus"></i>Adicionar Contato
+        </button>
+      </div>
+    `);
+
+    // Position the context menu at the mouse position
+    contextMenu.css({
+      left: event.pageX,
+      top: event.pageY
+    });
+
+    // Add event listener for add contact
+    contextMenu.find('[data-action="add-contact"]').click(() => {
+      this._openContactSearchModal();
+      $('.cp-context-menu').remove();
+    });
+
+    $('body').append(contextMenu);
+  }
+
+  /**
+   * Open contact search modal
+   */
+  _openContactSearchModal() {
+    console.log("Opening contact search modal for device:", this.device.id);
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
+    // Open contact search modal
+    if (typeof window.ContactSearchModal !== 'undefined') {
+      const contactSearchModal = new window.ContactSearchModal(this.device.ownerActorId);
+      contactSearchModal.render(true);
+    } else {
+      console.error("Cyberpunk Agent | ContactSearchModal not loaded!");
+      ui.notifications.error("Erro ao abrir modal de busca de contatos");
+    }
   }
 
   /**
