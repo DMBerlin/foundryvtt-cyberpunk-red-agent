@@ -582,21 +582,7 @@ class CyberpunkAgent {
             // Remove any existing agent tools first
             tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
 
-            // For GM: Always show agent tool for all devices
-            if (game.user.isGM) {
-                tokenControl.tools.push({
-                    name: "agent",
-                    title: "Cyberpunk Agent (GM) - All Devices",
-                    icon: "fas fa-mobile-alt",
-                    onClick: () => {
-                        this.openAgentInterface();
-                    }
-                });
-                console.log("Cyberpunk Agent | Added GM agent button to token controls");
-                return;
-            }
-
-            // For players: Only show if they have equipped agents
+            // Get equipped agents for the current user (works for both GM and players)
             const equippedAgents = this.getEquippedAgentsForUser();
 
             if (equippedAgents.length > 0) {
@@ -1000,48 +986,71 @@ class CyberpunkAgent {
      * Show menu for multiple equipped agents
      */
     async showEquippedAgentMenu(equippedAgents) {
+        console.log("Cyberpunk Agent | showEquippedAgentMenu called with:", equippedAgents);
+        console.log("Cyberpunk Agent | equippedAgents length:", equippedAgents.length);
+        console.log("Cyberpunk Agent | equippedAgents type:", typeof equippedAgents);
+
+        if (!equippedAgents || equippedAgents.length === 0) {
+            console.error("Cyberpunk Agent | No equipped agents provided to showEquippedAgentMenu");
+            ui.notifications.error("Nenhum Agent equipado encontrado para seleção.");
+            return;
+        }
+
         const options = equippedAgents.map(agent => ({
             label: `${agent.actorName} - ${agent.itemName}`,
             value: agent.deviceId
         }));
 
+        console.log("Cyberpunk Agent | Generated options:", options);
+
         const selectedDeviceId = await new Promise((resolve) => {
             new Dialog({
-                title: "Select Agent Device",
+                title: game.user.isGM ? "Selecionar Dispositivo Agent (GM)" : "Selecionar Dispositivo Agent",
                 content: `
                     <div style="margin-bottom: 1em;">
-                        <p>You have multiple equipped agents. Choose which one to open:</p>
+                        <p>${game.user.isGM ? 'Você tem múltiplos Agents equipados nos seus personagens. Escolha qual abrir:' : 'Você tem múltiplos Agents equipados. Escolha qual abrir:'}</p>
+                    </div>
+                    <div style="margin-bottom: 1em;">
+                        <select id="agent-device-select" style="width: 100%;">
+                            ${options.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
+                        </select>
                     </div>
                 `,
                 buttons: {
+                    select: {
+                        label: "Selecionar",
+                        callback: (html) => {
+                            const selectedValue = html.find('#agent-device-select').val();
+                            resolve(selectedValue);
+                        }
+                    },
                     cancel: {
-                        label: "Cancel",
+                        label: "Cancelar",
                         callback: () => resolve(null)
                     }
                 },
                 render: (html) => {
-                    const select = document.createElement('select');
-                    select.style.width = '100%';
-                    select.style.marginBottom = '1em';
+                    console.log("Cyberpunk Agent | Dialog render called");
+                    console.log("Cyberpunk Agent | Dialog render - options:", options);
+                    console.log("Cyberpunk Agent | Dialog render - html.find('.dialog-content'):", html.find('.dialog-content'));
 
-                    options.forEach(option => {
-                        const optionElement = document.createElement('option');
-                        optionElement.value = option.value;
-                        optionElement.textContent = option.label;
-                        select.appendChild(optionElement);
-                    });
+                    // Verify the select element exists in the DOM
+                    const selectElement = html.find('#agent-device-select');
+                    console.log("Cyberpunk Agent | Select element found in DOM:", selectElement);
+                    console.log("Cyberpunk Agent | Select element length:", selectElement.length);
+                    console.log("Cyberpunk Agent | Select element HTML:", selectElement.html());
 
-                    html.find('.dialog-content').append(select);
-
-                    const confirmButton = document.createElement('button');
-                    confirmButton.textContent = 'Open Agent';
-                    confirmButton.className = 'dialog-button';
-                    confirmButton.onclick = () => {
-                        resolve(select.value);
-                        dialog.close();
-                    };
-
-                    html.find('.dialog-buttons').prepend(confirmButton);
+                    // Force a reflow to ensure the select is visible
+                    setTimeout(() => {
+                        console.log("Cyberpunk Agent | Checking select visibility after timeout");
+                        const selectInDOM = document.getElementById('agent-device-select');
+                        console.log("Cyberpunk Agent | Select element in DOM:", selectInDOM);
+                        if (selectInDOM) {
+                            console.log("Cyberpunk Agent | Select computed style:", window.getComputedStyle(selectInDOM));
+                            console.log("Cyberpunk Agent | Select offsetHeight:", selectInDOM.offsetHeight);
+                            console.log("Cyberpunk Agent | Select offsetWidth:", selectInDOM.offsetWidth);
+                        }
+                    }, 100);
                 }
             }).render(true);
         });
@@ -1200,73 +1209,29 @@ class CyberpunkAgent {
      * Open the agent interface
      */
     async openAgentInterface() {
-        // For GM: Show all devices
-        if (game.user.isGM) {
-            const accessibleDevices = this.getUserAccessibleDevices();
+        console.log("Cyberpunk Agent | openAgentInterface called");
 
-            if (accessibleDevices.length === 0) {
-                ui.notifications.warn("Nenhum dispositivo Agent encontrado.");
-                return;
-            }
-
-            // Show device selection dialog for GM
-            const deviceOptions = accessibleDevices.map(device => ({
-                label: `${device.deviceName} (${device.ownerActorName || 'Unknown'})`,
-                value: device.id
-            }));
-
-            const selectedDeviceId = await new Promise((resolve) => {
-                new Dialog({
-                    title: "Selecionar Dispositivo Agent",
-                    content: `
-                        <form>
-                            <div class="form-group">
-                                <label>Escolha qual dispositivo Agent abrir:</label>
-                                <select id="device-select">
-                                    ${deviceOptions.map(option =>
-                        `<option value="${option.value}">${option.label}</option>`
-                    ).join('')}
-                                </select>
-                            </div>
-                        </form>
-                    `,
-                    buttons: {
-                        confirm: {
-                            label: "Confirmar",
-                            callback: (html) => {
-                                const deviceId = html.find('#device-select').val();
-                                resolve(deviceId);
-                            }
-                        },
-                        cancel: {
-                            label: "Cancelar"
-                        }
-                    }
-                }).render(true);
-            });
-
-            if (selectedDeviceId) {
-                const device = this.devices.get(selectedDeviceId);
-                if (device) {
-                    await this.showAgentHome(device);
-                }
-            }
-            return;
-        }
-
-        // For players: Show only equipped agents
+        // For both GM and players: Show equipped agents
         const equippedAgents = this.getEquippedAgentsForUser();
+        console.log("Cyberpunk Agent | openAgentInterface - equippedAgents:", equippedAgents);
+        console.log("Cyberpunk Agent | openAgentInterface - equippedAgents.length:", equippedAgents.length);
 
         if (equippedAgents.length === 0) {
-            ui.notifications.warn("Você não tem nenhum Agent equipado. Equipe um Agent para usá-lo.");
+            if (game.user.isGM) {
+                ui.notifications.warn("Nenhum Agent equipado encontrado nos personagens que você possui.");
+            } else {
+                ui.notifications.warn("Você não tem nenhum Agent equipado. Equipe um Agent para usá-lo.");
+            }
             return;
         }
 
         // If only one equipped agent, open it directly
         if (equippedAgents.length === 1) {
+            console.log("Cyberpunk Agent | openAgentInterface - Opening single agent:", equippedAgents[0]);
             await this.openSpecificAgent(equippedAgents[0].deviceId);
         } else {
             // If multiple equipped agents, show selection menu
+            console.log("Cyberpunk Agent | openAgentInterface - Showing menu for multiple agents:", equippedAgents);
             await this.showEquippedAgentMenu(equippedAgents);
         }
     }

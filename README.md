@@ -57,9 +57,9 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 - **Tooltip**: Passando o mouse sobre o ícone mostra o nome do personagem
 
 **Para GMs:**
-- **Token Controls**: O ícone do telefone sempre aparece, permitindo acesso a todos os dispositivos
-- **Chat Command**: Digite `/agent` no chat para acessar todos os dispositivos
-- **Acesso Completo**: GM pode acessar dispositivos de todos os personagens
+- **Token Controls**: O ícone do telefone aparece para personagens com Agents equipados que você possui
+- **Chat Command**: Digite `/agent` no chat para acessar seus Agents equipados
+- **Acesso Inteligente**: GM acessa apenas Agents equipados dos personagens que possui, evitando listas com "(Unknown)"
 
 ### Enviando Mensagens
 
@@ -78,9 +78,9 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 5. O ícone do telefone aparecerá automaticamente nos controles do token
 
 **Para GMs:**
-- O ícone do telefone sempre está disponível nos controles de token
-- Pode acessar dispositivos de qualquer personagem
-- Útil para gerenciar múltiplos personagens simultaneamente
+- O ícone do telefone aparece apenas para personagens com Agents equipados que você possui
+- Acessa apenas Agents equipados dos personagens sob sua propriedade
+- Interface limpa sem dispositivos "(Unknown)" - mostra apenas dispositivos válidos
 
 ### Gerenciando Contatos
 
@@ -107,6 +107,15 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 
 - **Mensagens Privadas**: Torna as mensagens visíveis apenas para os participantes
 - **Som de Notificação**: Ativa/desativa sons para novas mensagens
+
+### Melhorias para GM (v2.1.0)
+
+**Interface Inteligente para GM:**
+- **Filtragem por Propriedade**: GM vê apenas Agents equipados dos personagens que possui
+- **Sem Labels "(Unknown)"**: Interface limpa mostrando apenas dispositivos válidos
+- **Consistência**: Mesma lógica para GM e jogadores - baseada em equipamento
+- **Seleção Automática**: Se GM tem apenas um Agent equipado, abre diretamente
+- **Menu de Seleção**: Se GM tem múltiplos Agents, mostra menu para escolher
 
 ### Sistema de Requisições GM
 

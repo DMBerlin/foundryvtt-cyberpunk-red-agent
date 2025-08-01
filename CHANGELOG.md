@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2025-01-30
+
+### Added
+- **GM Agent Interface Improvements**: Significantly improved the phone icon on token controls for GM functionality:
+  - **Ownership-Based Filtering**: GM now sees only equipped Agents from characters they own
+  - **No More "(Unknown)" Labels**: All devices show proper character names instead of confusing labels
+  - **Consistent Logic**: Same behavior for GM and players - based on equipment status
+  - **Automatic vs Manual Selection**: Single Agent opens directly, multiple Agents show selection menu
+  - **Clean Interface**: Removed irrelevant devices and confusing labels
+
+### Fixed
+- **GM Token Controls**: Fixed GM phone icon showing all devices with "(Unknown)" labels:
+  - **Device Filtering**: Now properly filters by ownership and equipment status
+  - **Label Accuracy**: All devices show correct character names
+  - **Access Control**: GM only sees devices from characters they own
+  - **User Experience**: Much cleaner and more intuitive interface
+
+### Technical Details
+- **Unified Logic**: Removed GM-specific device filtering in favor of consistent `getEquippedAgentsForUser()` logic
+- **Simplified Functions**: Streamlined `addControlButton()` and `openAgentInterface()` functions
+- **Ownership Respect**: Properly respects FoundryVTT character ownership system
+- **Backward Compatible**: No breaking changes, existing functionality preserved
+- **Test Suite**: Added `test-gm-agent-improvements.js` for comprehensive testing
+- **Documentation**: Created `GM-AGENT-IMPROVEMENTS.md` with detailed explanations
+
+### Benefits
+- **Professional Interface**: No more confusing "(Unknown)" labels
+- **Intuitive Access**: GM sees only relevant, equipped devices
+- **Consistent Behavior**: Same logic for GM and players
+- **Reduced Confusion**: Clear, predictable interface
+- **Better Security**: Respects character ownership permissions
+
+### Files Modified
+- `scripts/module.js`: Updated `addControlButton()` and `openAgentInterface()` functions
+- `scripts/test-gm-agent-improvements.js`: New comprehensive test script
+- `docs/GM-AGENT-IMPROVEMENTS.md`: New documentation file
+- `README.md`: Updated GM usage instructions
+- `CHANGELOG.md`: Added version 2.1.0 entry
+
 ## [1.0.55] - 2025-01-30
 
 ### Added
