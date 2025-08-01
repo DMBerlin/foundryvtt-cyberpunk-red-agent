@@ -923,19 +923,92 @@ class AgentApplication extends FormApplication {
   /**
    * Show contact info
    */
-  _showContactInfo(contactId) {
-    // Get contact data
-    const contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
-    const contact = contacts.find(c => c.id === contactId);
+  async _showContactInfo(contactId) {
+    if (!window.CyberpunkAgent?.instance) {
+      ui.notifications.error("Sistema de agentes não disponível");
+      return;
+    }
 
-    if (contact) {
+    try {
+      // Get contact device data
+      const contactDevice = window.CyberpunkAgent.instance.devices.get(contactId);
+      if (!contactDevice) {
+        ui.notifications.error("Contato não encontrado");
+        return;
+      }
+
+      // Get contact's phone number
+      const phoneNumber = await window.CyberpunkAgent.instance.getDevicePhoneNumber(contactId);
+      const formattedPhone = window.CyberpunkAgent.instance.formatPhoneNumberForDisplay(phoneNumber);
+
+      // Get messages for this conversation
+      const messages = window.CyberpunkAgent.instance.getMessagesForDeviceConversation(this.device.id, contactId) || [];
+      
+      // Calculate message statistics
+      const totalMessages = messages.length;
+      const sentMessages = messages.filter(msg => msg.senderId === this.device.id).length;
+      const receivedMessages = messages.filter(msg => msg.receiverId === this.device.id).length;
+      
+      // Get first message date (as proxy for "added date")
+      let firstMessageDate = 'N/A';
+      if (messages.length > 0) {
+        const firstMessage = messages.reduce((earliest, current) => 
+          current.timestamp < earliest.timestamp ? current : earliest
+        );
+        firstMessageDate = new Date(firstMessage.timestamp).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      // Get last message date
+      let lastMessageDate = 'N/A';
+      if (messages.length > 0) {
+        const lastMessage = messages.reduce((latest, current) => 
+          current.timestamp > latest.timestamp ? current : latest
+        );
+        lastMessageDate = new Date(lastMessage.timestamp).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      // Get unread count
+      const unreadCount = window.CyberpunkAgent.instance.getUnreadCountForDevices(this.device.id, contactId) || 0;
+
+      // Get mute status
+      const isMuted = window.CyberpunkAgent.instance.isContactMutedForDevice(this.device.id, contactId) || false;
+
       new Dialog({
-        title: "Informações do Contato",
+        title: `Informações do Contato - ${contactDevice.deviceName || 'Contato'}`,
         content: `
           <div class="cp-contact-info-dialog">
-            <p><strong>Nome:</strong> ${contact.name}</p>
-            <p><strong>Telefone:</strong> ${contact.phoneNumber || 'N/A'}</p>
-            <p><strong>Tipo:</strong> Contato Regular</p>
+            <div class="cp-contact-info-section">
+              <h3><i class="fas fa-user"></i> Informações Básicas</h3>
+              <p><strong>Nome:</strong> ${contactDevice.deviceName || 'Contato'}</p>
+              <p><strong>Telefone:</strong> ${formattedPhone}</p>
+              <p><strong>Status:</strong> ${isMuted ? '<span style="color: #ff6b6b;"><i class="fas fa-volume-mute"></i> Silenciado</span>' : '<span style="color: #51cf66;"><i class="fas fa-volume-up"></i> Ativo</span>'}</p>
+            </div>
+            
+            <div class="cp-contact-info-section">
+              <h3><i class="fas fa-comments"></i> Estatísticas de Mensagens</h3>
+              <p><strong>Total de Mensagens:</strong> ${totalMessages}</p>
+              <p><strong>Mensagens Enviadas:</strong> ${sentMessages}</p>
+              <p><strong>Mensagens Recebidas:</strong> ${receivedMessages}</p>
+              <p><strong>Não Lidas:</strong> ${unreadCount > 0 ? `<span style="color: #ff6b6b;">${unreadCount}</span>` : '0'}</p>
+            </div>
+            
+            <div class="cp-contact-info-section">
+              <h3><i class="fas fa-clock"></i> Histórico</h3>
+              <p><strong>Primeira Mensagem:</strong> ${firstMessageDate}</p>
+              <p><strong>Última Mensagem:</strong> ${lastMessageDate}</p>
+            </div>
           </div>
         `,
         buttons: {
@@ -944,6 +1017,10 @@ class AgentApplication extends FormApplication {
           }
         }
       }).render(true);
+
+    } catch (error) {
+      console.error("AgentApplication | Error showing contact info:", error);
+      ui.notifications.error("Erro ao carregar informações do contato");
     }
   }
 

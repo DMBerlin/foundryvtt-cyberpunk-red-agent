@@ -2577,6 +2577,67 @@
   margin: 4px 0;
 }
 
+/* ===== CONTACT INFO DIALOG STYLES ===== */
+
+/* Contact info dialog container */
+.cp-contact-info-dialog {
+  background: var(--cp-gradient-card);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 500px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* Contact info sections */
+.cp-contact-info-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid var(--cp-border);
+}
+
+.cp-contact-info-section:last-child {
+  margin-bottom: 0;
+}
+
+.cp-contact-info-section h3 {
+  margin: 0 0 12px 0;
+  color: var(--cp-accent);
+  font-size: 1.1em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-contact-info-section h3 i {
+  font-size: 0.9em;
+  color: var(--cp-accent);
+}
+
+.cp-contact-info-section p {
+  margin: 8px 0;
+  color: var(--cp-text);
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.cp-contact-info-section p strong {
+  color: var(--cp-text-bright);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* Status indicators */
+.cp-contact-info-section span[style*="color: #ff6b6b"] {
+  font-weight: 600;
+}
+
+.cp-contact-info-section span[style*="color: #51cf66"] {
+  font-weight: 600;
+}
+
 /* ===== ENHANCED STYLES ===== */
 
 /* Message spacing and layout */
