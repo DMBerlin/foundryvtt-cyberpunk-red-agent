@@ -707,7 +707,7 @@ class GMDataManagementMenu extends FormApplication {
       new Dialog({
         title: "Clear All Messages",
         content: `
-          <p><strong>Warning:</strong> This will delete ALL chat message histories for ALL actors.</p>
+          <p><strong>Warning:</strong> This will delete ALL chat message histories for ALL devices.</p>
           <p>This action cannot be undone.</p>
           <p>Are you sure you want to proceed?</p>
         `,
@@ -752,7 +752,7 @@ class GMDataManagementMenu extends FormApplication {
       new Dialog({
         title: "Clear All Contacts",
         content: `
-          <p><strong>Warning:</strong> This will delete ALL contact connections for ALL actors.</p>
+          <p><strong>Warning:</strong> This will delete ALL contact connections for ALL devices.</p>
           <p>This will also delete ALL chat message histories.</p>
           <p>This action cannot be undone.</p>
           <p>Are you sure you want to proceed?</p>

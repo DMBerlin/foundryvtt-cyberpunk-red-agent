@@ -10,9 +10,9 @@ console.log("Cyberpunk Agent | Loading agent-home.js...");
  * Extends FormApplication for proper FoundryVTT v11 compatibility
  */
 class AgentApplication extends FormApplication {
-  constructor(actor, options = {}) {
-    super(actor, options);
-    this.actor = actor;
+  constructor(device, options = {}) {
+    super(device, options);
+    this.device = device;
     this.currentView = 'home'; // 'home', 'chat7', 'conversation'
     this.currentContact = null;
     this.views = {
@@ -20,8 +20,8 @@ class AgentApplication extends FormApplication {
       chat7: this._renderChat7View.bind(this),
       conversation: this._renderConversationView.bind(this)
     };
-    this.componentId = `agent-${actor.id}`;
-    console.log("AgentApplication constructor called with:", actor);
+    this.componentId = `agent-${device.id}`;
+    console.log("AgentApplication constructor called with device:", device);
   }
 
   /**
@@ -55,7 +55,7 @@ class AgentApplication extends FormApplication {
 
     let templateData = {
       ...data,
-      actor: this.actor,
+      device: this.device,
       currentTime: currentTime,
       currentView: this.currentView,
       currentContact: this.currentContact
@@ -63,26 +63,35 @@ class AgentApplication extends FormApplication {
 
     // Add view-specific data
     if (this.currentView === 'chat7') {
-      // Get contacts for the actor
-      const contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+      // Get contacts for the device
+      const contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
 
       // Add unread counts and mute status to contacts
-      const contactsWithData = contacts.map(contact => {
+      const contactsWithData = contacts.map(contactDeviceId => {
+        // Get contact device data
+        const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactDeviceId);
+        if (!contactDevice) {
+          console.warn(`Cyberpunk Agent | Contact device ${contactDeviceId} not found`);
+          return null;
+        }
+
         // Force recalculation of unread count by clearing cache first
         if (window.CyberpunkAgent?.instance) {
-          const conversationKey = window.CyberpunkAgent.instance._getConversationKey(this.actor.id, contact.id);
+          const conversationKey = window.CyberpunkAgent.instance._getDeviceConversationKey(this.device.id, contactDeviceId);
           window.CyberpunkAgent.instance.unreadCounts.delete(conversationKey);
         }
 
-        const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCount(this.actor.id, contact.id) || 0;
-        const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+        const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCountForDevices(this.device.id, contactDeviceId) || 0;
+        const isMuted = window.CyberpunkAgent?.instance?.isContactMutedForDevice(this.device.id, contactDeviceId) || false;
 
         return {
-          ...contact,
+          id: contactDeviceId,
+          name: contactDevice.deviceName || `Device ${contactDeviceId}`,
+          img: contactDevice.img || 'icons/svg/mystery-man.svg',
           unreadCount: unreadCount > 0 ? unreadCount : null,
           isMuted: isMuted
         };
-      });
+      }).filter(contact => contact !== null); // Remove null contacts
 
       templateData.contacts = contactsWithData;
       templateData.isGM = game.user.isGM;
@@ -93,13 +102,13 @@ class AgentApplication extends FormApplication {
       });
     } else if (this.currentView === 'conversation' && this.currentContact && this.currentContact.id) {
       // Add conversation-specific data
-      const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
+      const messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, this.currentContact.id) || [];
 
       // Format messages for the Handlebars template
       const formattedMessages = messages.map(message => ({
         ...message,
         text: message.text || message.message, // Use 'text' property, fallback to 'message' for compatibility
-        isOwn: message.senderId === this.actor.id,
+        isOwn: message.senderId === this.device.id,
         time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
           hour: '2-digit',
           minute: '2-digit'
@@ -176,9 +185,9 @@ class AgentApplication extends FormApplication {
     const componentIds = [];
 
     if (this.currentView === 'conversation' && this.currentContact && this.currentContact.id) {
-      componentIds.push(`agent-conversation-${this.actor.id}-${this.currentContact.id}`);
+      componentIds.push(`agent-conversation-${this.device.id}-${this.currentContact.id}`);
     } else if (this.currentView === 'chat7') {
-      componentIds.push(`agent-chat7-${this.actor.id}`);
+      componentIds.push(`agent-chat7-${this.device.id}`);
     }
 
     return componentIds;
@@ -304,7 +313,7 @@ class AgentApplication extends FormApplication {
    * Render Chat7 view
    */
   _renderChat7View() {
-    console.log("AgentApplication | Rendering Chat7 view for actor:", this.actor.name, this.actor.id);
+    console.log("AgentApplication | Rendering Chat7 view for device:", this.device.name, this.device.id);
 
     // The contacts are now rendered by the template via getData()
     // This method is called after the template is rendered, so we just need to setup listeners
@@ -328,11 +337,11 @@ class AgentApplication extends FormApplication {
     // This ensures that when a user opens a conversation, all messages are marked as read
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       console.log("AgentApplication | Marking conversation as read for contact:", this.currentContact.id);
-      window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, this.currentContact.id);
+      window.CyberpunkAgent.instance.markDeviceConversationAsRead(this.device.id, this.currentContact.id);
     }
 
     // Get messages for the conversation
-    const messages = window.CyberpunkAgent?.instance?.getMessagesForConversation(this.actor.id, this.currentContact.id) || [];
+    const messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, this.currentContact.id) || [];
     console.log("AgentApplication | Messages for conversation:", messages.length, messages);
 
     // Setup real-time listener for conversation
@@ -434,8 +443,8 @@ class AgentApplication extends FormApplication {
       }
 
       if (type === 'messageUpdate' &&
-        ((senderId === this.actor.id && receiverId === this.currentContact.id) ||
-          (senderId === this.currentContact.id && receiverId === this.actor.id))) {
+        ((senderId === this.device.id && receiverId === this.currentContact.id) ||
+          (senderId === this.currentContact.id && receiverId === this.device.id))) {
         console.log("AgentApplication | Conversation received update");
 
         // Prevent infinite loops
@@ -508,7 +517,7 @@ class AgentApplication extends FormApplication {
    */
   _onChat7Click(event) {
     event.preventDefault();
-    console.log("Chat7 app clicked for actor:", this.actor.name);
+    console.log("Chat7 app clicked for device:", this.device.name);
 
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -553,12 +562,12 @@ class AgentApplication extends FormApplication {
     console.log("Contact chat clicked for contact:", contactId);
 
     // Get contact data from regular contacts
-    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    let contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
     let contact = contacts.find(c => c.id === contactId);
 
     // If not found in regular contacts, check anonymous contacts
     if (!contact) {
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForDevice(this.device.id) || [];
       contact = anonymousContacts.find(c => c.id === contactId);
     }
 
@@ -585,12 +594,12 @@ class AgentApplication extends FormApplication {
     const contactId = event.currentTarget.dataset.contactId;
 
     // Get contact data from regular contacts
-    let contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    let contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
     let contact = contacts.find(c => c.id === contactId);
 
     // If not found in regular contacts, check anonymous contacts
     if (!contact) {
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForActor(this.actor.id) || [];
+      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForDevice(this.device.id) || [];
       contact = anonymousContacts.find(c => c.id === contactId);
     }
 
@@ -606,7 +615,7 @@ class AgentApplication extends FormApplication {
     // Remove any existing context menu
     $('.cp-context-menu').remove();
 
-    const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
+    const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.device.id, contact.id) || false;
     const muteIcon = isMuted ? 'fa-volume-mute' : 'fa-volume-up';
     const muteText = isMuted ? 'Ativar Notificações' : 'Silenciar Contato';
 
@@ -653,13 +662,13 @@ class AgentApplication extends FormApplication {
    */
   _toggleContactMute(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      const newMuteStatus = window.CyberpunkAgent.instance.toggleContactMute(this.actor.id, contactId);
+      const newMuteStatus = window.CyberpunkAgent.instance.toggleContactMuteForDevice(this.device.id, contactId);
 
       console.log("AgentApplication | Contact mute toggled, forcing UI update");
 
       // Strategy 1: Use UI Controller if available
       if (window.CyberpunkAgentUIController) {
-        const chat7ComponentId = `agent-chat7-${this.actor.id}`;
+        const chat7ComponentId = `agent-chat7-${this.device.id}`;
         window.CyberpunkAgentUIController.markDirty(chat7ComponentId);
         console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller");
       }
@@ -672,14 +681,14 @@ class AgentApplication extends FormApplication {
         detail: {
           timestamp: Date.now(),
           type: 'contactMuteToggle',
-          actorId: this.actor.id,
+          actorId: this.device.id,
           contactId: contactId,
           muteStatus: newMuteStatus
         }
       }));
 
       // Show user feedback
-      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId);
+      const contact = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id).find(c => c.id === contactId);
 
       if (contact) {
         ui.notifications.info(`Contato ${contact.name} ${newMuteStatus ? 'mutado' : 'desmutado'}!`);
@@ -692,7 +701,7 @@ class AgentApplication extends FormApplication {
    */
   _showContactInfo(contactId) {
     // Get contact data
-    const contacts = window.CyberpunkAgent?.instance?.getContactsForActor(this.actor.id) || [];
+    const contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
     const contact = contacts.find(c => c.id === contactId);
 
     if (contact) {
@@ -719,7 +728,7 @@ class AgentApplication extends FormApplication {
    */
   async _markAllMessagesAsRead(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      await window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, contactId);
+      await window.CyberpunkAgent.instance.markDeviceConversationAsRead(this.device.id, contactId);
       ui.notifications.info("Todas as mensagens foram marcadas como lidas!");
 
       // Force UI update using multiple strategies
@@ -727,7 +736,7 @@ class AgentApplication extends FormApplication {
 
       // Strategy 1: Use UI Controller if available
       if (window.CyberpunkAgentUIController) {
-        const chat7ComponentId = `agent-chat7-${this.actor.id}`;
+        const chat7ComponentId = `agent-chat7-${this.device.id}`;
         window.CyberpunkAgentUIController.markDirty(chat7ComponentId);
         console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller");
       }
@@ -740,7 +749,7 @@ class AgentApplication extends FormApplication {
         detail: {
           timestamp: Date.now(),
           type: 'messagesMarkedAsRead',
-          actorId: this.actor.id,
+          actorId: this.device.id,
           contactId: contactId
         }
       }));
@@ -753,7 +762,7 @@ class AgentApplication extends FormApplication {
   async _clearConversationHistory(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       // Show confirmation dialog
-      const contact = window.CyberpunkAgent.instance.getContactsForActor(this.actor.id).find(c => c.id === contactId);
+      const contact = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id).find(c => c.id === contactId);
 
       if (!contact) {
         ui.notifications.error("Contato não encontrado");
@@ -783,7 +792,7 @@ class AgentApplication extends FormApplication {
       });
 
       if (confirmed) {
-        const success = await window.CyberpunkAgent.instance.clearConversationHistory(this.actor.id, contactId);
+        const success = await window.CyberpunkAgent.instance.clearDeviceConversationHistory(this.device.id, contactId);
         if (success) {
           // Refresh the view
           if (this.currentView === 'chat7') {
@@ -841,15 +850,15 @@ class AgentApplication extends FormApplication {
     // Send message through CyberpunkAgent
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       try {
-        await window.CyberpunkAgent.instance.sendMessage(this.actor.id, this.currentContact.id, text);
-        console.log("Cyberpunk Agent | Message sent successfully");
+        await window.CyberpunkAgent.instance.sendDeviceMessage(this.device.id, this.currentContact.id, text);
+        console.log("Cyberpunk Agent | Device message sent successfully");
 
         // Simple and direct UI update after sending message
         console.log("AgentApplication | Triggering UI update after sending message");
 
         // Use a simple approach: just mark the conversation component as dirty
         if (window.CyberpunkAgentUIController) {
-          const conversationComponentId = `agent-conversation-${this.actor.id}-${this.currentContact.id}`;
+          const conversationComponentId = `agent-conversation-${this.device.id}-${this.currentContact.id}`;
           window.CyberpunkAgentUIController.markDirty(conversationComponentId);
           console.log("AgentApplication | Marked conversation component as dirty after sending message");
         }
@@ -871,22 +880,22 @@ class AgentApplication extends FormApplication {
 
 // Legacy classes for backward compatibility
 class AgentHomeApplication extends AgentApplication {
-  constructor(actor, options = {}) {
-    super(actor, options);
+  constructor(device, options = {}) {
+    super(device, options);
     this.currentView = 'home';
   }
 }
 
 class Chat7Application extends AgentApplication {
-  constructor(actor, options = {}) {
-    super(actor, options);
+  constructor(device, options = {}) {
+    super(device, options);
     this.currentView = 'chat7';
   }
 }
 
 class ChatConversationApplication extends AgentApplication {
-  constructor(actor, contact, options = {}) {
-    super(actor, options);
+  constructor(device, contact, options = {}) {
+    super(device, options);
     this.currentView = 'conversation';
     this.currentContact = contact;
   }
