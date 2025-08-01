@@ -2702,7 +2702,7 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | Contact update processed successfully");
     }
 
-    /**
+/**
  * Handle message update notifications from other clients
  */
     async handleMessageUpdate(data) {
