@@ -435,7 +435,7 @@ class ContactManagerApplication extends FormApplication {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    const modal = new ContactSearchModal(actorId, this);
+    const modal = new ContactActorSearchModal(actorId, this);
     modal.render(true);
   }
 
@@ -452,7 +452,7 @@ class ContactManagerApplication extends FormApplication {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Check if ContactSearchModal is available
+    // Check if ContactSearchModal is available (for phone number search)
     if (typeof window.ContactSearchModal !== 'undefined') {
       const searchModal = new window.ContactSearchModal(actorId);
       searchModal.render(true);
@@ -482,9 +482,9 @@ class ContactManagerApplication extends FormApplication {
 }
 
 /**
- * Contact Search Modal - Modal for searching and adding contacts
+ * Contact Actor Search Modal - Modal for searching and adding contacts by actor name
  */
-class ContactSearchModal extends FormApplication {
+class ContactActorSearchModal extends FormApplication {
   constructor(actorId, parentApp) {
     super({}, {});
     this.actorId = actorId;
@@ -819,6 +819,7 @@ class GMDataManagementMenu extends FormApplication {
 window.ContactManagerApplication = ContactManagerApplication;
 window.ContactManagerMenu = ContactManagerMenu;
 window.GMDataManagementMenu = GMDataManagementMenu;
+window.ContactActorSearchModal = ContactActorSearchModal;
 
 console.log("Cyberpunk Agent | ContactManagerApplication, ContactManagerMenu, and GMDataManagementMenu made globally available");
 

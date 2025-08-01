@@ -18,7 +18,8 @@ class AgentApplication extends FormApplication {
     this.views = {
       home: this._renderHomeView.bind(this),
       chat7: this._renderChat7View.bind(this),
-      conversation: this._renderConversationView.bind(this)
+      conversation: this._renderConversationView.bind(this),
+      'add-contact': this._renderAddContactView.bind(this)
     };
     this.componentId = `agent-${device.id}`;
     console.log("AgentApplication constructor called with device:", device);
@@ -134,6 +135,19 @@ class AgentApplication extends FormApplication {
         messagesCount: formattedMessages.length,
         contact: this.currentContact.name,
         messages: formattedMessages
+      });
+    } else if (this.currentView === 'add-contact') {
+      // Add add-contact-specific data
+      templateData.searchResult = this.addContactState?.searchResult || null;
+      templateData.errorMessage = this.addContactState?.errorMessage || null;
+      templateData.successMessage = this.addContactState?.successMessage || null;
+      templateData.isSearching = this.addContactState?.isSearching || false;
+
+      console.log("AgentApplication | Template data for add-contact:", {
+        searchResult: templateData.searchResult,
+        errorMessage: templateData.errorMessage,
+        successMessage: templateData.successMessage,
+        isSearching: templateData.isSearching
       });
     }
 
@@ -306,6 +320,9 @@ class AgentApplication extends FormApplication {
       case 'conversation':
         templatePath = "modules/cyberpunk-agent/templates/chat-conversation.html";
         break;
+      case 'add-contact':
+        templatePath = "modules/cyberpunk-agent/templates/add-contact.html";
+        break;
       default:
         templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
     }
@@ -360,6 +377,24 @@ class AgentApplication extends FormApplication {
     this._setupConversationRealtimeListener();
 
     console.log("AgentApplication | Conversation view setup completed");
+  }
+
+  /**
+   * Render add contact view
+   */
+  _renderAddContactView() {
+    console.log("AgentApplication | Rendering add contact view for device:", this.device.id);
+
+    // Initialize add contact state
+    this.addContactState = {
+      phoneNumber: '',
+      searchResult: null,
+      errorMessage: null,
+      successMessage: null,
+      isSearching: false
+    };
+
+    console.log("AgentApplication | Add contact view setup completed");
   }
 
   /**
@@ -491,6 +526,9 @@ class AgentApplication extends FormApplication {
       case 'conversation':
         this._activateConversationListeners(html);
         break;
+      case 'add-contact':
+        this._activateAddContactListeners(html);
+        break;
     }
   }
 
@@ -528,6 +566,17 @@ class AgentApplication extends FormApplication {
   }
 
   /**
+   * Activate add contact listeners
+   */
+  _activateAddContactListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-phone-input').on('input', this._onPhoneInput.bind(this));
+    html.find('.cp-phone-input').on('keypress', this._onPhoneKeypress.bind(this));
+    html.find('.cp-search-btn').click(this._onSearchClick.bind(this));
+    html.find('.cp-add-contact-btn').click(this._onAddContactClick.bind(this));
+  }
+
+  /**
    * Handle Chat7 app click
    */
   _onChat7Click(event) {
@@ -561,6 +610,9 @@ class AgentApplication extends FormApplication {
         this.navigateTo('home');
         break;
       case 'conversation':
+        this.navigateTo('chat7');
+        break;
+      case 'add-contact':
         this.navigateTo('chat7');
         break;
       default:
@@ -714,24 +766,18 @@ class AgentApplication extends FormApplication {
   }
 
   /**
-   * Open contact search modal
+   * Navigate to add contact page
    */
   _openContactSearchModal() {
-    console.log("Opening contact search modal for device:", this.device.id);
+    console.log("Navigating to add contact page for device:", this.device.id);
 
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Open contact search modal
-    if (typeof window.ContactSearchModal !== 'undefined') {
-      const contactSearchModal = new window.ContactSearchModal(this.device.ownerActorId);
-      contactSearchModal.render(true);
-    } else {
-      console.error("Cyberpunk Agent | ContactSearchModal not loaded!");
-      ui.notifications.error("Erro ao abrir modal de busca de contatos");
-    }
+    // Navigate to add contact page
+    this.navigateTo('add-contact');
   }
 
   /**
@@ -952,6 +998,155 @@ class AgentApplication extends FormApplication {
   async _updateObject(event, formData) {
     // Handle any form updates if needed
     console.log("Agent form updated:", formData);
+  }
+
+  /**
+   * Handle phone input changes
+   */
+  _onPhoneInput(event) {
+    const phoneNumber = event.target.value.replace(/\D/g, ''); // Remove non-digits
+    event.target.value = phoneNumber; // Update input with cleaned value
+
+    this.addContactState.phoneNumber = phoneNumber;
+    this.addContactState.errorMessage = null;
+    this.addContactState.successMessage = null;
+    this.addContactState.searchResult = null;
+
+    this._updateSearchButton();
+  }
+
+  /**
+   * Handle phone input keypress
+   */
+  _onPhoneKeypress(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this._onSearchClick();
+    }
+  }
+
+  /**
+   * Handle search button click
+   */
+  async _onSearchClick() {
+    if (!this.addContactState.phoneNumber.trim()) {
+      this._showError('Digite um número de telefone');
+      return;
+    }
+
+    this.addContactState.isSearching = true;
+    this.addContactState.errorMessage = null;
+    this.addContactState.successMessage = null;
+    this.addContactState.searchResult = null;
+    this.render(true);
+
+    try {
+      // Normalize the phone number before searching
+      const normalizedPhone = window.CyberpunkAgent?.instance?.normalizePhoneNumber(this.addContactState.phoneNumber);
+
+      // Search for the phone number
+      const contactDeviceId = window.CyberpunkAgent?.instance?.getDeviceIdFromPhoneNumber(normalizedPhone);
+
+      if (!contactDeviceId) {
+        const displayNumber = window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(normalizedPhone) || normalizedPhone;
+        this._showError(`Nenhum contato encontrado para o número ${displayNumber}`);
+        return;
+      }
+
+      // Get contact device info
+      const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactDeviceId);
+      if (!contactDevice) {
+        this._showError('Informações do contato não encontradas');
+        return;
+      }
+
+      // Check if trying to add self
+      if (contactDeviceId === this.device.id) {
+        this._showError('Você não pode adicionar seu próprio número aos contatos');
+        return;
+      }
+
+      // Check if already a contact
+      const isAlreadyContact = window.CyberpunkAgent?.instance?.isDeviceContact(this.device.id, contactDeviceId);
+      if (isAlreadyContact) {
+        this._showError('Este contato já está na sua lista');
+        return;
+      }
+
+      // Show search result
+      this.addContactState.searchResult = {
+        deviceId: contactDeviceId,
+        name: contactDevice.deviceName || `Device ${contactDeviceId}`,
+        img: contactDevice.img || 'icons/svg/mystery-man.svg',
+        phoneNumber: normalizedPhone,
+        displayPhoneNumber: window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(normalizedPhone) || normalizedPhone
+      };
+
+      this.render(true);
+
+    } catch (error) {
+      console.error('AgentApplication | Error searching for contact:', error);
+      this._showError('Erro ao buscar contato');
+    } finally {
+      this.addContactState.isSearching = false;
+      this.render(true);
+    }
+  }
+
+  /**
+   * Handle add contact button click
+   */
+  async _onAddContactClick() {
+    if (!this.addContactState.searchResult) {
+      return;
+    }
+
+    try {
+      // Add contact by phone number
+      const result = window.CyberpunkAgent?.instance?.addContactByPhoneNumber(this.device.id, this.addContactState.searchResult.phoneNumber);
+
+      if (result && result.success) {
+        // Show success message
+        this.addContactState.successMessage = result.message;
+        this.addContactState.errorMessage = null;
+        this.addContactState.searchResult = null;
+        this.addContactState.phoneNumber = '';
+
+        this.render(true);
+
+        // Clear success message after 3 seconds and navigate back
+        setTimeout(() => {
+          this.navigateTo('chat7');
+        }, 3000);
+      } else {
+        this._showError(result?.message || 'Erro ao adicionar contato');
+      }
+
+    } catch (error) {
+      console.error('AgentApplication | Error adding contact:', error);
+      this._showError('Erro ao adicionar contato');
+    }
+  }
+
+  /**
+   * Update search button state
+   */
+  _updateSearchButton() {
+    const searchBtn = this.element?.find('.cp-search-btn');
+    if (searchBtn) {
+      const hasPhoneNumber = this.addContactState.phoneNumber.trim().length > 0;
+      searchBtn.prop('disabled', !hasPhoneNumber);
+    }
+  }
+
+  /**
+   * Show error message
+   */
+  _showError(message) {
+    this.addContactState.errorMessage = message;
+    this.addContactState.successMessage = null;
+    this.addContactState.searchResult = null;
+    this.render(true);
   }
 }
 

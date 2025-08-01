@@ -3349,3 +3349,233 @@
 .cp-contact-search-modal .cp-btn-secondary:hover {
   background: #555;
 }
+
+/* ===== ADD CONTACT PAGE STYLES ===== */
+.cp-add-contact-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.cp-add-contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 100%;
+}
+
+.cp-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-input-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1.1em;
+  color: var(--cp-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cp-phone-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--cp-dark-gray);
+  border: 2px solid var(--cp-border-weak);
+  border-radius: 8px;
+  color: var(--cp-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.cp-phone-input:focus {
+  outline: none;
+  border-color: var(--cp-border);
+  box-shadow: var(--cp-shadow);
+  background: var(--cp-gray);
+}
+
+.cp-phone-input::placeholder {
+  color: var(--cp-text-muted);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9em;
+}
+
+.cp-input-hint {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85em;
+  color: var(--cp-text-muted);
+  font-style: italic;
+}
+
+.cp-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--cp-gradient-primary);
+  border: 2px solid var(--cp-border);
+  border-radius: 8px;
+  color: var(--cp-text);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1.1em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--cp-shadow);
+}
+
+.cp-search-btn:hover:not(:disabled) {
+  background: var(--cp-secondary);
+  box-shadow: var(--cp-shadow-strong);
+  transform: translateY(-2px);
+}
+
+.cp-search-btn:disabled {
+  background: var(--cp-gray);
+  border-color: var(--cp-border-weak);
+  color: var(--cp-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.cp-search-btn i {
+  font-size: 1em;
+}
+
+.cp-search-result {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--cp-gradient-card);
+  border: 2px solid var(--cp-border-weak);
+  border-radius: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.cp-result-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--cp-border-weak);
+  flex-shrink: 0;
+}
+
+.cp-result-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-result-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-result-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1.1em;
+  color: var(--cp-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cp-result-number {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  color: var(--cp-text-blue);
+  letter-spacing: 0.5px;
+}
+
+.cp-add-contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--cp-success);
+  border: 2px solid var(--cp-success);
+  border-radius: 8px;
+  color: var(--cp-dark);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.cp-add-contact-btn:hover {
+  background: #00cc55;
+  border-color: #00cc55;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 255, 102, 0.3);
+}
+
+.cp-add-contact-btn i {
+  font-size: 0.9em;
+}
+
+.cp-error-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 0, 51, 0.1);
+  border: 2px solid var(--cp-error);
+  border-radius: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.cp-error-message i {
+  color: var(--cp-error);
+  font-size: 1.2em;
+  flex-shrink: 0;
+}
+
+.cp-error-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95em;
+  color: var(--cp-text);
+  line-height: 1.4;
+}
+
+.cp-success-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(0, 255, 102, 0.1);
+  border: 2px solid var(--cp-success);
+  border-radius: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.cp-success-message i {
+  color: var(--cp-success);
+  font-size: 1.2em;
+  flex-shrink: 0;
+}
+
+.cp-success-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95em;
+  color: var(--cp-text);
+  line-height: 1.4;
+}

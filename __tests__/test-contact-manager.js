@@ -154,8 +154,8 @@ function testContactManagerUI() {
   return true;
 }
 
-function testContactSearchModal() {
-  console.log("=== Contact Search Modal Test ===");
+function testContactActorSearchModal() {
+  console.log("=== Contact Actor Search Modal Test ===");
 
   // Get a test actor ID
   const characterActors = game.actors.filter(actor => actor.type === 'character');
@@ -168,23 +168,23 @@ function testContactSearchModal() {
   console.log(`Using test actor: ${characterActors[0].name} (${testActorId})`);
 
   try {
-    const searchModal = new ContactSearchModal(testActorId, null);
-    console.log("✅ ContactSearchModal instantiation successful");
+    const searchModal = new ContactActorSearchModal(testActorId, null);
+    console.log("✅ ContactActorSearchModal instantiation successful");
 
     // Test getData method
     const data = searchModal.getData();
     console.log("✅ getData method working:", data);
 
     // Test defaultOptions
-    const options = ContactSearchModal.defaultOptions;
+    const options = ContactActorSearchModal.defaultOptions;
     console.log("✅ defaultOptions available:", options);
 
   } catch (error) {
-    console.error("❌ ContactSearchModal test failed:", error);
+    console.error("❌ ContactActorSearchModal test failed:", error);
     return false;
   }
 
-  console.log("=== Search Modal tests completed successfully! ===");
+  console.log("=== Actor Search Modal tests completed successfully! ===");
   return true;
 }
 
@@ -236,14 +236,14 @@ function runAllContactManagerTests() {
   const results = {
     updates: testContactManagerUpdates(),
     ui: testContactManagerUI(),
-    searchModal: testContactSearchModal(),
+    searchModal: testContactActorSearchModal(),
     operations: testContactOperations()
   };
 
   console.log("=== Test Results Summary ===");
   console.log("Updates System:", results.updates ? "✅ PASS" : "❌ FAIL");
   console.log("UI Components:", results.ui ? "✅ PASS" : "❌ FAIL");
-  console.log("Search Modal:", results.searchModal ? "✅ PASS" : "❌ FAIL");
+  console.log("Actor Search Modal:", results.searchModal ? "✅ PASS" : "❌ FAIL");
   console.log("Contact Operations:", results.operations ? "✅ PASS" : "❌ FAIL");
 
   const allPassed = Object.values(results).every(result => result === true);
@@ -260,7 +260,7 @@ function runAllContactManagerTests() {
 // Make test functions globally available
 window.testContactManagerUpdates = testContactManagerUpdates;
 window.testContactManagerUI = testContactManagerUI;
-window.testContactSearchModal = testContactSearchModal;
+window.testContactActorSearchModal = testContactActorSearchModal;
 window.testContactOperations = testContactOperations;
 window.runAllContactManagerTests = runAllContactManagerTests;
 
