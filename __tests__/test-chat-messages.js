@@ -291,7 +291,8 @@ async function testMessagePersistence() {
 
   // Test 3: Reload data and check if message is still there
   console.log("🔄 Reloading agent data...");
-  agent.loadAgentData();
+  agent.loadDeviceData();
+  agent.loadMessages();
 
   const reloadedMessages = agent.getMessagesForConversation(actor1.id, actor2.id);
   const reloadedMessageFound = reloadedMessages.some(msg => msg.text === testMessage);

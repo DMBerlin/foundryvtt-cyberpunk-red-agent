@@ -595,6 +595,9 @@ class AgentApplication extends FormApplication {
     html.find('.cp-back-button').click(this._onBackClick.bind(this));
     html.find('.cp-send-message').click(this._onSendMessage.bind(this));
     html.find('.cp-message-input').keypress(this._onMessageInputKeypress.bind(this));
+
+    // Message context menu
+    html.find('.cp-message[data-action="message-context-menu"]').contextmenu(this._onMessageContextMenu.bind(this));
   }
 
   /**
@@ -605,7 +608,7 @@ class AgentApplication extends FormApplication {
     html.find('.cp-phone-input').on('input', this._onPhoneInput.bind(this));
     html.find('.cp-phone-input').on('keypress', this._onPhoneKeypress.bind(this));
     html.find('.cp-search-btn').click(this._onSearchClick.bind(this));
-    html.find('.cp-add-contact-btn').click(this._onAddContactClick.bind(this));
+    html.find('.cp-search-result').click(this._onAddContactClick.bind(this));
 
     // Apply mask to phone input if it has a value
     const phoneInput = html.find('.cp-phone-input');
@@ -732,6 +735,21 @@ class AgentApplication extends FormApplication {
   }
 
   /**
+   * Handle message context menu
+   */
+  _onMessageContextMenu(event) {
+    event.preventDefault();
+
+    const messageId = event.currentTarget.dataset.messageId;
+    const messageText = event.currentTarget.dataset.messageText;
+    const messageTime = event.currentTarget.dataset.messageTime;
+
+    console.log("Message context menu for message:", messageId, messageText);
+
+    this._showMessageContextMenu(event, messageId, messageText, messageTime);
+  }
+
+  /**
    * Show context menu for contact
    */
   _showContextMenu(event, contact) {
@@ -774,6 +792,44 @@ class AgentApplication extends FormApplication {
     });
     contextMenu.find('[data-action="info"]').click(() => {
       this._showContactInfo(contact.id);
+      $('.cp-context-menu').remove();
+    });
+
+    $('body').append(contextMenu);
+  }
+
+  /**
+   * Show context menu for message
+   */
+  _showMessageContextMenu(event, messageId, messageText, messageTime) {
+    // Remove any existing context menu
+    $('.cp-context-menu').remove();
+
+    const contextMenu = $(`
+      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+        <button class="cp-context-menu-item" data-action="delete-message" data-message-id="${messageId}">
+          <i class="fas fa-trash"></i>Deletar Mensagem
+        </button>
+        <button class="cp-context-menu-item" data-action="copy-message" data-message-id="${messageId}">
+          <i class="fas fa-copy"></i>Copiar Texto
+        </button>
+        <button class="cp-context-menu-item" data-action="message-info" data-message-id="${messageId}">
+          <i class="fas fa-info-circle"></i>Informações da Mensagem
+        </button>
+      </div>
+    `);
+
+    // Add event listeners with menu removal
+    contextMenu.find('[data-action="delete-message"]').click(() => {
+      this._deleteMessage(messageId);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="copy-message"]').click(() => {
+      this._copyMessageText(messageText);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="message-info"]').click(() => {
+      this._showMessageInfo(messageId, messageText, messageTime);
       $('.cp-context-menu').remove();
     });
 
@@ -980,6 +1036,83 @@ class AgentApplication extends FormApplication {
     if (!$(event.target).closest('.cp-context-menu').length) {
       $('.cp-context-menu').remove();
     }
+  }
+
+  /**
+   * Delete a specific message
+   */
+  async _deleteMessage(messageId) {
+    console.log("Cyberpunk Agent | Deleting message:", messageId);
+
+    try {
+      // Get the current contact from the conversation
+      const contactId = this.currentContact?.id;
+      if (!contactId) {
+        console.error("Cyberpunk Agent | No contact found for message deletion");
+        ui.notifications.error("Erro: Contato não encontrado!");
+        return;
+      }
+
+      // Call the device-specific message deletion method
+      const success = await window.CyberpunkAgent?.instance?.deleteDeviceMessages(this.device.id, contactId, [messageId]);
+
+      if (success) {
+        console.log("Cyberpunk Agent | Message deleted successfully");
+        ui.notifications.info("Mensagem deletada com sucesso!");
+
+        // Refresh the conversation view
+        this._forceRenderConversationView();
+      } else {
+        console.error("Cyberpunk Agent | Failed to delete message");
+        ui.notifications.error("Erro ao deletar mensagem!");
+      }
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error deleting message:", error);
+      ui.notifications.error("Erro ao deletar mensagem!");
+    }
+  }
+
+  /**
+   * Copy message text to clipboard
+   */
+  _copyMessageText(messageText) {
+    try {
+      navigator.clipboard.writeText(messageText).then(() => {
+        console.log("Cyberpunk Agent | Message text copied to clipboard");
+        ui.notifications.info("Texto copiado para a área de transferência!");
+      }).catch(err => {
+        console.error("Cyberpunk Agent | Error copying text to clipboard:", err);
+        ui.notifications.error("Erro ao copiar texto!");
+      });
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error copying message text:", error);
+      ui.notifications.error("Erro ao copiar texto!");
+    }
+  }
+
+  /**
+   * Show message information
+   */
+  _showMessageInfo(messageId, messageText, messageTime) {
+    console.log("Cyberpunk Agent | Showing message info:", { messageId, messageText, messageTime });
+
+    const infoText = `
+      <strong>ID da Mensagem:</strong> ${messageId}<br>
+      <strong>Texto:</strong> ${messageText}<br>
+      <strong>Horário:</strong> ${messageTime}<br>
+      <strong>Dispositivo:</strong> ${this.device.deviceName || this.device.id}
+    `;
+
+    new Dialog({
+      title: "Informações da Mensagem",
+      content: infoText,
+      buttons: {
+        close: {
+          label: "Fechar",
+          callback: () => { }
+        }
+      }
+    }).render(true);
   }
 
   /**
@@ -1196,7 +1329,26 @@ class AgentApplication extends FormApplication {
 
         this.render(true);
 
-        // Clear success message after 3 seconds and navigate back
+        // Auto-fade success message after 5 seconds
+        setTimeout(() => {
+          if (this.addContactState.successMessage === result.message) {
+            // Add fading class for smooth transition
+            const successElement = this.element?.find('.cp-success-message');
+            if (successElement) {
+              successElement.addClass('fading');
+              // Remove message after fade animation completes
+              setTimeout(() => {
+                this.addContactState.successMessage = null;
+                this.render(true);
+              }, 500);
+            } else {
+              this.addContactState.successMessage = null;
+              this.render(true);
+            }
+          }
+        }, 5000);
+
+        // Navigate back after 3 seconds
         setTimeout(() => {
           this.navigateTo('chat7');
         }, 3000);
@@ -1229,6 +1381,25 @@ class AgentApplication extends FormApplication {
     this.addContactState.successMessage = null;
     this.addContactState.searchResult = null;
     this.render(true);
+
+    // Auto-fade error message after 5 seconds
+    setTimeout(() => {
+      if (this.addContactState.errorMessage === message) {
+        // Add fading class for smooth transition
+        const errorElement = this.element?.find('.cp-error-message');
+        if (errorElement) {
+          errorElement.addClass('fading');
+          // Remove message after fade animation completes
+          setTimeout(() => {
+            this.addContactState.errorMessage = null;
+            this.render(true);
+          }, 500);
+        } else {
+          this.addContactState.errorMessage = null;
+          this.render(true);
+        }
+      }
+    }, 5000);
   }
 }
 

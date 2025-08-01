@@ -60,6 +60,7 @@ function initializeSocketLib() {
     socket.register("contactUpdate", handleContactUpdate);
     socket.register("messageUpdate", handleMessageUpdate);
     socket.register("messageDeletion", handleMessageDeletion);
+    socket.register("deviceMessageDeletion", handleDeviceMessageDeletion);
     socket.register("conversationClear", handleConversationClear);
     socket.register("sendMessage", handleSendMessage);
     socket.register("saveMessages", handleSaveMessages);
@@ -159,7 +160,7 @@ async function handleContactUpdate(data) {
   // Reload contact data from settings
   if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
     console.log("Cyberpunk Agent | Reloading agent data...");
-    window.CyberpunkAgent.instance.loadAgentData();
+    window.CyberpunkAgent.instance.loadDeviceData();
   } else {
     console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for data reload");
   }
@@ -262,7 +263,8 @@ async function handleMessageUpdate(data) {
     // Fallback: reload message data from settings
     console.log("Cyberpunk Agent | No message data provided via SocketLib, reloading from settings");
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      window.CyberpunkAgent.instance.loadAgentData();
+      window.CyberpunkAgent.instance.loadDeviceData();
+      window.CyberpunkAgent.instance.loadMessages();
     } else {
       console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for data reload");
     }
@@ -356,6 +358,53 @@ async function handleMessageDeletion(data) {
     console.log(`Cyberpunk Agent | Deleted ${messageIds.length} messages from conversation`);
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling message deletion:", error);
+  }
+}
+
+/**
+ * Handle device message deletion from other clients
+ */
+async function handleDeviceMessageDeletion(data) {
+  console.log("Cyberpunk Agent | Received device message deletion via SocketLib:", data);
+
+  // Prevent processing our own deletions
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own device message deletion notification");
+    return;
+  }
+
+  // Check if this is a recent deletion to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore deletions older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old device message deletion notification (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing device message deletion from:", data.userName);
+
+  try {
+    const { deviceId, contactDeviceId, messageIds } = data.data;
+
+    // Handle the deletion through CyberpunkAgent
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.handleDeviceMessageDeletion(data);
+    } else {
+      console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for device message deletion");
+    }
+
+    // Show notification to user
+    const device = window.CyberpunkAgent?.instance?.devices?.get(deviceId);
+    const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactDeviceId);
+    const deviceName = device ? device.deviceName : "Device " + deviceId;
+    const contactName = contactDevice ? contactDevice.deviceName : "Device " + contactDeviceId;
+
+    const message = `${messageIds.length} mensagem${messageIds.length > 1 ? 'ns' : ''} deletada${messageIds.length > 1 ? 's' : ''} da conversa entre ${deviceName} e ${contactName}`;
+    ui.notifications.info(message);
+
+    console.log(`Cyberpunk Agent | Deleted ${messageIds.length} messages from device conversation`);
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling device message deletion:", error);
   }
 }
 
@@ -1299,6 +1348,50 @@ class SocketLibIntegration {
       return true;
     } catch (error) {
       console.error("Cyberpunk Agent | Error sending conversation clear via SocketLib:", error);
+      console.error("Error details:", {
+        error: error.message,
+        stack: error.stack,
+        socketlibAvailable: !!socketlib,
+        socketAvailable: !!socket
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Send device message deletion to all clients
+   */
+  async sendDeviceMessageDeletion(data) {
+    if (!this.isAvailable || !socket) {
+      console.warn("Cyberpunk Agent | SocketLib not available, using fallback");
+      return false;
+    }
+
+    try {
+      const deletionData = {
+        timestamp: Date.now(),
+        userId: game.user.id,
+        userName: game.user.name,
+        sessionId: game.data.id,
+        ...data
+      };
+
+      console.log("Cyberpunk Agent | Attempting to send device message deletion via SocketLib:", deletionData);
+
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send device message deletion");
+        return false;
+      }
+
+      // Send to all clients using executeForEveryone
+      await socket.executeForEveryone('deviceMessageDeletion', deletionData);
+
+      console.log("Cyberpunk Agent | Device message deletion sent via SocketLib to all clients successfully");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending device message deletion via SocketLib:", error);
       console.error("Error details:", {
         error: error.message,
         stack: error.stack,

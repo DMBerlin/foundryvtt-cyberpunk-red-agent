@@ -4089,6 +4089,71 @@ class CyberpunkAgent {
     }
 
     /**
+     * Delete messages from a device conversation (device-specific)
+     * This only affects the current device's view of the conversation
+     */
+    async deleteDeviceMessages(deviceId, contactDeviceId, messageIds) {
+        try {
+            console.log("Cyberpunk Agent | Starting device message deletion process");
+            console.log("Cyberpunk Agent | Device:", deviceId, "Contact Device:", contactDeviceId, "MessageIds:", messageIds);
+
+            const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+            console.log("Cyberpunk Agent | Device conversation key:", conversationKey);
+
+            const messages = this.messages.get(conversationKey) || [];
+            console.log("Cyberpunk Agent | Original device messages count:", messages.length);
+
+            // Filter out messages to be deleted
+            const updatedMessages = messages.filter(message => !messageIds.includes(message.id));
+            console.log("Cyberpunk Agent | Updated device messages count:", updatedMessages.length);
+
+            // Update the conversation
+            this.messages.set(conversationKey, updatedMessages);
+
+            // Save messages for the specific device
+            console.log("Cyberpunk Agent | Saving device messages...");
+            await this.saveMessagesForDevice(deviceId);
+
+            // Notify all clients about the device message deletion
+            console.log("Cyberpunk Agent | Notifying clients about device message deletion...");
+            await this._notifyDeviceMessageDeletion(deviceId, contactDeviceId, messageIds);
+
+            console.log(`Cyberpunk Agent | Successfully deleted ${messageIds.length} messages from device conversation ${conversationKey}`);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error deleting device messages:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Notify all clients about device message deletion
+     */
+    async _notifyDeviceMessageDeletion(deviceId, contactDeviceId, messageIds) {
+        try {
+            console.log("Cyberpunk Agent | Notifying device message deletion via SocketLib");
+
+            if (!this._isSocketLibAvailable()) {
+                console.warn("Cyberpunk Agent | SocketLib not available for device message deletion notification");
+                return;
+            }
+
+            const notificationData = {
+                data: {
+                    deviceId: deviceId,
+                    contactDeviceId: contactDeviceId,
+                    messageIds: messageIds
+                }
+            };
+
+            await this.socketLibIntegration.sendDeviceMessageDeletion(notificationData);
+            console.log("Cyberpunk Agent | Device message deletion notification sent to all clients");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error notifying device message deletion:", error);
+        }
+    }
+
+    /**
      * Delete FoundryVTT chat messages
      */
     // Foundry chat deletion methods removed - using SocketLib only
@@ -4547,7 +4612,8 @@ class CyberpunkAgent {
                 this._updateContactManagerImmediately();
 
                 // Force reload of agent data to ensure consistency
-                this.loadAgentData();
+                this.loadDeviceData();
+                this.loadMessages();
                 return;
             }
 
@@ -5111,7 +5177,8 @@ class CyberpunkAgent {
 
         // Reload contact data from settings
         console.log("Cyberpunk Agent | Reloading contact networks from settings...");
-        this.loadAgentData();
+        this.loadDeviceData();
+        this.loadMessages();
 
         // Update all open interfaces
         this.updateOpenInterfaces();
@@ -5182,7 +5249,8 @@ class CyberpunkAgent {
         } else {
             // Fallback: reload message data from settings
             console.log("Cyberpunk Agent | No message data provided, reloading from settings");
-            this.loadAgentData();
+            this.loadDeviceData();
+            this.loadMessages();
         }
 
         // Clear unread count cache for this conversation to force recalculation
@@ -5370,6 +5438,74 @@ class CyberpunkAgent {
             console.log(`Cyberpunk Agent | Successfully processed deletion of ${messageIds.length} messages from conversation ${conversationKey}`);
         } catch (error) {
             console.error("Cyberpunk Agent | Error handling message deletion:", error);
+        }
+    }
+
+    /**
+     * Handle device message deletion
+     */
+    handleDeviceMessageDeletion(data) {
+        console.log("Cyberpunk Agent | Received device message deletion notification from:", data.userName);
+        console.log("Cyberpunk Agent | Device deletion data:", data);
+
+        // Prevent processing our own deletions
+        if (data.userId === game.user.id) {
+            console.log("Cyberpunk Agent | Ignoring own device message deletion notification");
+            return;
+        }
+
+        // Check if this is a recent deletion to avoid duplicates
+        const now = Date.now();
+        const timeDiff = now - data.timestamp;
+        if (timeDiff > 30000) { // Ignore deletions older than 30 seconds
+            console.log("Cyberpunk Agent | Ignoring old device message deletion notification (age:", timeDiff, "ms)");
+            return;
+        }
+
+        try {
+            const { deviceId, contactDeviceId, messageIds } = data.data;
+            console.log("Cyberpunk Agent | Processing device deletion for devices:", deviceId, contactDeviceId, "messageIds:", messageIds);
+
+            const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+            console.log("Cyberpunk Agent | Device conversation key:", conversationKey);
+
+            const existingMessages = this.messages.get(conversationKey) || [];
+            console.log("Cyberpunk Agent | Existing device messages count:", existingMessages.length);
+
+            // Filter out deleted messages
+            const updatedMessages = existingMessages.filter(message => !messageIds.includes(message.id));
+            console.log("Cyberpunk Agent | Updated device messages count:", updatedMessages.length);
+
+            this.messages.set(conversationKey, updatedMessages);
+
+            // Save messages for the device
+            console.log("Cyberpunk Agent | Saving updated device messages...");
+            this.saveMessagesForDevice(deviceId);
+
+            // Update all open chat interfaces immediately
+            console.log("Cyberpunk Agent | Updating chat interfaces...");
+            this._updateChatInterfacesImmediately();
+
+            // Also update other interfaces that might show contact lists
+            console.log("Cyberpunk Agent | Updating other interfaces...");
+            this.updateOpenInterfaces();
+
+            // Force a complete refresh of all chat interfaces
+            console.log("Cyberpunk Agent | Forcing complete refresh of chat interfaces...");
+            this.forceUpdateChatInterfaces();
+
+            // Show notification to user
+            const device = this.devices.get(deviceId);
+            const contactDevice = this.devices.get(contactDeviceId);
+            const deviceName = device ? device.deviceName : "Device " + deviceId;
+            const contactName = contactDevice ? contactDevice.deviceName : "Device " + contactDeviceId;
+
+            const message = `${messageIds.length} mensagem${messageIds.length > 1 ? 'ns' : ''} deletada${messageIds.length > 1 ? 's' : ''} da conversa entre ${deviceName} e ${contactName}`;
+            ui.notifications.info(message);
+
+            console.log(`Cyberpunk Agent | Successfully processed deletion of ${messageIds.length} messages from device conversation ${conversationKey}`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error handling device message deletion:", error);
         }
     }
 
@@ -6098,7 +6234,8 @@ class CyberpunkAgent {
             // Also check if the CyberpunkAgent instance can load the data
             if (CyberpunkAgent.instance) {
                 console.log("Reloading agent data...");
-                CyberpunkAgent.instance.loadAgentData();
+                CyberpunkAgent.instance.loadDeviceData();
+                CyberpunkAgent.instance.loadMessages();
                 console.log("Agent contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
             }
 
@@ -6124,7 +6261,8 @@ class CyberpunkAgent {
                 console.log("Agent instance contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
 
                 // Try to reload agent data
-                CyberpunkAgent.instance.loadAgentData();
+                CyberpunkAgent.instance.loadDeviceData();
+                CyberpunkAgent.instance.loadMessages();
                 console.log("After reload - Agent contact networks:", Object.fromEntries(CyberpunkAgent.instance.contactNetworks));
             } else {
                 console.log("❌ CyberpunkAgent instance not found");
@@ -6728,7 +6866,8 @@ Hooks.once('ready', () => {
             html.find('input[name="cyberpunk-agent.contact-networks"]').on('change', () => {
                 console.log("Cyberpunk Agent | Settings change detected");
                 setTimeout(() => {
-                    CyberpunkAgent.instance.loadAgentData();
+                    CyberpunkAgent.instance.loadDeviceData();
+                    CyberpunkAgent.instance.loadMessages();
                     CyberpunkAgent.instance.updateOpenInterfaces();
                 }, 100);
             });
@@ -7915,6 +8054,8 @@ window.debugActivityManager = () => {
 
     console.log("🎵 Notification Sound Test:");
     console.log("  - Run testNotificationSound() to test the intelligent notification system");
+    console.log("📱 Auto-Fade Alerts Test:");
+    console.log("  - Run testAutoFadeAlerts() to test the auto-fade functionality");
 };
 
 // Test function for notification sound behavior
@@ -7999,4 +8140,35 @@ window.clearTestConversation = () => {
     agent.clearActiveConversation(game.user.id);
     console.log("✅ Cleared active conversation for current user");
     console.log("📱 Run debugActivityManager() to see the updated status");
+};
+
+// Function to test auto-fade alerts
+window.testAutoFadeAlerts = () => {
+    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+        console.error("❌ CyberpunkAgent instance not found");
+        return;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    console.log("=== AUTO-FADE ALERTS TEST ===");
+
+    // Check if we have any devices
+    if (agent.devices.size === 0) {
+        console.error("❌ No devices available for testing");
+        return false;
+    }
+
+    // Get the first available device
+    const device = agent.devices.values().next().value;
+    console.log("✅ Using device for testing:", device);
+
+    // Show agent interface
+    agent.showAgentHome(device);
+
+    console.log("📝 Navigate to 'Add Contact' to test the auto-fade functionality");
+    console.log("📝 Try searching for a non-existent contact to see error fade");
+    console.log("📝 Try adding a valid contact to see success fade");
+    console.log("📝 Both messages should fade away after 5 seconds with smooth animation");
+
+    return true;
 }; 

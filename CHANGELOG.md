@@ -2,6 +2,60 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Device-Specific Chat History Management**: Implemented device-specific chat history storage and management
+  - Each device now manages its own chat history independently
+  - Messages deleted on one device do not affect other devices
+  - Device-specific clear history functionality
+- **Individual Message Deletion**: Added context menu for individual message balloons
+  - Right-click on any message to access context menu
+  - Delete individual messages (device-specific)
+  - Copy message text to clipboard
+  - View message information (ID, text, time, device)
+- **Enhanced Context Menu System**: 
+  - Message-specific context menu with delete, copy, and info options
+  - Contact context menu now clears history device-specifically
+  - Visual feedback for hover states and interactions
+- **SocketLib Integration for Message Deletion**: 
+  - Real-time synchronization of message deletions across clients
+  - Device-specific message deletion notifications
+  - Cross-client message deletion handling
+- **New Methods and Functions**:
+  - `deleteDeviceMessages(deviceId, contactDeviceId, messageIds)` - Delete specific messages for a device
+  - `handleDeviceMessageDeletion(data)` - Handle device message deletion notifications
+  - `_notifyDeviceMessageDeletion(deviceId, contactDeviceId, messageIds)` - Notify clients of device message deletion
+  - `_showMessageContextMenu(event, messageId, messageText, messageTime)` - Show message context menu
+  - `_deleteMessage(messageId)` - Delete a specific message
+  - `_copyMessageText(messageText)` - Copy message text to clipboard
+  - `_showMessageInfo(messageId, messageText, messageTime)` - Show message information dialog
+- **Enhanced UI and Styling**:
+  - Message balloons now have hover effects and context menu indicators
+  - Improved visual feedback for interactive elements
+  - Context menu positioning and styling enhancements
+- **Testing and Debugging**:
+  - Comprehensive test script for device message deletion functionality
+  - Manual testing instructions and verification steps
+  - Console-based testing functions for all new features
+
+### Technical Details
+- **Device-Specific Storage**: Messages are now stored and managed per device
+- **Context Menu Integration**: Added right-click context menu functionality to message balloons
+- **SocketLib Handlers**: New handlers for device message deletion synchronization
+- **UI Controller Updates**: Enhanced UI update system for message deletions
+- **Template Enhancements**: Added data attributes to message elements for context menu functionality
+- **CSS Styling**: Added hover effects and visual feedback for message interactions
+
+### Files Modified
+- `scripts/module.js`: Added device message deletion methods and handlers
+- `scripts/agent-home.js`: Added message context menu functionality and handlers
+- `scripts/socketlib-integration.js`: Added device message deletion SocketLib handlers
+- `templates/chat-conversation.html`: Added data attributes for message context menu
+- `styles/module.css`: Added styling for message context menu and hover effects
+- `scripts/test-device-message-deletion.js`: New comprehensive test script
+- `CHANGELOG.md`: Added unreleased section with new features
+
 ## [2.1.0] - 2025-01-30
 
 ### Added

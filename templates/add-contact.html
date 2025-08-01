@@ -39,7 +39,7 @@
 
       <!-- Search Result -->
       {{#if searchResult}}
-      <div class="cp-search-result">
+      <div class="cp-search-result" data-action="add-contact" title="Clique para adicionar contato">
         <div class="cp-result-avatar">
           <img src="{{searchResult.img}}" alt="{{searchResult.name}}" />
         </div>
@@ -47,10 +47,6 @@
           <div class="cp-result-name">{{searchResult.name}}</div>
           <div class="cp-result-number">{{searchResult.displayPhoneNumber}}</div>
         </div>
-        <button class="cp-add-contact-btn" data-action="add-contact">
-          <i class="fas fa-user-plus"></i>
-          ADICIONAR
-        </button>
       </div>
       {{/if}}
 

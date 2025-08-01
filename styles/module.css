@@ -22,9 +22,9 @@
   --cp-text: #ffffff;
   --cp-text-dim: #cccccc;
   --cp-text-muted: #999999;
-  --cp-text-blue: #4a9eff;
-  --cp-text-yellow: #ffd700;
-  --cp-glow: #ff0033;
+  --cp-text-blue: #03D8F3;
+  --cp-text-yellow: #FCEC0C;
+  --cp-glow: #C5003C;
   --cp-glow-weak: rgba(255, 0, 51, 0.3);
   --cp-glow-strong: rgba(255, 0, 51, 0.8);
   --cp-border: #ff0033;
@@ -1580,17 +1580,7 @@
   transform: scale(1.05);
 }
 
-.cp-add-contact-btn {
-  background: var(--cp-gradient-primary) !important;
-  color: var(--cp-text) !important;
-  font-weight: bold !important;
-  box-shadow: var(--cp-shadow) !important;
-}
 
-.cp-add-contact-btn:hover {
-  background: linear-gradient(135deg, #ff0066 0%, #ff0033 100%) !important;
-  box-shadow: var(--cp-shadow-strong) !important;
-}
 
 /* Selected Contacts Chips */
 .cp-selected-contacts {
@@ -2425,6 +2415,38 @@
   letter-spacing: 0.5px !important;
 }
 
+/* Message context menu styling */
+.cp-message[data-action="message-context-menu"] {
+  cursor: context-menu !important;
+  transition: all 0.2s ease !important;
+}
+
+.cp-message[data-action="message-context-menu"]:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cp-message[data-action="message-context-menu"] .cp-message-content {
+  position: relative !important;
+}
+
+.cp-message[data-action="message-context-menu"] .cp-message-content::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+  pointer-events: none !important;
+}
+
+.cp-message[data-action="message-context-menu"]:hover .cp-message-content::after {
+  opacity: 1 !important;
+}
+
 /* Input field styling */
 .cp-message-input {
   font-size: 0.9em !important;
@@ -2936,25 +2958,7 @@
   font-size: 0.9em;
 }
 
-.cp-add-contact-btn {
-  background: var(--cp-gradient-primary);
-  border: none;
-  border-radius: 8px;
-  color: var(--cp-text);
-  padding: 10px 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.cp-add-contact-btn:hover {
-  background: var(--cp-secondary);
-  transform: scale(1.05);
-  box-shadow: var(--cp-shadow);
-}
 
 /* Error Message */
 .cp-error-message {
@@ -3462,6 +3466,9 @@
   border: 2px solid var(--cp-border-weak);
   border-radius: 12px;
   animation: fadeIn 0.3s ease;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .cp-result-avatar {
@@ -3471,6 +3478,7 @@
   overflow: hidden;
   border: 2px solid var(--cp-border-weak);
   flex-shrink: 0;
+  position: relative;
 }
 
 .cp-result-avatar img {
@@ -3502,35 +3510,14 @@
   letter-spacing: 0.5px;
 }
 
-.cp-add-contact-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--cp-success);
-  border: 2px solid var(--cp-success);
-  border-radius: 8px;
-  color: var(--cp-dark);
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 600;
-  font-size: 0.9em;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
+.cp-search-result:hover {
+  background: var(--cp-gradient-message);
+  border-color: var(--cp-border);
+  transform: translateY(-2px);
+  box-shadow: var(--cp-shadow);
 }
 
-.cp-add-contact-btn:hover {
-  background: #00cc55;
-  border-color: #00cc55;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 255, 102, 0.3);
-}
 
-.cp-add-contact-btn i {
-  font-size: 0.9em;
-}
 
 .cp-error-message {
   display: flex;
@@ -3541,6 +3528,12 @@
   border: 2px solid var(--cp-error);
   border-radius: 8px;
   animation: fadeIn 0.3s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.cp-error-message.fading {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .cp-error-message i {
@@ -3565,6 +3558,12 @@
   border: 2px solid var(--cp-success);
   border-radius: 8px;
   animation: fadeIn 0.3s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.cp-success-message.fading {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .cp-success-message i {
