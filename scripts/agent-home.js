@@ -68,6 +68,12 @@ class AgentApplication extends FormApplication {
 
       // Add unread counts and mute status to contacts
       const contactsWithData = contacts.map(contact => {
+        // Force recalculation of unread count by clearing cache first
+        if (window.CyberpunkAgent?.instance) {
+          const conversationKey = window.CyberpunkAgent.instance._getConversationKey(this.actor.id, contact.id);
+          window.CyberpunkAgent.instance.unreadCounts.delete(conversationKey);
+        }
+
         const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCount(this.actor.id, contact.id) || 0;
         const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.actor.id, contact.id) || false;
 
@@ -92,6 +98,7 @@ class AgentApplication extends FormApplication {
       // Format messages for the Handlebars template
       const formattedMessages = messages.map(message => ({
         ...message,
+        text: message.text || message.message, // Use 'text' property, fallback to 'message' for compatibility
         isOwn: message.senderId === this.actor.id,
         time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
           hour: '2-digit',
@@ -317,8 +324,10 @@ class AgentApplication extends FormApplication {
       return;
     }
 
-    // Only mark conversation as read when opening (not during re-renders)
-    if (!this._isUpdating && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    // Mark conversation as read when opening (not during re-renders)
+    // This ensures that when a user opens a conversation, all messages are marked as read
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      console.log("AgentApplication | Marking conversation as read for contact:", this.currentContact.id);
       window.CyberpunkAgent.instance.markConversationAsRead(this.actor.id, this.currentContact.id);
     }
 

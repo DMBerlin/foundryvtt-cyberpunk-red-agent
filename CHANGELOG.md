@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.55] - 2025-01-30
+
+### Added
+- **Realtime Unread Count Improvements**: Enhanced the real-time unread count system for better user experience:
+  - **Immediate Updates**: Unread counts now update immediately when new messages arrive
+  - **Automatic Mark as Read**: Messages are automatically marked as read when conversation is opened
+  - **Cache Management**: Implemented forced cache clearing to ensure accurate count calculations
+  - **Multiple Update Strategies**: Added multiple strategies for UI updates to ensure reliability
+  - **Legacy Support**: Added support for legacy Chat7Application windows
+
+### Fixed
+- **Unread Count Accuracy**: Fixed issues where unread counts were not updating correctly:
+  - **Cache Issues**: Implemented forced cache clearing before calculating unread counts
+  - **UI Update Reliability**: Added multiple strategies for forcing UI updates
+  - **Mark as Read Timing**: Improved timing of when messages are marked as read
+  - **Cross-Client Synchronization**: Enhanced real-time updates across multiple clients
+- **Message Display Regression**: Fixed critical regression where messages were not displaying in chat conversations:
+  - **Template Property Mapping**: Fixed missing `text` property mapping for message display
+  - **Race Conditions**: Resolved race conditions caused by multiple mark-as-read calls
+  - **UI Update Conflicts**: Reduced excessive UI update strategies that were causing conflicts
+- **Message Content Missing**: Fixed issue where message text was not appearing inside chat bubbles:
+  - **Property Mismatch**: Fixed mismatch between message storage (`text` property) and template access (`message` property)
+  - **Data Flow**: Ensured consistent property usage from message creation to template rendering
+  - **Compatibility**: Added fallback to `message.message` for backward compatibility
+- **Chat Header Corruption**: Fixed corrupted chat header (avatar and contact name) display:
+  - **Contact Data Flow**: Ensured proper contact data assignment to template
+  - **Rendering Guards**: Removed guards that were preventing proper conversation rendering
+
+### Technical Details
+- **Enhanced Functions**: Improved `handleMessageUpdate()`, `_forceChat7UnreadCountUpdate()`, `markConversationAsRead()`
+- **UI Controller Integration**: Better integration with the UI Controller system for real-time updates
+- **Event Handling**: Improved event handling for immediate UI updates
+- **Template Fixes**: Added explicit `message` → `text` property mapping for template compatibility
+- **Property Access Fix**: Fixed `getData()` method to use `message.text` with fallback to `message.message` for compatibility
+- **Race Condition Resolution**: Removed duplicate `markConversationAsRead` calls to prevent conflicts
+- **UI Strategy Optimization**: Reduced from 5 to 3 UI update strategies to prevent conflicts
+- **Test Suite**: Added comprehensive test scripts `test-realtime-unread-count-fix.js`, `test-message-display-fix.js`, and `test-message-content-fix-verification.js`
+- **Documentation**: Created detailed documentation in `REALTIME-UNREAD-COUNT-FIX.md`, `MESSAGE-DISPLAY-FIX.md`, and `MESSAGE-CONTENT-FIX.md`
+
+### Benefits
+- **Better User Experience**: Users see unread counts update immediately
+- **Automatic Cleanup**: Messages are marked as read automatically when conversations are opened
+- **Reliable Updates**: Multiple update strategies ensure UI updates happen reliably
+- **Cross-Client Consistency**: All clients see the same unread count status
+- **Restored Functionality**: Messages and chat headers now display correctly
+- **Message Content Display**: Message text now appears correctly inside chat bubbles
+- **Reduced Conflicts**: Fewer UI update strategies reduce rendering conflicts
+
+### Files Modified
+- `scripts/module.js`: Enhanced message update handling and unread count management
+- `scripts/agent-home.js`: Improved conversation opening, mark as read functionality, and message property access
+- `__tests__/test-realtime-unread-count-fix.js`: New comprehensive test script
+- `__tests__/test-message-display-fix.js`: New test script for message display fixes
+- `__tests__/test-message-content-fix-verification.js`: New test script for message content verification
+- `docs/REALTIME-UNREAD-COUNT-FIX.md`: New documentation file
+- `docs/MESSAGE-DISPLAY-FIX.md`: New documentation file for message display fixes
+- `docs/MESSAGE-CONTENT-FIX.md`: New documentation file for message content fix
+- `TODO.md`: Updated to reflect completed improvements
+
 ## [1.0.54] - 2025-01-30
 
 ### Added

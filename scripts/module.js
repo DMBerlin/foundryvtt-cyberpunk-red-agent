@@ -1205,13 +1205,10 @@ class CyberpunkAgent {
             ]);
         }
 
-        // Strategy 2: Force immediate chat interface updates
-        this._updateChatInterfacesImmediately();
+        // Strategy 2: Force Chat7 interfaces to refresh unread counts specifically
+        this._forceChat7UnreadCountUpdate(actorId1, actorId2);
 
-        // Strategy 3: Update all open interfaces
-        this.updateOpenInterfaces();
-
-        // Strategy 4: Dispatch custom event for backward compatibility
+        // Strategy 3: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
                 timestamp: Date.now(),
@@ -2764,7 +2761,7 @@ class CyberpunkAgent {
             this.loadAgentData();
         }
 
-        // Clear unread count cache for this conversation
+        // Clear unread count cache for this conversation to force recalculation
         this.unreadCounts.delete(this._getConversationKey(data.senderId, data.receiverId));
 
         // Force immediate UI updates using multiple strategies
@@ -2857,6 +2854,22 @@ class CyberpunkAgent {
                         console.log("Cyberpunk Agent | Chat7 view re-rendered successfully for unread count update");
                     } catch (error) {
                         console.warn("Cyberpunk Agent | Error re-rendering Chat7 view:", error);
+                    }
+                }
+            }
+        });
+
+        // Also check for legacy Chat7Application windows
+        openWindows.forEach(window => {
+            if (window && window.rendered && window.constructor.name === 'Chat7Application') {
+                if (window.actor && window.actor.id === receiverId) {
+                    console.log("Cyberpunk Agent | Found legacy Chat7Application for receiver, forcing re-render");
+                    try {
+                        window.render(true);
+                        updatedCount++;
+                        console.log("Cyberpunk Agent | Legacy Chat7Application re-rendered successfully");
+                    } catch (error) {
+                        console.warn("Cyberpunk Agent | Error re-rendering legacy Chat7Application:", error);
                     }
                 }
             }

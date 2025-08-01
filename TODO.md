@@ -10,7 +10,7 @@
 ### 🟡 Importantes
 - [x] **Verificação de permissões de Actor** - GM pode usar qualquer Actor, Player só o seu ✅ IMPLEMENTADO
 - [x] **Mensagens privadas no chat** - Precisa ser implementado corretamente ✅ IMPLEMENTADO
-- [x] **Contadores de mensagens não lidas** - Precisa atualizar em tempo real ✅ IMPLEMENTADO
+- [x] **Contadores de mensagens não lidas** - Precisa atualizar em tempo real ✅ IMPLEMENTADO E MELHORADO
 
 ## Regras de Negócio - Análise
 
@@ -26,7 +26,7 @@
 - [x] **Mensagens privadas**: Deve ser privada entre GM e Jogador ✅ IMPLEMENTADO
 - [x] **Sistema de leitura**: Mensagens devem ter status read/unread ✅ IMPLEMENTADO
 - [x] **Salvamento de mensagens**: Players devem conseguir salvar mensagens ✅ IMPLEMENTADO
-- [x] **Contadores em tempo real**: Deve atualizar automaticamente ✅ IMPLEMENTADO
+- [x] **Contadores em tempo real**: Deve atualizar automaticamente ✅ IMPLEMENTADO E MELHORADO
 
 ## Plano de Refatoração
 
@@ -46,9 +46,9 @@
 - [ ] Garantir que GM pode usar qualquer Actor
 
 ### 4. Interface e UX
-- [x] Contadores de mensagens não lidas em tempo real ✅ IMPLEMENTADO
-- [x] Marcação automática de mensagens como lidas ✅ IMPLEMENTADO
-- [x] Atualização automática de interfaces ✅ IMPLEMENTADO
+- [x] Contadores de mensagens não lidas em tempo real ✅ IMPLEMENTADO E MELHORADO
+- [x] Marcação automática de mensagens como lidas ✅ IMPLEMENTADO E MELHORADO
+- [x] Atualização automática de interfaces ✅ IMPLEMENTADO E MELHORADO
 
 ## Arquivos a Modificar
 
@@ -63,8 +63,8 @@
 - [ ] `handleSaveMessages()` - Corrigir salvamento para players
 
 ### scripts/agent-home.js
-- [x] `Chat7Application` - Atualizar contadores em tempo real ✅ IMPLEMENTADO
-- [x] `ChatConversationApplication` - Marcar mensagens como lidas ✅ IMPLEMENTADO
+- [x] `Chat7Application` - Atualizar contadores em tempo real ✅ IMPLEMENTADO E MELHORADO
+- [x] `ChatConversationApplication` - Marcar mensagens como lidas ✅ IMPLEMENTADO E MELHORADO
 
 ## Testes Necessários
 
@@ -73,7 +73,7 @@
 - [x] Player → GM: Mensagem chega corretamente ✅ TESTADO
 - [x] Player → Player: Mensagem chega corretamente ✅ TESTADO
 - [x] Notificações aparecem corretamente ✅ TESTADO
-- [x] Contadores atualizam em tempo real ✅ TESTADO
+- [x] Contadores atualizam em tempo real ✅ TESTADO E MELHORADO
 
 ### Testes de Permissões
 - [ ] GM pode usar qualquer Actor
@@ -89,7 +89,7 @@
 4. **MÉDIA**: Implementar mensagens privadas ✅ RESOLVIDO
 5. **BAIXA**: Melhorias de UX ✅ RESOLVIDO
 
-## Status Atual - v1.0.15
+## Status Atual - v1.0.16
 
 ### ✅ Funcionalidades Implementadas e Testadas
 - **Sistema de Mensagens**: Fluxo bidirecional GM ↔ Player funcionando
@@ -102,6 +102,14 @@
 - **Unread Chips**: Corrigidos para zerar quando chat é aberto
 - **Real-time Updates**: Corrigidos para atualizar quando novas mensagens chegam
 - **Interface Re-rendering**: Chat7 re-renderiza corretamente quando contadores mudam
+
+### 🔧 Correções Recentes (v1.0.16)
+- **Contadores em Tempo Real**: Melhorada atualização imediata de contadores de mensagens não lidas
+- **Marcação Automática**: Melhorada marcação automática de mensagens como lidas ao abrir conversa
+- **Cache de Contadores**: Implementada limpeza forçada do cache para garantir recálculo correto
+- **Suporte Legacy**: Adicionado suporte para janelas Chat7Application legacy
+- **Múltiplas Estratégias**: Implementadas múltiplas estratégias de atualização da UI
+- **Logs de Debug**: Adicionados logs detalhados para melhor debugging
 
 ### 🔧 Correções Recentes (v1.0.15)
 - **Notificações de Salvamento**: Removida notificação "Mensagens salvas com sucesso" da UI, movida para console log
@@ -119,6 +127,7 @@
 - **Interface**: Scroll manual, contadores visuais, indicadores de mute
 
 ### 🧪 Testes Disponíveis
+- `testRealtimeUnreadCountFix()` - Teste completo das melhorias de contadores em tempo real
 - `testMarkAsRead()` - Teste completo da funcionalidade de marcação
 - `testManualMarkAsRead()` - Teste manual de marcação
 - `testBusinessRules()` - Teste das regras de negócio
