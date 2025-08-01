@@ -57,9 +57,9 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 - **Tooltip**: Passando o mouse sobre o ícone mostra o nome do personagem
 
 **Para GMs:**
-- **Token Controls**: O ícone do telefone aparece para personagens com Agents equipados que você possui
-- **Chat Command**: Digite `/agent` no chat para acessar seus Agents equipados
-- **Acesso Inteligente**: GM acessa apenas Agents equipados dos personagens que possui, evitando listas com "(Unknown)"
+- **Token Controls**: O ícone do telefone aparece sempre, dando acesso a TODOS os dispositivos registrados no sistema
+- **Chat Command**: Digite `/agent` no chat para acessar todos os dispositivos registrados
+- **Acesso Completo**: GM pode operar qualquer dispositivo no sistema, atuando como qualquer personagem
 
 ### Enviando Mensagens
 
@@ -78,9 +78,10 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 5. O ícone do telefone aparecerá automaticamente nos controles do token
 
 **Para GMs:**
-- O ícone do telefone aparece apenas para personagens com Agents equipados que você possui
-- Acessa apenas Agents equipados dos personagens sob sua propriedade
-- Interface limpa sem dispositivos "(Unknown)" - mostra apenas dispositivos válidos
+- O ícone do telefone aparece sempre nos controles de token, independente do token selecionado
+- Acessa TODOS os dispositivos registrados no sistema
+- Pode operar qualquer dispositivo, atuando como qualquer personagem
+- Menu de seleção mostra todos os dispositivos disponíveis com nomes dos proprietários
 
 ### Gerenciando Contatos
 
@@ -113,12 +114,12 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 
 ### Melhorias para GM (v2.1.0)
 
-**Interface Inteligente para GM:**
-- **Filtragem por Propriedade**: GM vê apenas Agents equipados dos personagens que possui
-- **Sem Labels "(Unknown)"**: Interface limpa mostrando apenas dispositivos válidos
-- **Consistência**: Mesma lógica para GM e jogadores - baseada em equipamento
-- **Seleção Automática**: Se GM tem apenas um Agent equipado, abre diretamente
-- **Menu de Seleção**: Se GM tem múltiplos Agents, mostra menu para escolher
+**Acesso Completo para GM:**
+- **Acesso Universal**: GM pode operar qualquer dispositivo registrado no sistema
+- **Operação como Personagem**: GM pode atuar como qualquer personagem com dispositivo
+- **Menu de Seleção Completo**: Mostra todos os dispositivos com nomes dos proprietários
+- **Controles de Token**: Ícone do agent aparece sempre, independente do token selecionado
+- **Flexibilidade Total**: GM pode enviar mensagens como qualquer personagem para facilitar roleplay
 
 ### Sincronização de Agents
 
@@ -155,6 +156,29 @@ O sistema agora inclui um mecanismo híbrido para gerenciar os nomes dos proprie
 
 #### **Teste do Sistema**
 Execute no console: `window.cyberpunkAgent.syncAllAgents()` para ver os nomes dos proprietários no registro.
+
+### Acesso GM Universal (v2.1.0)
+
+O GM agora tem acesso universal a todos os dispositivos registrados no sistema:
+
+#### **Comportamento do GM**
+- **Controles de Token**: O ícone do agent aparece sempre, independente do token selecionado
+- **Acesso Completo**: GM pode operar qualquer dispositivo registrado no sistema
+- **Operação como Personagem**: GM pode atuar como qualquer personagem com dispositivo
+- **Menu de Seleção**: Mostra todos os dispositivos com nomes dos proprietários e números de telefone
+
+#### **Comportamento do Jogador**
+- **Controles de Token**: O ícone do agent aparece apenas quando o jogador tem agents equipados
+- **Acesso Limitado**: Jogadores só podem acessar seus próprios dispositivos equipados
+- **Operação Própria**: Jogadores só podem operar seus próprios dispositivos
+
+#### **Funções de Console para GM**
+- `window.cyberpunkAgent.getAllRegisteredDevices()` - Lista todos os dispositivos disponíveis
+- `window.cyberpunkAgent.showAllDevicesMenu(devices)` - Mostra menu de seleção de dispositivos
+- `window.cyberpunkAgent.openSpecificAgent(deviceId)` - Abre dispositivo específico
+
+#### **Teste do Acesso GM**
+Execute no console: `window.cyberpunkAgent.getAllRegisteredDevices()` para ver todos os dispositivos disponíveis para o GM.
 
 ### Sistema de Requisições GM
 

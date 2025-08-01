@@ -75,6 +75,8 @@ function initializeSocketLib() {
     socket.register("gmPhoneNumberSaveResponse", handleGMPhoneNumberSaveResponse);
     socket.register("gmDeviceDataSaveResponse", handleGMDeviceDataSaveResponse);
     socket.register("gmContactNetworkSaveResponse", handleGMContactNetworkSaveResponse);
+    socket.register("requestDeviceMessageSync", handleDeviceMessageSyncRequest);
+    socket.register("deviceMessageSyncResponse", handleDeviceMessageSyncResponse);
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
@@ -208,8 +210,18 @@ async function handleMessageUpdate(data) {
 
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       try {
-        // Get the conversation key
-        const conversationKey = window.CyberpunkAgent.instance._getConversationKey(data.senderId, data.receiverId);
+        // Get the conversation key - check if these are device IDs or actor IDs
+        let conversationKey;
+        let isDeviceMessage = false;
+
+        // Check if these look like device IDs (they should be in the devices map)
+        if (window.CyberpunkAgent.instance.devices.has(data.senderId) ||
+          window.CyberpunkAgent.instance.devices.has(data.receiverId)) {
+          conversationKey = window.CyberpunkAgent.instance._getDeviceConversationKey(data.senderId, data.receiverId);
+          isDeviceMessage = true;
+        } else {
+          conversationKey = window.CyberpunkAgent.instance._getConversationKey(data.senderId, data.receiverId);
+        }
 
         // Get or create conversation
         if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
@@ -224,10 +236,17 @@ async function handleMessageUpdate(data) {
           // Add the message
           conversation.push(data.message);
 
-          // Save messages for both sender and receiver actors
-          await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
-          if (data.senderId !== data.receiverId) {
-            await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+          // Save messages for both sender and receiver
+          if (isDeviceMessage) {
+            await window.CyberpunkAgent.instance.saveMessagesForDevice(data.senderId);
+            if (data.senderId !== data.receiverId) {
+              await window.CyberpunkAgent.instance.saveMessagesForDevice(data.receiverId);
+            }
+          } else {
+            await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
+            if (data.senderId !== data.receiverId) {
+              await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+            }
           }
           console.log("Cyberpunk Agent | Message added to local conversation via SocketLib successfully");
         } else {
@@ -269,10 +288,24 @@ async function handleMessageUpdate(data) {
 
   // Play notification sound if the current user is the receiver
   if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    // Check if the current user owns the receiving device
     const userActors = window.CyberpunkAgent.instance.getUserActors();
-    const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+    let isReceiver = false;
+
+    // First check if it's a direct actor message
+    isReceiver = userActors.some(actor => actor.id === data.receiverId);
+
+    // If not, check if it's a device message
+    if (!isReceiver) {
+      const userDevices = window.CyberpunkAgent.instance.getUserAccessibleDevices();
+      isReceiver = userDevices.some(device => device.id === data.receiverId);
+    }
+
     if (isReceiver) {
-      window.CyberpunkAgent.instance.playNotificationSound();
+      console.log("Cyberpunk Agent | Playing notification sound for received message");
+      window.CyberpunkAgent.instance.playNotificationSound(data.senderId, data.receiverId);
+    } else {
+      console.log("Cyberpunk Agent | User is not the receiver, skipping notification sound");
     }
   }
 
@@ -493,8 +526,18 @@ async function handleSendMessage(data) {
   // Add the message to the conversation
   if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
     try {
-      // Get the conversation key
-      const conversationKey = window.CyberpunkAgent.instance._getConversationKey(data.senderId, data.receiverId);
+      // Get the conversation key - check if these are device IDs or actor IDs
+      let conversationKey;
+      let isDeviceMessage = false;
+
+      // Check if these look like device IDs (they should be in the devices map)
+      if (window.CyberpunkAgent.instance.devices.has(data.senderId) ||
+        window.CyberpunkAgent.instance.devices.has(data.receiverId)) {
+        conversationKey = window.CyberpunkAgent.instance._getDeviceConversationKey(data.senderId, data.receiverId);
+        isDeviceMessage = true;
+      } else {
+        conversationKey = window.CyberpunkAgent.instance._getConversationKey(data.senderId, data.receiverId);
+      }
 
       // Get or create conversation
       if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
@@ -526,10 +569,17 @@ async function handleSendMessage(data) {
 
       conversation.push(message);
 
-      // Save messages for both sender and receiver actors
-      await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
-      if (data.senderId !== data.receiverId) {
-        await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+      // Save messages for both sender and receiver
+      if (isDeviceMessage) {
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(data.senderId);
+        if (data.senderId !== data.receiverId) {
+          await window.CyberpunkAgent.instance.saveMessagesForDevice(data.receiverId);
+        }
+      } else {
+        await window.CyberpunkAgent.instance.saveMessagesForActor(data.senderId);
+        if (data.senderId !== data.receiverId) {
+          await window.CyberpunkAgent.instance.saveMessagesForActor(data.receiverId);
+        }
       }
 
       console.log("Cyberpunk Agent | Message added to conversation:", message);
@@ -539,15 +589,33 @@ async function handleSendMessage(data) {
       window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
       window.CyberpunkAgent.instance.updateOpenInterfaces();
 
-      // Show notification to user - only "Nova mensagem no Chat7"
-      ui.notifications.info("Nova mensagem no Chat7");
+      // Show notification to user
+      if (isDeviceMessage) {
+        ui.notifications.info("Nova mensagem no Chat7");
+      } else {
+        ui.notifications.info("Nova mensagem no Chat7");
+      }
 
       // Play notification sound if the current user is the receiver
       if (data.receiverId) {
+        // Check if the current user owns the receiving device
         const userActors = window.CyberpunkAgent.instance.getUserActors();
-        const isReceiver = userActors.some(actor => actor.id === data.receiverId);
+        let isReceiver = false;
+
+        // First check if it's a direct actor message
+        isReceiver = userActors.some(actor => actor.id === data.receiverId);
+
+        // If not, check if it's a device message
+        if (!isReceiver) {
+          const userDevices = window.CyberpunkAgent.instance.getUserAccessibleDevices();
+          isReceiver = userDevices.some(device => device.id === data.receiverId);
+        }
+
         if (isReceiver) {
+          console.log("Cyberpunk Agent | Playing notification sound for received message");
           window.CyberpunkAgent.instance.playNotificationSound(data.senderId, data.receiverId);
+        } else {
+          console.log("Cyberpunk Agent | User is not the receiver, skipping notification sound");
         }
       }
 
@@ -763,7 +831,7 @@ async function handleTestConnection(data) {
  */
 async function handleRequestGMPhoneNumberSave(data) {
   console.log("Cyberpunk Agent | GM phone number save request received:", data);
-  
+
   try {
     // Only GMs can process this request
     if (!game.user.isGM) {
@@ -772,12 +840,12 @@ async function handleRequestGMPhoneNumberSave(data) {
     }
 
     const { phoneData, requestUserId, requestUserName } = data;
-    
+
     // Save the phone number data
     game.settings.set('cyberpunk-agent', 'phone-number-data', phoneData);
-    
+
     console.log(`Cyberpunk Agent | GM saved phone number data for user ${requestUserName} (${requestUserId})`);
-    
+
     // Send success response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(requestUserId, 'gmPhoneNumberSaveResponse', {
@@ -788,7 +856,7 @@ async function handleRequestGMPhoneNumberSave(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling GM phone number save request:", error);
-    
+
     // Send error response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(data.requestUserId, 'gmPhoneNumberSaveResponse', {
@@ -806,7 +874,7 @@ async function handleRequestGMPhoneNumberSave(data) {
  */
 async function handleRequestGMDeviceDataSave(data) {
   console.log("Cyberpunk Agent | GM device data save request received:", data);
-  
+
   try {
     // Only GMs can process this request
     if (!game.user.isGM) {
@@ -815,12 +883,12 @@ async function handleRequestGMDeviceDataSave(data) {
     }
 
     const { deviceData, requestUserId, requestUserName } = data;
-    
+
     // Save the device data
     game.settings.set('cyberpunk-agent', 'device-data', deviceData);
-    
+
     console.log(`Cyberpunk Agent | GM saved device data for user ${requestUserName} (${requestUserId})`);
-    
+
     // Send success response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(requestUserId, 'gmDeviceDataSaveResponse', {
@@ -831,7 +899,7 @@ async function handleRequestGMDeviceDataSave(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling GM device data save request:", error);
-    
+
     // Send error response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(data.requestUserId, 'gmDeviceDataSaveResponse', {
@@ -849,7 +917,7 @@ async function handleRequestGMDeviceDataSave(data) {
  */
 async function handleRequestGMContactNetworkSave(data) {
   console.log("Cyberpunk Agent | GM contact network save request received:", data);
-  
+
   try {
     // Only GMs can process this request
     if (!game.user.isGM) {
@@ -858,12 +926,12 @@ async function handleRequestGMContactNetworkSave(data) {
     }
 
     const { contactNetworks, requestUserId, requestUserName } = data;
-    
+
     // Save the contact networks data
     game.settings.set('cyberpunk-agent', 'contact-networks', contactNetworks);
-    
+
     console.log(`Cyberpunk Agent | GM saved contact networks for user ${requestUserName} (${requestUserId})`);
-    
+
     // Send success response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(requestUserId, 'gmContactNetworkSaveResponse', {
@@ -874,7 +942,7 @@ async function handleRequestGMContactNetworkSave(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling GM contact network save request:", error);
-    
+
     // Send error response back to the requesting user
     if (socket && typeof socket.executeForUser === 'function') {
       await socket.executeForUser(data.requestUserId, 'gmContactNetworkSaveResponse', {
@@ -892,7 +960,7 @@ async function handleRequestGMContactNetworkSave(data) {
  */
 async function handleGMPhoneNumberSaveResponse(data) {
   console.log("Cyberpunk Agent | GM phone number save response received:", data);
-  
+
   if (data.success) {
     console.log("Cyberpunk Agent | Phone number data saved successfully by GM");
     ui.notifications.info("Phone number data saved successfully by GM");
@@ -907,7 +975,7 @@ async function handleGMPhoneNumberSaveResponse(data) {
  */
 async function handleGMDeviceDataSaveResponse(data) {
   console.log("Cyberpunk Agent | GM device data save response received:", data);
-  
+
   if (data.success) {
     console.log("Cyberpunk Agent | Device data saved successfully by GM");
     ui.notifications.info("Device data saved successfully by GM");
@@ -922,13 +990,126 @@ async function handleGMDeviceDataSaveResponse(data) {
  */
 async function handleGMContactNetworkSaveResponse(data) {
   console.log("Cyberpunk Agent | GM contact network save response received:", data);
-  
+
   if (data.success) {
     console.log("Cyberpunk Agent | Contact networks saved successfully by GM");
     ui.notifications.info("Contact networks saved successfully by GM");
   } else {
     console.error("Cyberpunk Agent | GM failed to save contact networks:", data.error);
     ui.notifications.error(`Failed to save contact networks: ${data.error}`);
+  }
+}
+
+/**
+ * Handle device message sync request from other clients
+ */
+async function handleDeviceMessageSyncRequest(data) {
+  console.log("Cyberpunk Agent | Received device message sync request via SocketLib:", data);
+
+  // Prevent processing our own requests
+  if (data.requestingUserId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own device message sync request");
+    return;
+  }
+
+  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    try {
+      const deviceId = data.deviceId;
+      console.log(`Cyberpunk Agent | Processing device message sync request for device: ${deviceId}`);
+
+      // Get all messages that involve this device
+      const deviceMessages = {};
+
+      for (const [conversationKey, messages] of window.CyberpunkAgent.instance.messages.entries()) {
+        if (conversationKey.includes(deviceId)) {
+          deviceMessages[conversationKey] = messages;
+        }
+      }
+
+      // Send the messages back to the requesting user
+      const responseData = {
+        respondingUserId: game.user.id,
+        respondingUserName: game.user.name,
+        deviceId: deviceId,
+        messages: deviceMessages,
+        timestamp: Date.now()
+      };
+
+      const success = await window.CyberpunkAgent.instance.socketLibIntegration.sendMessageToUser(
+        data.requestingUserId,
+        'deviceMessageSyncResponse',
+        responseData
+      );
+
+      if (success) {
+        console.log(`Cyberpunk Agent | Device message sync response sent to ${data.requestingUserName}`);
+      } else {
+        console.warn(`Cyberpunk Agent | Failed to send device message sync response to ${data.requestingUserName}`);
+      }
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error processing device message sync request:", error);
+    }
+  }
+}
+
+/**
+ * Handle device message sync response from other clients
+ */
+async function handleDeviceMessageSyncResponse(data) {
+  console.log("Cyberpunk Agent | Received device message sync response via SocketLib:", data);
+
+  // Prevent processing our own responses
+  if (data.respondingUserId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own device message sync response");
+    return;
+  }
+
+  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    try {
+      const deviceId = data.deviceId;
+      const receivedMessages = data.messages;
+
+      console.log(`Cyberpunk Agent | Processing device message sync response for device: ${deviceId}`);
+      console.log(`Cyberpunk Agent | Received ${Object.keys(receivedMessages).length} conversations`);
+
+      let messagesAdded = 0;
+      let conversationsUpdated = 0;
+
+      // Merge received messages with local messages
+      for (const [conversationKey, messages] of Object.entries(receivedMessages)) {
+        if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+          window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+        }
+
+        const localConversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+        let conversationUpdated = false;
+
+        // Add any messages that don't exist locally
+        for (const message of messages) {
+          const messageExists = localConversation.some(localMsg => localMsg.id === message.id);
+          if (!messageExists) {
+            localConversation.push(message);
+            messagesAdded++;
+            conversationUpdated = true;
+          }
+        }
+
+        if (conversationUpdated) {
+          conversationsUpdated++;
+        }
+      }
+
+      // Save the updated messages
+      if (messagesAdded > 0) {
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+        console.log(`Cyberpunk Agent | Device message sync completed: ${messagesAdded} messages added to ${conversationsUpdated} conversations`);
+      } else {
+        console.log("Cyberpunk Agent | Device message sync completed: no new messages found");
+      }
+
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error processing device message sync response:", error);
+    }
   }
 }
 

@@ -303,7 +303,9 @@ class CyberpunkAgent {
 
         // Wait a bit for other files to load
         setTimeout(() => {
-            this._setupAgentSystemInternal();
+            this._setupAgentSystemInternal().catch(error => {
+                console.error("Cyberpunk Agent | Error during agent system setup:", error);
+            });
         }, 500);
 
         // Setup chat command and character sheet integration
@@ -377,7 +379,7 @@ class CyberpunkAgent {
     /**
      * Internal setup method
      */
-    _setupAgentSystemInternal() {
+    async _setupAgentSystemInternal() {
         // Only set up if not already done
         if (this._agentSystemSetupComplete) {
             console.log("Cyberpunk Agent | Agent system already set up, skipping");
@@ -406,6 +408,10 @@ class CyberpunkAgent {
         // Load device data
         this.loadDeviceData();
         console.log('Cyberpunk Agent | After loadDeviceData, this.devices.size:', this.devices?.size);
+
+        // Load messages
+        await this.loadMessages();
+        console.log('Cyberpunk Agent | After loadMessages, this.messages.size:', this.messages?.size);
 
         // Initialize device discovery for existing agent items
         this.initializeDeviceDiscovery();
@@ -582,33 +588,63 @@ class CyberpunkAgent {
             // Remove any existing agent tools first
             tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
 
-            // Get equipped agents for the current user (works for both GM and players)
-            const equippedAgents = await this.getEquippedAgentsForUser();
+            // Different behavior for GM vs Players
+            if (game.user.isGM) {
+                // 🆕 GM: Access to ALL registered devices
+                const allDevices = this.getAllRegisteredDevices();
 
-            if (equippedAgents.length > 0) {
-                // If only one equipped agent, show it directly
-                if (equippedAgents.length === 1) {
-                    const agent = equippedAgents[0];
-                    tokenControl.tools.push({
-                        name: "agent",
-                        title: `Agent: ${agent.actorName}`,
-                        icon: "fas fa-mobile-alt",
-                        onClick: () => {
-                            this.openSpecificAgent(agent.deviceId);
-                        }
-                    });
-                } else {
-                    // If multiple equipped agents, show a menu
-                    tokenControl.tools.push({
-                        name: "agent",
-                        title: `Agent (${equippedAgents.length} equipped)`,
-                        icon: "fas fa-mobile-alt",
-                        onClick: () => {
-                            this.showEquippedAgentMenu(equippedAgents);
-                        }
-                    });
+                if (allDevices.length > 0) {
+                    if (allDevices.length === 1) {
+                        // Single device - open directly
+                        const device = allDevices[0];
+                        tokenControl.tools.push({
+                            name: "agent",
+                            title: `Agent: ${device.ownerName}`,
+                            icon: "fas fa-mobile-alt",
+                            onClick: () => {
+                                this.openSpecificAgent(device.deviceId);
+                            }
+                        });
+                    } else {
+                        // Multiple devices - show selection menu
+                        tokenControl.tools.push({
+                            name: "agent",
+                            title: `Agent (${allDevices.length} devices)`,
+                            icon: "fas fa-mobile-alt",
+                            onClick: () => {
+                                this.showAllDevicesMenu(allDevices);
+                            }
+                        });
+                    }
+                    console.log(`Cyberpunk Agent | Added GM agent button for ${allDevices.length} registered device(s)`);
                 }
-                console.log(`Cyberpunk Agent | Added agent button for ${equippedAgents.length} equipped agent(s)`);
+            } else {
+                // Players: Access only to their equipped agents (existing behavior)
+                const equippedAgents = await this.getEquippedAgentsForUser();
+
+                if (equippedAgents.length > 0) {
+                    if (equippedAgents.length === 1) {
+                        const agent = equippedAgents[0];
+                        tokenControl.tools.push({
+                            name: "agent",
+                            title: `Agent: ${agent.actorName}`,
+                            icon: "fas fa-mobile-alt",
+                            onClick: () => {
+                                this.openSpecificAgent(agent.deviceId);
+                            }
+                        });
+                    } else {
+                        tokenControl.tools.push({
+                            name: "agent",
+                            title: `Agent (${equippedAgents.length} equipped)`,
+                            icon: "fas fa-mobile-alt",
+                            onClick: () => {
+                                this.showEquippedAgentMenu(equippedAgents);
+                            }
+                        });
+                    }
+                    console.log(`Cyberpunk Agent | Added player agent button for ${equippedAgents.length} equipped agent(s)`);
+                }
             }
         } else {
             console.warn("Cyberpunk Agent | Token control not found in controls array");
@@ -655,6 +691,11 @@ class CyberpunkAgent {
 
         // Monitor actor updates that might affect equipment
         Hooks.on('updateActor', (actor, changes, options, userId) => {
+            console.log(`🔄 Cyberpunk Agent | Actor update hook triggered for ${actor.name}:`, changes);
+
+            // 🆕 Call the reactive device registry update system
+            this.handleActorUpdate(actor, changes, options, userId);
+
             // Check if items were updated
             if (changes.items) {
                 console.log("Cyberpunk Agent | Actor items updated, checking for equipment changes");
@@ -707,7 +748,36 @@ class CyberpunkAgent {
             }
         });
 
-        console.log("Cyberpunk Agent | Item update hooks configured");
+        // 🆕 Monitor actor creation to set up device mappings
+        Hooks.on('createActor', (actor, options, userId) => {
+            console.log(`🆕 Cyberpunk Agent | New actor created: ${actor.name} (${actor.id})`);
+
+            // Set up device mappings for this actor
+            this.deviceMappings.set(actor.id, []);
+
+            // Check if the actor has any agent items
+            setTimeout(() => {
+                this.checkAndCreateDevicesForActor(actor);
+            }, 100);
+        });
+
+        // 🆕 Monitor actor deletion to clean up device registry
+        Hooks.on('deleteActor', (actor, options, userId) => {
+            console.log(`🗑️  Cyberpunk Agent | Actor deleted: ${actor.name} (${actor.id})`);
+
+            // Clean up all devices for this actor
+            this.cleanupDevicesForActor(actor);
+
+            // Remove device mappings
+            this.deviceMappings.delete(actor.id);
+
+            // Update token controls
+            setTimeout(() => {
+                this.updateTokenControls();
+            }, 100);
+        });
+
+        console.log("Cyberpunk Agent | Item and actor update hooks configured");
     }
 
     /**
@@ -737,13 +807,14 @@ class CyberpunkAgent {
 
                 const deviceName = item.name || `Agent ${item.id.slice(-4)}`;
 
-                // Create device data with owner name
+                // Create device data with owner name and avatar
                 const deviceData = {
                     id: deviceId,
                     ownerActorId: actor.id,
                     ownerName: actor.name,  // 🆕 Include owner name
                     itemId: item.id,
-                    deviceName: deviceName,
+                    deviceName: actor.name,  // 🆕 Use actor name instead of item name
+                    img: actor.img || 'icons/svg/mystery-man.svg',  // 🆕 Include actor avatar
                     contacts: [],
                     settings: {
                         muteAll: false,
@@ -1306,7 +1377,7 @@ class CyberpunkAgent {
 
             // Synchronize messages with server to get any new messages from other clients
             console.log("Cyberpunk Agent | Synchronizing messages with server for device:", device.id);
-            await this.synchronizeMessagesWithServer(device.id);
+            await this.syncMessagesForDevice(device.id);
 
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
@@ -1757,20 +1828,24 @@ class CyberpunkAgent {
      */
     async loadMessagesForDevice(deviceId) {
         try {
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${deviceId}`;
-            const storedMessages = localStorage.getItem(storageKey);
+            // Load all conversations that involve this device
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storedData = localStorage.getItem(storageKey);
 
-            if (storedMessages) {
-                const messages = JSON.parse(storedMessages);
-                this.messages.set(deviceId, messages);
-                console.log(`Cyberpunk Agent | Loaded ${messages.length} messages for device ${deviceId}`);
+            if (storedData) {
+                const allMessages = JSON.parse(storedData);
+
+                // Load each conversation into the messages map
+                for (const [conversationKey, messages] of Object.entries(allMessages)) {
+                    this.messages.set(conversationKey, messages);
+                }
+
+                console.log(`Cyberpunk Agent | Loaded messages for device ${deviceId} from ${Object.keys(allMessages).length} conversations`);
             } else {
-                this.messages.set(deviceId, []);
-                console.log(`Cyberpunk Agent | No messages found for device ${deviceId}, initialized empty array`);
+                console.log(`Cyberpunk Agent | No messages found for device ${deviceId}, initialized empty`);
             }
         } catch (error) {
             console.error(`Cyberpunk Agent | Error loading messages for device ${deviceId}:`, error);
-            this.messages.set(deviceId, []);
         }
     }
 
@@ -1779,10 +1854,23 @@ class CyberpunkAgent {
      */
     async saveMessagesForDevice(deviceId) {
         try {
-            const messages = this.messages.get(deviceId) || [];
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${deviceId}`;
-            localStorage.setItem(storageKey, JSON.stringify(messages));
-            console.log(`Cyberpunk Agent | Saved ${messages.length} messages for device ${deviceId}`);
+            // Save all conversations that involve this device
+            const allMessages = {};
+
+            // Get all conversations that involve this device
+            for (const [conversationKey, messages] of this.messages.entries()) {
+                if (conversationKey.includes(deviceId)) {
+                    allMessages[conversationKey] = messages;
+                }
+            }
+
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(allMessages));
+
+            const conversationCount = Object.keys(allMessages).length;
+            const totalMessages = Object.values(allMessages).reduce((sum, msgs) => sum + msgs.length, 0);
+
+            console.log(`Cyberpunk Agent | Saved ${totalMessages} messages in ${conversationCount} conversations for device ${deviceId}`);
         } catch (error) {
             console.error(`Cyberpunk Agent | Error saving messages for device ${deviceId}:`, error);
         }
@@ -1795,6 +1883,82 @@ class CyberpunkAgent {
         // This method would handle cross-client synchronization for the device
         // For now, it's a placeholder that can be expanded later
         console.log(`Cyberpunk Agent | Synchronizing messages for device ${deviceId}`);
+    }
+
+    /**
+     * Sync messages for a specific device to ensure we have the latest data
+     * This is called when opening an agent interface to get any messages sent while offline
+     */
+    async syncMessagesForDevice(deviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Syncing messages for device ${deviceId}`);
+
+            // First, ensure we have loaded all messages from localStorage
+            await this.loadMessagesForDevice(deviceId);
+
+            // Check if we need cross-client communication
+            if (!this._needsCrossClientCommunication()) {
+                console.log("Cyberpunk Agent | Single user session, skipping device message sync");
+                return;
+            }
+
+            if (!this._isSocketLibAvailable()) {
+                console.log("Cyberpunk Agent | SocketLib not available, skipping device message sync");
+                return;
+            }
+
+            // Get all users in the session
+            const users = Array.from(game.users.values()).filter(user => user.active);
+            console.log("Cyberpunk Agent | Active users for device sync:", users.map(u => u.name));
+
+            // Request message synchronization from all other users for this device
+            const syncPromises = users
+                .filter(user => user.id !== game.user.id) // Exclude current user
+                .map(async (user) => {
+                    try {
+                        console.log(`Cyberpunk Agent | Requesting device message sync from user: ${user.name}`);
+
+                        const syncData = {
+                            requestingUserId: game.user.id,
+                            requestingUserName: game.user.name,
+                            deviceId: deviceId,
+                            timestamp: Date.now()
+                        };
+
+                        // Send sync request to specific user
+                        const success = await this.socketLibIntegration.sendMessageToUser(
+                            user.id,
+                            'requestDeviceMessageSync',
+                            syncData
+                        );
+
+                        if (success) {
+                            console.log(`Cyberpunk Agent | Device message sync request sent to ${user.name}`);
+                            return { user: user.name, success: true };
+                        } else {
+                            console.warn(`Cyberpunk Agent | Failed to send device sync request to ${user.name}`);
+                            return { user: user.name, success: false };
+                        }
+                    } catch (error) {
+                        console.error(`Cyberpunk Agent | Error requesting device sync from ${user.name}:`, error);
+                        return { user: user.name, success: false, error: error.message };
+                    }
+                });
+
+            // Wait for all sync requests to complete
+            const results = await Promise.all(syncPromises);
+            const successful = results.filter(r => r.success);
+            const failed = results.filter(r => !r.success);
+
+            console.log(`Cyberpunk Agent | Device message sync completed: ${successful.length} successful, ${failed.length} failed`);
+
+            if (failed.length > 0) {
+                console.warn("Cyberpunk Agent | Failed device sync requests:", failed);
+            }
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error syncing messages for device ${deviceId}:`, error);
+        }
     }
 
     /**
@@ -3203,6 +3367,8 @@ class CyberpunkAgent {
      * Handle actor updates
      */
     handleActorUpdate(actor, changes, options, userId) {
+        console.log(`🔄 Cyberpunk Agent | Actor update detected for ${actor.name} (${actor.id}):`, changes);
+
         // Update contact networks if actor name changed
         if (changes.name && this.contactNetworks.has(actor.id)) {
             const contacts = this.contactNetworks.get(actor.id);
@@ -3210,10 +3376,295 @@ class CyberpunkAgent {
             this.updateContactNames(actor.id, changes.name);
         }
 
-        // 🆕 Update device registry when actor name changes
-        if (changes.name) {
-            this.updateDeviceOwnerNames(actor.id, changes.name);
+        // 🆕 Comprehensive device registry reactive updates
+        this.reactiveUpdateDeviceRegistry(actor, changes);
+    }
+
+    /**
+     * Reactive system to update device registry based on actor changes
+     * This ensures device data stays in sync with actor data automatically
+     */
+    reactiveUpdateDeviceRegistry(actor, changes) {
+        const actorId = actor.id;
+        let devicesUpdated = 0;
+        let updates = [];
+
+        // Get all devices for this actor
+        const actorDevices = this.deviceMappings.get(actorId) || [];
+
+        if (actorDevices.length === 0) {
+            console.log(`📱 No devices found for actor ${actor.name} (${actorId})`);
+            return;
         }
+
+        console.log(`📱 Found ${actorDevices.length} devices for actor ${actor.name}`);
+
+        for (const deviceId of actorDevices) {
+            const device = this.devices.get(deviceId);
+            if (!device) {
+                console.warn(`⚠️  Device ${deviceId} not found in devices map`);
+                continue;
+            }
+
+            let deviceUpdated = false;
+            const deviceUpdates = [];
+
+            // 🆕 Handle name changes
+            if (changes.name) {
+                const oldName = device.deviceName;
+                const newName = actor.name;
+                if (oldName !== newName) {
+                    device.deviceName = newName;
+                    device.ownerName = newName; // Also update ownerName for consistency
+                    deviceUpdated = true;
+                    deviceUpdates.push(`name: ${oldName} → ${newName}`);
+                    console.log(`✅ Updated device ${deviceId} name: ${oldName} → ${newName}`);
+                }
+            }
+
+            // 🆕 Handle avatar/image changes
+            if (changes.img) {
+                const oldImg = device.img;
+                const newImg = actor.img;
+                if (oldImg !== newImg) {
+                    device.img = newImg;
+                    deviceUpdated = true;
+                    deviceUpdates.push(`avatar: ${oldImg} → ${newImg}`);
+                    console.log(`✅ Updated device ${deviceId} avatar: ${oldImg} → ${newImg}`);
+                }
+            }
+
+            // 🆕 Handle token image changes (if different from actor image)
+            if (changes.token && changes.token.img) {
+                const oldImg = device.img;
+                const newImg = changes.token.img;
+                if (oldImg !== newImg) {
+                    device.img = newImg;
+                    deviceUpdated = true;
+                    deviceUpdates.push(`token avatar: ${oldImg} → ${newImg}`);
+                    console.log(`✅ Updated device ${deviceId} token avatar: ${oldImg} → ${newImg}`);
+                }
+            }
+
+            // 🆕 Handle actor deletion (cleanup devices)
+            if (changes._deleted) {
+                console.log(`🗑️  Actor ${actor.name} deleted, cleaning up devices...`);
+                this.cleanupDevicesForActor(actor);
+                return; // Exit early since actor is deleted
+            }
+
+            // 🆕 Handle actor ownership changes
+            if (changes.ownership) {
+                console.log(`👥 Actor ${actor.name} ownership changed:`, changes.ownership);
+                // Update device access permissions if needed
+                this.updateDeviceAccessForActor(actorId, changes.ownership);
+            }
+
+            // 🆕 Handle actor folder changes (for organization)
+            if (changes.folder) {
+                console.log(`📁 Actor ${actor.name} moved to folder: ${changes.folder}`);
+                // Could update device organization if needed
+            }
+
+            if (deviceUpdated) {
+                devicesUpdated++;
+                updates.push(`Device ${deviceId}: ${deviceUpdates.join(', ')}`);
+            }
+        }
+
+        // Save changes if any devices were updated
+        if (devicesUpdated > 0) {
+            this.saveDeviceData();
+            console.log(`💾 Saved ${devicesUpdated} updated devices for actor ${actor.name}`);
+            console.log(`📝 Updates:`, updates);
+
+            // 🆕 Notify UI components to refresh
+            this.notifyDeviceRegistryUpdate(actorId, updates);
+        } else {
+            console.log(`✅ No device updates needed for actor ${actor.name}`);
+        }
+    }
+
+    /**
+     * Update device access permissions when actor ownership changes
+     */
+    updateDeviceAccessForActor(actorId, ownership) {
+        console.log(`🔐 Updating device access for actor ${actorId} with ownership:`, ownership);
+
+        // This could be expanded to handle different ownership scenarios
+        // For now, we just log the change
+        const actorDevices = this.deviceMappings.get(actorId) || [];
+        console.log(`📱 ${actorDevices.length} devices affected by ownership change`);
+    }
+
+    /**
+     * Notify UI components when device registry is updated
+     */
+    notifyDeviceRegistryUpdate(actorId, updates) {
+        // Dispatch custom event for UI updates
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-device-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'deviceRegistryUpdate',
+                actorId: actorId,
+                updates: updates
+            }
+        }));
+
+        // Update open interfaces if they're affected
+        this.updateOpenInterfaces();
+    }
+
+    /**
+     * Migrate existing devices to use actor names and avatars
+     */
+    async migrateDeviceNamesAndAvatars() {
+        console.log("\n🔄 Starting device name and avatar migration...");
+
+        let devicesUpdated = 0;
+        let devicesSkipped = 0;
+        let devicesError = 0;
+
+        for (const [deviceId, device] of this.devices) {
+            const actorId = device.ownerActorId;
+            if (!actorId) {
+                console.warn(`⚠️  Device ${deviceId} has no ownerActorId, skipping`);
+                devicesSkipped++;
+                continue;
+            }
+
+            const actor = game.actors.get(actorId);
+            if (!actor) {
+                console.warn(`⚠️  Actor ${actorId} not found for device ${deviceId}, skipping`);
+                devicesError++;
+                continue;
+            }
+
+            const oldName = device.deviceName || 'Unknown';
+            const newName = actor.name;
+            const oldImg = device.img || 'icons/svg/mystery-man.svg';
+            const newImg = actor.img || 'icons/svg/mystery-man.svg';
+
+            let updated = false;
+
+            // Update device name if it's not the actor name
+            if (oldName !== newName) {
+                device.deviceName = newName;
+                updated = true;
+                console.log(`✅ Updated device ${deviceId} name: ${oldName} → ${newName}`);
+            }
+
+            // Update device avatar if it's not the actor avatar
+            if (oldImg !== newImg) {
+                device.img = newImg;
+                updated = true;
+                console.log(`✅ Updated device ${deviceId} avatar: ${oldImg} → ${newImg}`);
+            }
+
+            if (updated) {
+                devicesUpdated++;
+            } else {
+                devicesSkipped++;
+            }
+        }
+
+        if (devicesUpdated > 0) {
+            await this.saveDeviceData();
+            console.log(`\n💾 Saved ${devicesUpdated} updated devices`);
+        }
+
+        console.log(`\n📊 Migration Results:`);
+        console.log(`   Devices updated: ${devicesUpdated}`);
+        console.log(`   Devices skipped (no change): ${devicesSkipped}`);
+        console.log(`   Devices with errors: ${devicesError}`);
+        console.log(`   Total devices processed: ${devicesUpdated + devicesSkipped + devicesError}`);
+
+        if (devicesUpdated > 0) {
+            console.log(`\n🎉 Device name and avatar migration completed successfully!`);
+        } else {
+            console.log(`\n✅ All devices already have correct names and avatars`);
+        }
+    }
+
+    /**
+     * Get all registered devices for GM access
+     */
+    getAllRegisteredDevices() {
+        const allDevices = [];
+
+        for (const [deviceId, device] of this.devices) {
+            const ownerName = this.getDeviceOwnerName(deviceId);
+            const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+            const formattedPhone = phoneNumber ? this.formatPhoneNumberForDisplay(phoneNumber) : 'No phone';
+
+            allDevices.push({
+                deviceId: deviceId,
+                ownerName: ownerName,
+                phoneNumber: formattedPhone,
+                deviceName: device.deviceName || 'Agent',
+                ownerActorId: device.ownerActorId
+            });
+        }
+
+        // Sort by owner name for better organization
+        allDevices.sort((a, b) => a.ownerName.localeCompare(b.ownerName));
+
+        return allDevices;
+    }
+
+    /**
+     * Show menu for GM to select from all registered devices
+     */
+    async showAllDevicesMenu(allDevices) {
+        console.log("Cyberpunk Agent | showAllDevicesMenu called with:", allDevices);
+
+        if (!allDevices || allDevices.length === 0) {
+            ui.notifications.warn("No devices available");
+            return;
+        }
+
+        // Create options for the select dropdown
+        const options = allDevices.map((device, index) => ({
+            label: `${device.ownerName} - ${device.deviceName} (${device.phoneNumber})`,
+            value: device.deviceId
+        }));
+
+        // Create the dialog content
+        const content = `
+            <div style="margin-bottom: 1em;">
+                <p><strong>Select a device to operate as:</strong></p>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 1em;">
+                    As GM, you can operate any registered device in the system.
+                </p>
+            </div>
+            <div style="margin-bottom: 1em;">
+                <select id="agent-device-select" style="width: 100%; margin-bottom: 1em;">
+                    ${options.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
+                </select>
+            </div>
+        `;
+
+        // Create and show the dialog
+        new Dialog({
+            title: "Select Device to Operate",
+            content: content,
+            buttons: {
+                select: {
+                    label: "Operate Device",
+                    callback: (html) => {
+                        const selectedDeviceId = html.find('#agent-device-select').val();
+                        if (selectedDeviceId) {
+                            console.log(`Cyberpunk Agent | GM selected device: ${selectedDeviceId}`);
+                            this.openSpecificAgent(selectedDeviceId);
+                        }
+                    }
+                },
+                cancel: {
+                    label: "Cancel"
+                }
+            },
+            default: "select"
+        }).render(true);
     }
 
     /**
@@ -4768,6 +5219,9 @@ class CyberpunkAgent {
         // Strategy 4: Force Chat7 interfaces to refresh unread counts specifically
         this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
 
+        // 🆕 Play notification sound for new messages
+        this.playNotificationSound(data.senderId, data.receiverId);
+
         // Strategy 5: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
@@ -5621,6 +6075,310 @@ class CyberpunkAgent {
         console.log(`Cyberpunk Agent | Calculated unread count for devices ${conversationKey}: ${unreadCount} (${messages.length} total messages)`);
 
         return unreadCount;
+    }
+
+    /**
+     * List chat history for all devices
+     * Useful for debugging and monitoring conversations
+     */
+    listAllChatHistory() {
+        console.log("\n📱 === CHAT HISTORY FOR ALL DEVICES ===");
+
+        if (!this.devices || this.devices.size === 0) {
+            console.log("❌ No devices registered in the system");
+            return;
+        }
+
+        let totalConversations = 0;
+        let totalMessages = 0;
+        let devicesWithHistory = 0;
+
+        // Iterate through all devices
+        for (const [deviceId, device] of this.devices) {
+            const deviceName = this.getDeviceOwnerName(deviceId);
+            const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+            const formattedPhone = phoneNumber ? this.formatPhoneNumberForDisplay(phoneNumber) : 'No phone';
+
+            console.log(`\n📱 Device: ${deviceName} (${deviceId})`);
+            console.log(`   📞 Phone: ${formattedPhone}`);
+            console.log(`   👤 Owner: ${device.ownerActorId || 'Unknown'}`);
+
+            // Get contacts for this device
+            const contacts = this.getContactsForDevice(deviceId);
+
+            if (contacts.length === 0) {
+                console.log(`   💬 No contacts found`);
+                continue;
+            }
+
+            console.log(`   👥 Contacts: ${contacts.length}`);
+            let deviceConversations = 0;
+            let deviceMessages = 0;
+
+            // Check conversations with each contact
+            for (const contactDeviceId of contacts) {
+                const contactDevice = this.devices.get(contactDeviceId);
+                if (!contactDevice) {
+                    console.log(`     ⚠️  Contact ${contactDeviceId} not found in devices`);
+                    continue;
+                }
+
+                const contactName = this.getDeviceOwnerName(contactDeviceId);
+                const contactPhone = this.devicePhoneNumbers.get(contactDeviceId);
+                const contactFormattedPhone = contactPhone ? this.formatPhoneNumberForDisplay(contactPhone) : 'No phone';
+
+                // Get conversation key
+                const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+                const messages = this.messages.get(conversationKey) || [];
+
+                if (messages.length === 0) {
+                    console.log(`     📱 ${contactName} (${contactFormattedPhone}) - No messages`);
+                    continue;
+                }
+
+                deviceConversations++;
+                deviceMessages += messages.length;
+
+                // Get unread count
+                const unreadCount = this.getUnreadCountForDevices(deviceId, contactDeviceId);
+                const isMuted = this.isContactMutedForDevice(deviceId, contactDeviceId);
+
+                console.log(`     💬 ${contactName} (${contactFormattedPhone})`);
+                console.log(`        📊 Messages: ${messages.length}`);
+                console.log(`        📖 Unread: ${unreadCount}`);
+                console.log(`        🔇 Muted: ${isMuted ? 'Yes' : 'No'}`);
+
+                // Show last few messages
+                const lastMessages = messages.slice(-3); // Last 3 messages
+                if (lastMessages.length > 0) {
+                    console.log(`        📝 Last messages:`);
+                    lastMessages.forEach(msg => {
+                        const isOwn = msg.senderId === deviceId;
+                        const sender = isOwn ? deviceName : contactName;
+                        const time = msg.time || new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        const readStatus = msg.read ? '✓' : '○';
+                        const preview = msg.text.length > 50 ? msg.text.substring(0, 50) + '...' : msg.text;
+
+                        console.log(`           ${readStatus} [${time}] ${sender}: ${preview}`);
+                    });
+                }
+            }
+
+            if (deviceConversations > 0) {
+                devicesWithHistory++;
+                totalConversations += deviceConversations;
+                totalMessages += deviceMessages;
+                console.log(`   📊 Device Summary: ${deviceConversations} conversations, ${deviceMessages} total messages`);
+            } else {
+                console.log(`   📊 Device Summary: No conversations`);
+            }
+        }
+
+        // Overall summary
+        console.log(`\n📊 === OVERALL SUMMARY ===`);
+        console.log(`📱 Total devices: ${this.devices.size}`);
+        console.log(`💬 Devices with conversations: ${devicesWithHistory}`);
+        console.log(`📝 Total conversations: ${totalConversations}`);
+        console.log(`💌 Total messages: ${totalMessages}`);
+
+        // Show some statistics
+        if (totalMessages > 0) {
+            const avgMessagesPerConversation = (totalMessages / totalConversations).toFixed(1);
+            const avgMessagesPerDevice = (totalMessages / devicesWithHistory).toFixed(1);
+            console.log(`📈 Average messages per conversation: ${avgMessagesPerConversation}`);
+            console.log(`📈 Average messages per device (with history): ${avgMessagesPerDevice}`);
+        }
+
+        console.log(`\n🎉 Chat history listing complete!`);
+    }
+
+    /**
+     * List chat history for a specific device
+     * @param {string} deviceId - The device ID to list history for
+     */
+    listDeviceChatHistory(deviceId) {
+        console.log(`\n📱 === CHAT HISTORY FOR DEVICE: ${deviceId} ===`);
+
+        const device = this.devices.get(deviceId);
+        if (!device) {
+            console.log(`❌ Device ${deviceId} not found`);
+            return;
+        }
+
+        const deviceName = this.getDeviceOwnerName(deviceId);
+        const phoneNumber = this.devicePhoneNumbers.get(deviceId);
+        const formattedPhone = phoneNumber ? this.formatPhoneNumberForDisplay(phoneNumber) : 'No phone';
+
+        console.log(`📱 Device: ${deviceName} (${deviceId})`);
+        console.log(`📞 Phone: ${formattedPhone}`);
+        console.log(`👤 Owner: ${device.ownerActorId || 'Unknown'}`);
+
+        // Get contacts for this device
+        const contacts = this.getContactsForDevice(deviceId);
+
+        if (contacts.length === 0) {
+            console.log(`💬 No contacts found for this device`);
+            return;
+        }
+
+        console.log(`👥 Contacts: ${contacts.length}`);
+        let totalMessages = 0;
+        let totalUnread = 0;
+
+        // Check conversations with each contact
+        for (const contactDeviceId of contacts) {
+            const contactDevice = this.devices.get(contactDeviceId);
+            if (!contactDevice) {
+                console.log(`⚠️  Contact ${contactDeviceId} not found in devices`);
+                continue;
+            }
+
+            const contactName = this.getDeviceOwnerName(contactDeviceId);
+            const contactPhone = this.devicePhoneNumbers.get(contactDeviceId);
+            const contactFormattedPhone = contactPhone ? this.formatPhoneNumberForDisplay(contactPhone) : 'No phone';
+
+            // Get conversation key
+            const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+            const messages = this.messages.get(conversationKey) || [];
+
+            // Get unread count
+            const unreadCount = this.getUnreadCountForDevices(deviceId, contactDeviceId);
+            const isMuted = this.isContactMutedForDevice(deviceId, contactDeviceId);
+
+            totalMessages += messages.length;
+            totalUnread += unreadCount;
+
+            console.log(`\n💬 ${contactName} (${contactFormattedPhone})`);
+            console.log(`   📊 Messages: ${messages.length}`);
+            console.log(`   📖 Unread: ${unreadCount}`);
+            console.log(`   🔇 Muted: ${isMuted ? 'Yes' : 'No'}`);
+
+            if (messages.length > 0) {
+                // Show all messages for this contact
+                console.log(`   📝 Messages:`);
+                messages.forEach((msg, index) => {
+                    const isOwn = msg.senderId === deviceId;
+                    const sender = isOwn ? deviceName : contactName;
+                    const time = msg.time || new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    const readStatus = msg.read ? '✓' : '○';
+                    const messageNumber = index + 1;
+
+                    console.log(`      ${messageNumber}. ${readStatus} [${time}] ${sender}: ${msg.text}`);
+                });
+            }
+        }
+
+        console.log(`\n📊 === DEVICE SUMMARY ===`);
+        console.log(`💬 Total conversations: ${contacts.length}`);
+        console.log(`💌 Total messages: ${totalMessages}`);
+        console.log(`📖 Total unread: ${totalUnread}`);
+
+        if (totalMessages > 0) {
+            const avgMessagesPerConversation = (totalMessages / contacts.length).toFixed(1);
+            console.log(`📈 Average messages per conversation: ${avgMessagesPerConversation}`);
+        }
+
+        console.log(`\n🎉 Device chat history listing complete!`);
+    }
+
+    /**
+     * List chat history for a specific conversation between two devices
+     * @param {string} deviceId1 - First device ID
+     * @param {string} deviceId2 - Second device ID
+     */
+    listConversationHistory(deviceId1, deviceId2) {
+        console.log(`\n💬 === CONVERSATION HISTORY ===`);
+
+        const device1 = this.devices.get(deviceId1);
+        const device2 = this.devices.get(deviceId2);
+
+        if (!device1 || !device2) {
+            console.log(`❌ One or both devices not found:`);
+            if (!device1) console.log(`   Device ${deviceId1} not found`);
+            if (!device2) console.log(`   Device ${deviceId2} not found`);
+            return;
+        }
+
+        const device1Name = this.getDeviceOwnerName(deviceId1);
+        const device2Name = this.getDeviceOwnerName(deviceId2);
+        const device1Phone = this.devicePhoneNumbers.get(deviceId1);
+        const device2Phone = this.devicePhoneNumbers.get(deviceId2);
+        const device1FormattedPhone = device1Phone ? this.formatPhoneNumberForDisplay(device1Phone) : 'No phone';
+        const device2FormattedPhone = device2Phone ? this.formatPhoneNumberForDisplay(device2Phone) : 'No phone';
+
+        console.log(`📱 ${device1Name} (${device1FormattedPhone})`);
+        console.log(`📱 ${device2Name} (${device2FormattedPhone})`);
+
+        // Get conversation key
+        const conversationKey = this._getDeviceConversationKey(deviceId1, deviceId2);
+        const messages = this.messages.get(conversationKey) || [];
+
+        if (messages.length === 0) {
+            console.log(`💬 No messages in this conversation`);
+            return;
+        }
+
+        // Get unread count for both devices
+        const unreadCount1 = this.getUnreadCountForDevices(deviceId1, deviceId2);
+        const unreadCount2 = this.getUnreadCountForDevices(deviceId2, deviceId1);
+        const isMuted1 = this.isContactMutedForDevice(deviceId1, deviceId2);
+        const isMuted2 = this.isContactMutedForDevice(deviceId2, deviceId1);
+
+        console.log(`\n📊 Conversation Statistics:`);
+        console.log(`💌 Total messages: ${messages.length}`);
+        console.log(`📖 Unread for ${device1Name}: ${unreadCount1}`);
+        console.log(`📖 Unread for ${deviceId2}: ${unreadCount2}`);
+        console.log(`🔇 ${device1Name} muted: ${isMuted1 ? 'Yes' : 'No'}`);
+        console.log(`🔇 ${device2Name} muted: ${isMuted2 ? 'Yes' : 'No'}`);
+
+        // Show all messages
+        console.log(`\n📝 Messages:`);
+        messages.forEach((msg, index) => {
+            const isOwn = msg.senderId === deviceId1;
+            const sender = isOwn ? device1Name : device2Name;
+            const time = msg.time || new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const readStatus = msg.read ? '✓' : '○';
+            const messageNumber = index + 1;
+            const direction = isOwn ? '→' : '←';
+
+            console.log(`   ${messageNumber}. ${readStatus} [${time}] ${direction} ${sender}: ${msg.text}`);
+        });
+
+        // Show conversation metadata
+        if (messages.length > 0) {
+            const firstMessage = messages[0];
+            const lastMessage = messages[messages.length - 1];
+            const firstTime = new Date(firstMessage.timestamp).toLocaleString('pt-BR');
+            const lastTime = new Date(lastMessage.timestamp).toLocaleString('pt-BR');
+
+            console.log(`\n📅 Conversation Timeline:`);
+            console.log(`   🕐 Started: ${firstTime}`);
+            console.log(`   🕐 Last message: ${lastTime}`);
+
+            const duration = lastMessage.timestamp - firstMessage.timestamp;
+            const durationMinutes = Math.floor(duration / (1000 * 60));
+            const durationHours = Math.floor(durationMinutes / 60);
+            const durationDays = Math.floor(durationHours / 24);
+
+            if (durationDays > 0) {
+                console.log(`   ⏱️  Duration: ${durationDays} days, ${durationHours % 24} hours`);
+            } else if (durationHours > 0) {
+                console.log(`   ⏱️  Duration: ${durationHours} hours, ${durationMinutes % 60} minutes`);
+            } else {
+                console.log(`   ⏱️  Duration: ${durationMinutes} minutes`);
+            }
+        }
+
+        console.log(`\n🎉 Conversation history listing complete!`);
     }
 }
 
@@ -6920,6 +7678,15 @@ console.log("  - window.cyberpunkAgent.syncAllAgents() - Full agent synchronizat
 console.log("  - window.cyberpunkAgent.quickSyncAgents() - Quick agent sync for missing registrations");
 console.log("  - window.cyberpunkAgent.migrateOwnerNames() - Migrate existing devices with owner names");
 console.log("  - window.cyberpunkAgent.updateAllOwnerNames() - Force update all owner names from actors");
+console.log("  - window.cyberpunkAgent.migrateDeviceNamesAndAvatars() - Migrate device names and avatars to use actor data");
+console.log("🆕 Chat History Functions:");
+console.log("  - window.cyberpunkAgent.listAllChatHistory() - List chat history for all devices");
+console.log("  - window.cyberpunkAgent.listDeviceChatHistory(deviceId) - List chat history for a specific device");
+console.log("  - window.cyberpunkAgent.listConversationHistory(deviceId1, deviceId2) - List chat history for a specific conversation");
+console.log("🆕 Reactive Device Registry System:");
+console.log("  - Actor changes automatically update device registry");
+console.log("  - Name changes, avatar changes, and deletions are handled automatically");
+console.log("  - Device registry stays in sync with game.actors data");
 
 // Debug function for equipment issues
 window.debugAgentEquipment = function () {

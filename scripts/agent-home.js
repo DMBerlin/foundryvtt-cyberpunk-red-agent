@@ -142,12 +142,14 @@ class AgentApplication extends FormApplication {
       templateData.errorMessage = this.addContactState?.errorMessage || null;
       templateData.successMessage = this.addContactState?.successMessage || null;
       templateData.isSearching = this.addContactState?.isSearching || false;
+      templateData.phoneNumber = this.addContactState?.phoneNumber || '';
 
       console.log("AgentApplication | Template data for add-contact:", {
         searchResult: templateData.searchResult,
         errorMessage: templateData.errorMessage,
         successMessage: templateData.successMessage,
-        isSearching: templateData.isSearching
+        isSearching: templateData.isSearching,
+        phoneNumber: templateData.phoneNumber
       });
     }
 
@@ -385,14 +387,16 @@ class AgentApplication extends FormApplication {
   _renderAddContactView() {
     console.log("AgentApplication | Rendering add contact view for device:", this.device.id);
 
-    // Initialize add contact state
-    this.addContactState = {
-      phoneNumber: '',
-      searchResult: null,
-      errorMessage: null,
-      successMessage: null,
-      isSearching: false
-    };
+    // Initialize add contact state only if it doesn't exist
+    if (!this.addContactState) {
+      this.addContactState = {
+        phoneNumber: '',
+        searchResult: null,
+        errorMessage: null,
+        successMessage: null,
+        isSearching: false
+      };
+    }
 
     console.log("AgentApplication | Add contact view setup completed");
   }
@@ -549,8 +553,13 @@ class AgentApplication extends FormApplication {
     html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
     html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
 
-    // Add context menu for contacts list background
-    html.find('.cp-contacts-container').on('contextmenu', this._onContactsBackgroundContextMenu.bind(this));
+    // Add context menu for contacts list background (only when not clicking on contacts)
+    html.find('.cp-contacts-container').on('contextmenu', (event) => {
+      // Only show background context menu if we're not clicking on a contact item
+      if (!$(event.target).closest('.cp-contact-item').length) {
+        this._onContactsBackgroundContextMenu(event);
+      }
+    });
 
     // Setup document click for context menu
     $(document).off('click.cyberpunk-agent-context').on('click.cyberpunk-agent-context', this._onDocumentClick.bind(this));
@@ -574,6 +583,13 @@ class AgentApplication extends FormApplication {
     html.find('.cp-phone-input').on('keypress', this._onPhoneKeypress.bind(this));
     html.find('.cp-search-btn').click(this._onSearchClick.bind(this));
     html.find('.cp-add-contact-btn').click(this._onAddContactClick.bind(this));
+
+    // Apply mask to phone input if it has a value
+    const phoneInput = html.find('.cp-phone-input');
+    if (phoneInput.val() && this.addContactState?.phoneNumber) {
+      const maskedValue = this._applyPhoneMask(this.addContactState.phoneNumber);
+      phoneInput.val(maskedValue);
+    }
   }
 
   /**
@@ -628,20 +644,23 @@ class AgentApplication extends FormApplication {
     const contactId = event.currentTarget.dataset.contactId;
     console.log("Contact chat clicked for contact:", contactId);
 
-    // Get contact data from regular contacts
-    let contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
-    let contact = contacts.find(c => c.id === contactId);
+    // Get contact device data directly from the devices map
+    const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactId);
 
-    // If not found in regular contacts, check anonymous contacts
-    if (!contact) {
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForDevice(this.device.id) || [];
-      contact = anonymousContacts.find(c => c.id === contactId);
-    }
-
-    if (!contact) {
+    if (!contactDevice) {
+      console.error(`Cyberpunk Agent | Contact device ${contactId} not found in devices map`);
       ui.notifications.error("Contato não encontrado!");
       return;
     }
+
+    // Create contact object with the required fields
+    const contact = {
+      id: contactId,
+      name: contactDevice.deviceName || `Device ${contactId}`,
+      img: contactDevice.img || 'icons/svg/mystery-man.svg'
+    };
+
+    console.log("Cyberpunk Agent | Contact data for conversation:", contact);
 
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -671,19 +690,22 @@ class AgentApplication extends FormApplication {
 
     const contactId = event.currentTarget.dataset.contactId;
 
-    // Get contact data from regular contacts
-    let contacts = window.CyberpunkAgent?.instance?.getContactsForDevice(this.device.id) || [];
-    let contact = contacts.find(c => c.id === contactId);
+    // Get contact device data directly from the devices map
+    const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactId);
 
-    // If not found in regular contacts, check anonymous contacts
-    if (!contact) {
-      const anonymousContacts = window.CyberpunkAgent?.instance?.getAnonymousContactsForDevice(this.device.id) || [];
-      contact = anonymousContacts.find(c => c.id === contactId);
+    if (!contactDevice) {
+      console.error(`Cyberpunk Agent | Contact device ${contactId} not found in devices map`);
+      return;
     }
 
-    if (contact) {
-      this._showContextMenu(event, contact);
-    }
+    // Create contact object with the required fields
+    const contact = {
+      id: contactId,
+      name: contactDevice.deviceName || `Device ${contactId}`,
+      img: contactDevice.img || 'icons/svg/mystery-man.svg'
+    };
+
+    this._showContextMenu(event, contact);
   }
 
   /**
