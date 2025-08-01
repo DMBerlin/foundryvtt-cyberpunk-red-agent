@@ -259,6 +259,12 @@ class AgentApplication extends FormApplication {
    * Unregister from UI Controller when closing
    */
   close(options = {}) {
+    // Clear active conversation when closing
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
+      console.log(`AgentApplication | Cleared active conversation on close for user ${game.user.id}`);
+    }
+
     // Remove event listeners to prevent memory leaks and unwanted behavior
     if (this._chat7UpdateHandler) {
       document.removeEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
@@ -298,6 +304,23 @@ class AgentApplication extends FormApplication {
    */
   navigateTo(view, contact = null) {
     console.log(`AgentApplication | Navigating to view: ${view}`, contact);
+
+    // Register or clear active conversation based on navigation
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      if (view === 'conversation' && contact && contact.id) {
+        // Register active conversation
+        window.CyberpunkAgent.instance.registerActiveConversation(
+          game.user.id,
+          this.device.id,
+          contact.id
+        );
+        console.log(`AgentApplication | Registered active conversation: ${this.device.id} -> ${contact.id}`);
+      } else {
+        // Clear active conversation when navigating away from conversation view
+        window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
+        console.log(`AgentApplication | Cleared active conversation for user ${game.user.id}`);
+      }
+    }
 
     this.currentView = view;
     this.currentContact = contact;

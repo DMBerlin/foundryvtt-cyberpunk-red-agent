@@ -237,6 +237,10 @@ class CyberpunkAgent {
         this._openInterfaces = new Set();
         this._openChatInterfaces = new Set();
 
+        // Activity manager for intelligent notifications
+        this._activeConversations = new Map(); // Maps userId -> { deviceId, contactId, timestamp }
+        this._lastActivityUpdate = null;
+
         // SocketLib integration
         this.socketLibIntegration = null;
         this._socketLibAvailable = false;
@@ -5777,6 +5781,132 @@ class CyberpunkAgent {
         ).length;
     }
 
+    // ========================================
+    // ACTIVITY MANAGER FOR INTELLIGENT NOTIFICATIONS
+    // ========================================
+
+    /**
+     * Register an active conversation for a user
+     * @param {string} userId - The user ID
+     * @param {string} deviceId - The device ID
+     * @param {string} contactId - The contact ID (device ID of the contact)
+     */
+    registerActiveConversation(userId, deviceId, contactId) {
+        try {
+            const activityData = {
+                deviceId: deviceId,
+                contactId: contactId,
+                timestamp: Date.now()
+            };
+
+            this._activeConversations.set(userId, activityData);
+            this._lastActivityUpdate = Date.now();
+
+            console.log(`Cyberpunk Agent | Registered active conversation for user ${userId}: ${deviceId} -> ${contactId}`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error registering active conversation:", error);
+        }
+    }
+
+    /**
+     * Clear active conversation for a user
+     * @param {string} userId - The user ID
+     */
+    clearActiveConversation(userId) {
+        try {
+            this._activeConversations.delete(userId);
+            this._lastActivityUpdate = Date.now();
+
+            console.log(`Cyberpunk Agent | Cleared active conversation for user ${userId}`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing active conversation:", error);
+        }
+    }
+
+    /**
+     * Get active conversation for a user
+     * @param {string} userId - The user ID
+     * @returns {Object|null} The active conversation data or null
+     */
+    getActiveConversation(userId) {
+        return this._activeConversations.get(userId) || null;
+    }
+
+    /**
+     * Check if a message should trigger a notification sound
+     * @param {string} receiverId - The receiver device ID
+     * @param {string} senderId - The sender device ID
+     * @returns {boolean} True if notification should play, false otherwise
+     */
+    shouldPlayNotificationSound(receiverId, senderId) {
+        try {
+            // Get the user who owns the receiver device
+            const receiverUser = this._getUserForDevice(receiverId);
+            if (!receiverUser) {
+                console.log("Cyberpunk Agent | Could not determine receiver user, playing notification sound");
+                return true;
+            }
+
+            // Get the active conversation for this user
+            const activeConversation = this.getActiveConversation(receiverUser.id);
+            if (!activeConversation) {
+                console.log("Cyberpunk Agent | No active conversation for user, playing notification sound");
+                return true;
+            }
+
+            // Check if the message is for the currently active conversation
+            const isActiveConversation = (activeConversation.deviceId === receiverId && activeConversation.contactId === senderId) ||
+                (activeConversation.deviceId === senderId && activeConversation.contactId === receiverId);
+
+            if (isActiveConversation) {
+                console.log("Cyberpunk Agent | Message is for active conversation, skipping notification sound");
+                return false;
+            }
+
+            console.log("Cyberpunk Agent | Message is for different conversation, playing notification sound");
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error checking notification sound condition:", error);
+            return true; // Default to playing sound on error
+        }
+    }
+
+    /**
+     * Get user who owns a device
+     * @param {string} deviceId - The device ID
+     * @returns {Object|null} The user object or null
+     */
+    _getUserForDevice(deviceId) {
+        try {
+            // Find the device in our devices map
+            const device = this.devices.get(deviceId);
+            if (!device || !device.ownerActorId) {
+                return null;
+            }
+
+            // Find the user who owns this actor
+            const actor = game.actors.get(device.ownerActorId);
+            if (!actor) {
+                return null;
+            }
+
+            // Find the user who owns this actor
+            const users = Array.from(game.users.values());
+            const owner = users.find(user => user.character && user.character.id === device.ownerActorId);
+
+            if (!owner) {
+                // If no direct character ownership, check if user has ownership of the actor
+                const owner = users.find(user => actor.testUserPermission(user, 'OWNER'));
+                return owner;
+            }
+
+            return owner;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error getting user for device:", error);
+            return null;
+        }
+    }
+
     /**
      * Play sound effect
      * @param {string} soundName - Name of the sound file (without extension)
@@ -5794,7 +5924,7 @@ class CyberpunkAgent {
     }
 
     /**
-     * Play notification sound if enabled and contact is not muted
+     * Play notification sound if enabled, contact is not muted, and not for active conversation
      */
     playNotificationSound(senderId = null, receiverId = null) {
         try {
@@ -5811,6 +5941,13 @@ class CyberpunkAgent {
                 const isMuted = this.isContactMuted(receiverId, senderId);
                 if (isMuted) {
                     console.log("Cyberpunk Agent | Contact is muted, skipping notification sound");
+                    return;
+                }
+
+                // Check if this message is for the currently active conversation
+                const shouldPlay = this.shouldPlayNotificationSound(receiverId, senderId);
+                if (!shouldPlay) {
+                    console.log("Cyberpunk Agent | Message is for active conversation, skipping notification sound");
                     return;
                 }
             }
@@ -7687,6 +7824,11 @@ console.log("🆕 Reactive Device Registry System:");
 console.log("  - Actor changes automatically update device registry");
 console.log("  - Name changes, avatar changes, and deletions are handled automatically");
 console.log("  - Device registry stays in sync with game.actors data");
+console.log("🆕 Intelligent Notification System:");
+console.log("  - debugActivityManager() - Debug the activity manager system");
+console.log("  - testNotificationSound() - Test intelligent notification sound behavior");
+console.log("  - registerTestConversation(deviceId, contactId) - Manually register a test conversation");
+console.log("  - clearTestConversation() - Clear active conversation for testing");
 
 // Debug function for equipment issues
 window.debugAgentEquipment = function () {
@@ -7722,4 +7864,139 @@ window.checkDeviceStatus = () => {
             console.log(`    Device ${deviceId}:`, device);
         }
     }
+};
+
+// ========================================
+// ACTIVITY MANAGER DEBUG FUNCTIONS
+// ========================================
+
+// Debug function for activity manager
+window.debugActivityManager = () => {
+    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+        console.error("❌ CyberpunkAgent instance not found");
+        return;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    console.log("=== ACTIVITY MANAGER DEBUG ===");
+
+    console.log("📊 Activity Manager Status:");
+    console.log(`  - Active conversations count: ${agent._activeConversations.size}`);
+    console.log(`  - Last activity update: ${agent._lastActivityUpdate ? new Date(agent._lastActivityUpdate).toLocaleString() : 'Never'}`);
+
+    if (agent._activeConversations.size > 0) {
+        console.log("📱 Active Conversations:");
+        for (const [userId, activity] of agent._activeConversations) {
+            const user = game.users.get(userId);
+            const userName = user ? user.name : `Unknown User (${userId})`;
+            const device = agent.devices.get(activity.deviceId);
+            const contact = agent.devices.get(activity.contactId);
+
+            console.log(`  - User: ${userName} (${userId})`);
+            console.log(`    Device: ${device?.deviceName || activity.deviceId}`);
+            console.log(`    Contact: ${contact?.deviceName || activity.contactId}`);
+            console.log(`    Timestamp: ${new Date(activity.timestamp).toLocaleString()}`);
+        }
+    } else {
+        console.log("  - No active conversations");
+    }
+
+    console.log("🔍 Current User Activity:");
+    const currentUserActivity = agent.getActiveConversation(game.user.id);
+    if (currentUserActivity) {
+        const device = agent.devices.get(currentUserActivity.deviceId);
+        const contact = agent.devices.get(currentUserActivity.contactId);
+
+        console.log(`  - Active conversation: ${device?.deviceName || currentUserActivity.deviceId} -> ${contact?.deviceName || currentUserActivity.contactId}`);
+        console.log(`  - Timestamp: ${new Date(currentUserActivity.timestamp).toLocaleString()}`);
+    } else {
+        console.log("  - No active conversation for current user");
+    }
+
+    console.log("🎵 Notification Sound Test:");
+    console.log("  - Run testNotificationSound() to test the intelligent notification system");
+};
+
+// Test function for notification sound behavior
+window.testNotificationSound = () => {
+    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+        console.error("❌ CyberpunkAgent instance not found");
+        return;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    console.log("=== NOTIFICATION SOUND TEST ===");
+
+    // Get current user's active conversation
+    const activeConversation = agent.getActiveConversation(game.user.id);
+
+    if (activeConversation) {
+        console.log("📱 Current active conversation found:");
+        console.log(`  - Device: ${activeConversation.deviceId}`);
+        console.log(`  - Contact: ${activeConversation.contactId}`);
+
+        // Test notification sound for active conversation
+        console.log("🎵 Testing notification sound for ACTIVE conversation (should NOT play):");
+        const shouldPlayActive = agent.shouldPlayNotificationSound(activeConversation.deviceId, activeConversation.contactId);
+        console.log(`  - Should play sound: ${shouldPlayActive}`);
+
+        if (!shouldPlayActive) {
+            console.log("✅ CORRECT: Notification sound suppressed for active conversation");
+        } else {
+            console.log("❌ INCORRECT: Notification sound would play for active conversation");
+        }
+
+        // Test notification sound for different conversation
+        console.log("🎵 Testing notification sound for DIFFERENT conversation (should play):");
+        const shouldPlayDifferent = agent.shouldPlayNotificationSound(activeConversation.deviceId, 'different-contact-id');
+        console.log(`  - Should play sound: ${shouldPlayDifferent}`);
+
+        if (shouldPlayDifferent) {
+            console.log("✅ CORRECT: Notification sound would play for different conversation");
+        } else {
+            console.log("❌ INCORRECT: Notification sound suppressed for different conversation");
+        }
+
+    } else {
+        console.log("📱 No active conversation found - testing with no active conversation:");
+
+        // Test notification sound when no active conversation
+        const shouldPlayNoActive = agent.shouldPlayNotificationSound('test-device-id', 'test-contact-id');
+        console.log(`  - Should play sound: ${shouldPlayNoActive}`);
+
+        if (shouldPlayNoActive) {
+            console.log("✅ CORRECT: Notification sound would play when no active conversation");
+        } else {
+            console.log("❌ INCORRECT: Notification sound suppressed when no active conversation");
+        }
+    }
+
+    console.log("🎵 Manual notification sound test:");
+    console.log("  - Run agent.playNotificationSound('sender-id', 'receiver-id') to test actual sound");
+};
+
+// Function to manually register an active conversation for testing
+window.registerTestConversation = (deviceId, contactId) => {
+    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+        console.error("❌ CyberpunkAgent instance not found");
+        return;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    agent.registerActiveConversation(game.user.id, deviceId, contactId);
+    console.log(`✅ Registered test conversation: ${deviceId} -> ${contactId}`);
+    console.log("📱 Run debugActivityManager() to see the updated status");
+};
+
+// Function to clear active conversation for testing
+window.clearTestConversation = () => {
+    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
+        console.error("❌ CyberpunkAgent instance not found");
+        return;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    agent.clearActiveConversation(game.user.id);
+    console.log("✅ Cleared active conversation for current user");
+    console.log("📱 Run debugActivityManager() to see the updated status");
 }; 
