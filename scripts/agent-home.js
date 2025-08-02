@@ -785,8 +785,19 @@ class AgentApplication extends FormApplication {
     const messageId = event.currentTarget.dataset.messageId;
     const messageText = event.currentTarget.dataset.messageText;
     const messageTime = event.currentTarget.dataset.messageTime;
+    const messageElement = event.currentTarget;
 
     console.log("Message context menu for message:", messageId, messageText);
+
+    // Check if this message belongs to the current user (isOwn)
+    const isOwnMessage = messageElement.classList.contains('own');
+
+    // GM can access context menu on all messages, players only on their own messages
+    if (!game.user.isGM && !isOwnMessage) {
+      console.log("Cyberpunk Agent | Context menu blocked: User does not own this message and is not GM");
+      ui.notifications.warn("Você só pode acessar o menu de contexto das suas próprias mensagens.");
+      return;
+    }
 
     this._showMessageContextMenu(event, messageId, messageText, messageTime);
   }

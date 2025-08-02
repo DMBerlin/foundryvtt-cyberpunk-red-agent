@@ -5,17 +5,24 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Context Menu Ownership Restriction with GM Access**: Implemented security feature to restrict context menu access based on message ownership and user role
+  - Regular players can only access context menu on messages they sent (own messages)
+  - Game Masters can access context menu on all messages for administrative control
+  - Prevents accidental or unauthorized deletion of other users' messages by regular players
+  - Visual feedback shows which messages are interactive (own messages for players, all messages for GMs)
+  - Warning notification when regular players try to access context menu on other users' messages
+  - Subtle menu indicator (⋮) appears on hover for interactive messages
 - **Device-Specific Chat History Management**: Implemented device-specific chat history storage and management
   - Each device now manages its own chat history independently
   - Messages deleted on one device do not affect other devices
   - Device-specific clear history functionality
 - **Individual Message Deletion**: Added context menu for individual message balloons
-  - Right-click on any message to access context menu
+  - Right-click on own messages to access context menu
   - Delete individual messages (device-specific)
   - Copy message text to clipboard
   - View message information (ID, text, time, device)
 - **Enhanced Context Menu System**: 
-  - Message-specific context menu with delete, copy, and info options
+  - Message-specific context menu with delete, copy, and info options (own messages only)
   - Contact context menu now clears history device-specifically
   - Visual feedback for hover states and interactions
 - **SocketLib Integration for Message Deletion**: 
@@ -31,29 +38,35 @@ All notable changes to this project will be documented in this file.
   - `_copyMessageText(messageText)` - Copy message text to clipboard
   - `_showMessageInfo(messageId, messageText, messageTime)` - Show message information dialog
 - **Enhanced UI and Styling**:
-  - Message balloons now have hover effects and context menu indicators
+  - Message balloons now have hover effects and context menu indicators (own messages only)
   - Improved visual feedback for interactive elements
   - Context menu positioning and styling enhancements
+  - Different cursor styles for own vs other messages
 - **Testing and Debugging**:
-  - Comprehensive test script for device message deletion functionality
+  - Comprehensive test script for context menu ownership restriction
+  - Test script for device message deletion functionality
   - Manual testing instructions and verification steps
   - Console-based testing functions for all new features
 
 ### Technical Details
+- **Message Ownership Security**: Context menu access restricted to message owners based on `senderId` field, with GM override for administrative control
 - **Device-Specific Storage**: Messages are now stored and managed per device
-- **Context Menu Integration**: Added right-click context menu functionality to message balloons
+- **Context Menu Integration**: Added right-click context menu functionality to message balloons (own messages for players, all messages for GMs)
 - **SocketLib Handlers**: New handlers for device message deletion synchronization
 - **UI Controller Updates**: Enhanced UI update system for message deletions
 - **Template Enhancements**: Added data attributes to message elements for context menu functionality
-- **CSS Styling**: Added hover effects and visual feedback for message interactions
+- **CSS Styling**: Added hover effects and visual feedback for message interactions (own messages for players, all messages for GMs)
+- **Ownership Detection**: Messages marked as "own" or "other" based on sender device ID
 
 ### Files Modified
 - `scripts/module.js`: Added device message deletion methods and handlers
-- `scripts/agent-home.js`: Added message context menu functionality and handlers
+- `scripts/agent-home.js`: Added message context menu functionality and handlers with ownership restriction
 - `scripts/socketlib-integration.js`: Added device message deletion SocketLib handlers
 - `templates/chat-conversation.html`: Added data attributes for message context menu
-- `styles/module.css`: Added styling for message context menu and hover effects
+- `styles/module.css`: Added styling for message context menu and hover effects (own messages only)
 - `scripts/test-device-message-deletion.js`: New comprehensive test script
+- `__tests__/test-context-menu-ownership.js`: New test script for context menu ownership restriction
+- `docs/CONTEXT-MENU-OWNERSHIP.md`: New documentation for context menu ownership feature
 - `CHANGELOG.md`: Added unreleased section with new features
 
 ## [2.1.0] - 2025-01-30
