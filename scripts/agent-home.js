@@ -564,6 +564,7 @@ class AgentApplication extends FormApplication {
    */
   _activateHomeListeners(html) {
     html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
+    html.find('.cp-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
   }
 
   /**
@@ -632,6 +633,47 @@ class AgentApplication extends FormApplication {
 
     // Navigate to Chat7 view
     this.navigateTo('chat7');
+  }
+
+  /**
+ * Handle phone number click to copy to clipboard
+ */
+  _onPhoneNumberClick(event) {
+    event.preventDefault();
+    console.log("Phone number clicked for device:", this.device.name);
+
+    // Get the phone number from the DOM element
+    const phoneElement = $(event.currentTarget);
+    const phoneNumberSpan = phoneElement.find('span');
+    const phoneNumber = phoneNumberSpan.text().trim();
+
+    if (!phoneNumber || phoneNumber === 'N/A') {
+      ui.notifications.warn("Número de telefone não disponível");
+      return;
+    }
+
+    // Copy to clipboard
+    try {
+      navigator.clipboard.writeText(phoneNumber).then(() => {
+        console.log("Cyberpunk Agent | Phone number copied to clipboard:", phoneNumber);
+        ui.notifications.info(`Número ${phoneNumber} copiado para a área de transferência!`);
+
+        // Add visual feedback
+        phoneElement.addClass('cp-copied');
+
+        // Remove the copied class after animation
+        setTimeout(() => {
+          phoneElement.removeClass('cp-copied');
+        }, 1000);
+
+      }).catch(err => {
+        console.error("Cyberpunk Agent | Error copying phone number to clipboard:", err);
+        ui.notifications.error("Erro ao copiar número de telefone!");
+      });
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error copying phone number:", error);
+      ui.notifications.error("Erro ao copiar número de telefone!");
+    }
   }
 
   /**
@@ -943,16 +985,16 @@ class AgentApplication extends FormApplication {
 
       // Get messages for this conversation
       const messages = window.CyberpunkAgent.instance.getMessagesForDeviceConversation(this.device.id, contactId) || [];
-      
+
       // Calculate message statistics
       const totalMessages = messages.length;
       const sentMessages = messages.filter(msg => msg.senderId === this.device.id).length;
       const receivedMessages = messages.filter(msg => msg.receiverId === this.device.id).length;
-      
+
       // Get first message date (as proxy for "added date")
       let firstMessageDate = 'N/A';
       if (messages.length > 0) {
-        const firstMessage = messages.reduce((earliest, current) => 
+        const firstMessage = messages.reduce((earliest, current) =>
           current.timestamp < earliest.timestamp ? current : earliest
         );
         firstMessageDate = new Date(firstMessage.timestamp).toLocaleDateString('pt-BR', {
@@ -967,7 +1009,7 @@ class AgentApplication extends FormApplication {
       // Get last message date
       let lastMessageDate = 'N/A';
       if (messages.length > 0) {
-        const lastMessage = messages.reduce((latest, current) => 
+        const lastMessage = messages.reduce((latest, current) =>
           current.timestamp > latest.timestamp ? current : latest
         );
         lastMessageDate = new Date(lastMessage.timestamp).toLocaleDateString('pt-BR', {
