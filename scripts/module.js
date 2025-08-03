@@ -1248,9 +1248,14 @@ class CyberpunkAgent {
             return;
         }
 
-        const options = equippedAgents.map(agent => ({
-            label: `${agent.actorName} - ${agent.itemName}`,
-            value: agent.deviceId
+        // Get phone numbers for all equipped agents
+        const options = await Promise.all(equippedAgents.map(async agent => {
+            const phoneNumber = await this.getDevicePhoneNumber(agent.deviceId);
+            const formattedPhoneNumber = this.formatPhoneNumberForDisplay(phoneNumber);
+            return {
+                label: `${agent.actorName}: ${formattedPhoneNumber}`,
+                value: agent.deviceId
+            };
         }));
 
         console.log("Cyberpunk Agent | Generated options:", options);
