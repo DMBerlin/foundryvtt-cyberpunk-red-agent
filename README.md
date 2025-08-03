@@ -98,6 +98,13 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 2. Clique em "Gerenciar Contatos"
 3. Adicione ou remova contatos conforme necessário
 
+**Adição Automática de Contatos:**
+- **Adição Manual**: Quando um dispositivo adiciona outro manualmente, apenas o dispositivo que fez a adição tem o contato em sua lista
+- **Awareness por Mensagem**: O dispositivo adicionado só fica ciente do dispositivo que o adicionou quando recebe uma mensagem
+- **Adição Recíproca Automática**: Quando um dispositivo envia uma mensagem, ambos são automaticamente adicionados às listas de contatos um do outro
+- **Comunicação Natural**: As listas de contatos crescem organicamente através da comunicação, não apenas da adição manual
+- **Atualizações em Tempo Real**: As listas de contatos são atualizadas imediatamente e sincronizadas entre todos os clientes
+
 **Números de Telefone:**
 - Cada Agent tem um número único derivado de sua chave
 - Os números são exibidos no formato `+1 (415) 212-0002` na tela inicial
