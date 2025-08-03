@@ -2770,6 +2770,21 @@ class CyberpunkAgent {
                 contactDeviceId: senderDeviceId,
                 reason: 'message-received'
             });
+
+            // Also dispatch a local contact update event for immediate UI refresh
+            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                detail: {
+                    type: 'contactUpdate',
+                    deviceId: receiverDeviceId,
+                    contactDeviceId: senderDeviceId,
+                    action: 'auto-add',
+                    reason: 'message-received',
+                    timestamp: Date.now()
+                }
+            }));
+
+            // Update Chat7 interfaces immediately for the receiver
+            this._updateChat7Interfaces();
         }
 
         const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
@@ -4646,11 +4661,11 @@ class CyberpunkAgent {
                 } else if (window.constructor.name === 'AgentApplication') {
                     // Handle unified AgentApplication
                     if (window.currentView === 'conversation' && window.currentContact) {
-                        const componentId = `agent-conversation-${window.actor?.id}-${window.currentContact.id}`;
+                        const componentId = `agent-conversation-${window.device?.id}-${window.currentContact.id}`;
                         componentsToUpdate.push(componentId);
                         console.log("Cyberpunk Agent | Marking agent conversation component as dirty:", componentId);
                     } else if (window.currentView === 'chat7') {
-                        const componentId = `agent-chat7-${window.actor?.id}`;
+                        const componentId = `agent-chat7-${window.device?.id}`;
                         componentsToUpdate.push(componentId);
                         console.log("Cyberpunk Agent | Marking agent Chat7 component as dirty:", componentId);
                     }
@@ -4721,26 +4736,40 @@ class CyberpunkAgent {
     _updateChat7Interfaces() {
         console.log("Cyberpunk Agent | Updating Chat7 interfaces for unread counts");
 
-        // Find and update any open Chat7Application
+        // Find and update any open Chat7Application or AgentApplication with chat7 view
         const openWindows = Object.values(ui.windows);
         let updatedCount = 0;
 
         openWindows.forEach(window => {
-            if (window && window.rendered && window.constructor.name === 'Chat7Application') {
-                console.log("Cyberpunk Agent | Found Chat7Application, re-rendering for unread count updates...");
-                try {
-                    // Force a re-render of the Chat7 interface to update unread counts
-                    // This is more reliable than manually updating DOM elements
-                    window.render(true);
-                    updatedCount++;
-                    console.log("Cyberpunk Agent | Chat7Application re-rendered successfully for unread count updates");
-                } catch (error) {
-                    console.warn("Cyberpunk Agent | Error re-rendering Chat7Application:", error);
+            if (window && window.rendered) {
+                // Handle legacy Chat7Application
+                if (window.constructor.name === 'Chat7Application') {
+                    console.log("Cyberpunk Agent | Found Chat7Application, re-rendering for updates...");
+                    try {
+                        // Force a re-render of the Chat7 interface to update unread counts and contacts
+                        window.render(true);
+                        updatedCount++;
+                        console.log("Cyberpunk Agent | Chat7Application re-rendered successfully for updates");
+                    } catch (error) {
+                        console.warn("Cyberpunk Agent | Error re-rendering Chat7Application:", error);
+                    }
+                }
+                // Handle unified AgentApplication with chat7 view
+                else if (window.constructor.name === 'AgentApplication' && window.currentView === 'chat7') {
+                    console.log("Cyberpunk Agent | Found AgentApplication with chat7 view, re-rendering for updates...");
+                    try {
+                        // Force a re-render of the Agent interface to update unread counts and contacts
+                        window.render(true);
+                        updatedCount++;
+                        console.log("Cyberpunk Agent | AgentApplication chat7 view re-rendered successfully for updates");
+                    } catch (error) {
+                        console.warn("Cyberpunk Agent | Error re-rendering AgentApplication chat7 view:", error);
+                    }
                 }
             }
         });
 
-        console.log(`Cyberpunk Agent | Re-rendered ${updatedCount} Chat7 interfaces for unread count updates`);
+        console.log(`Cyberpunk Agent | Re-rendered ${updatedCount} Chat7 interfaces for updates`);
     }
 
     /**

@@ -479,6 +479,11 @@ class AgentApplication extends FormApplication {
           console.log("AgentApplication | Message update detected, forcing re-render for unread count update");
           this.render(true);
         }
+        // For contact updates (new contacts added), we need to force a complete re-render to show new contacts
+        else if (type === 'contactUpdate') {
+          console.log("AgentApplication | Contact update detected, forcing re-render to show new contacts");
+          this.render(true);
+        }
         // For mute toggle, we need to force a complete re-render to show the mute status
         else if (type === 'contactMuteToggle') {
           console.log("AgentApplication | Contact mute toggle detected, forcing re-render");
