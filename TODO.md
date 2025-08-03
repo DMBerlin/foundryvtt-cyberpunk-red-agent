@@ -141,4 +141,6 @@
 - Integração com outros módulos de chat
 - Temas visuais adicionais
 - Sistema de grupos de contatos 
+- Precisa corrigir a implementação do real-time na lista de contatos, quando um contato recebe uma mensagem de um contato que não está na sua lista. Quando um usuário está com a lista de contatos aberta e uma nova mensagem chega de um contato que o usuário não possui na sua lista, este novo contato deve ser aparecer na lista de contatos imediatamente, sem a necessidade do usuário fechar o Agente e abri-lo novamente.
+- Ao enviar mensagens para o agent de um user desconectado da sessão, fazer com ele receba todo o batch de mensagens que foi enviado para ele, durante seu período offline
 - Transformar o Agent em uma plataforma inicial e que todos os apps sejam módulos que possam ser instalados individualmente; exemplo: O "Chat7" seria um módulo a parte que para poder ser instalado, precisa do Cyberpunk Agent como dependência, da mesma forma que o Cyberpunk Agent precisa do Socketlib para funcionar

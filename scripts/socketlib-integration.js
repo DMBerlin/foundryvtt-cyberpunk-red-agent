@@ -232,12 +232,8 @@ async function handleDeviceMessageUpdate(data) {
     }
   }
 
-  // Show notification to user
-  const message = data.userName === game.user.name
-    ? "Sua mensagem foi enviada!"
-    : `Nova mensagem de ${data.userName}!`;
-
-  ui.notifications.info(message);
+  // Visual notifications are now handled by playNotificationSound function
+  console.log("Cyberpunk Agent | Visual notifications handled by playNotificationSound function");
 
   console.log("Cyberpunk Agent | Device message update processed via SocketLib successfully");
 }
@@ -338,37 +334,8 @@ async function handleMessageUpdate(data) {
     console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for interface update");
   }
 
-  // Show notification to user
-  const sender = game.actors.get(data.senderId);
-  const receiver = game.actors.get(data.receiverId);
-  const senderName = sender ? sender.name : "Desconhecido";
-  const receiverName = receiver ? receiver.name : "Desconhecido";
-
-  const message = `Nova mensagem de ${senderName} para ${receiverName}`;
-  ui.notifications.info(message);
-
-  // Play notification sound if the current user is the receiver
-  if (data.receiverId && window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-    // Check if the current user owns the receiving device
-    const userActors = window.CyberpunkAgent.instance.getUserActors();
-    let isReceiver = false;
-
-    // First check if it's a direct actor message
-    isReceiver = userActors.some(actor => actor.id === data.receiverId);
-
-    // If not, check if it's a device message
-    if (!isReceiver) {
-      const userDevices = window.CyberpunkAgent.instance.getUserAccessibleDevices();
-      isReceiver = userDevices.some(device => device.id === data.receiverId);
-    }
-
-    if (isReceiver) {
-      console.log("Cyberpunk Agent | Playing notification sound for received message");
-      window.CyberpunkAgent.instance.playNotificationSound(data.senderId, data.receiverId);
-    } else {
-      console.log("Cyberpunk Agent | User is not the receiver, skipping notification sound");
-    }
-  }
+  // Notifications are handled by handleSendMessage function
+  console.log("Cyberpunk Agent | Notifications handled by handleSendMessage function");
 
   console.log("Cyberpunk Agent | Message update processed via SocketLib successfully");
 }
@@ -728,12 +695,8 @@ async function handleSendMessage(data) {
       window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
       window.CyberpunkAgent.instance.updateOpenInterfaces();
 
-      // Show notification to user
-      if (isDeviceMessage) {
-        ui.notifications.info("Nova mensagem no Chat7");
-      } else {
-        ui.notifications.info("Nova mensagem no Chat7");
-      }
+      // Visual notifications are now handled by playNotificationSound function
+      console.log("Cyberpunk Agent | Visual notifications handled by playNotificationSound function");
 
       // Play notification sound if the current user is the receiver
       if (data.receiverId) {
@@ -751,10 +714,10 @@ async function handleSendMessage(data) {
         }
 
         if (isReceiver) {
-          console.log("Cyberpunk Agent | Playing notification sound for received message");
-          window.CyberpunkAgent.instance.playNotificationSound(data.senderId, data.receiverId);
+          console.log("Cyberpunk Agent | Handling notifications for received message");
+          window.CyberpunkAgent.instance.handleNewMessageNotifications(data.senderId, data.receiverId);
         } else {
-          console.log("Cyberpunk Agent | User is not the receiver, skipping notification sound");
+          console.log("Cyberpunk Agent | User is not the receiver, skipping notifications");
         }
       }
 

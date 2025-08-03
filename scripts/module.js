@@ -5294,9 +5294,6 @@ class CyberpunkAgent {
         // Strategy 4: Force Chat7 interfaces to refresh unread counts specifically
         this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
 
-        // 🆕 Play notification sound for new messages
-        this.playNotificationSound(data.senderId, data.receiverId);
-
         // Strategy 5: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
@@ -5308,23 +5305,8 @@ class CyberpunkAgent {
             }
         }));
 
-        // Show notification to user - only "Nova mensagem no Chat7"
-        ui.notifications.info("Nova mensagem no Chat7");
-
-        // Play notification sound if the current user is the receiver and sender is not muted
-        if (data.receiverId) {
-            const userActors = this.getUserActors();
-            const isReceiver = userActors.some(actor => actor.id === data.receiverId);
-            if (isReceiver) {
-                // Check if the sender is muted for this receiver
-                const isSenderMuted = this.isContactMuted(data.receiverId, data.senderId);
-                if (!isSenderMuted) {
-                    this.playNotificationSound();
-                } else {
-                    console.log(`Cyberpunk Agent | Notification sound skipped - contact ${data.senderId} is muted for ${data.receiverId}`);
-                }
-            }
-        }
+        // Notifications are handled by handleSendMessage in SocketLib integration
+        console.log("Cyberpunk Agent | Notifications handled by handleSendMessage in SocketLib integration");
 
         console.log("Cyberpunk Agent | Message update processed successfully");
     }
@@ -5438,23 +5420,8 @@ class CyberpunkAgent {
             }
         }));
 
-        // Show notification to user
-        ui.notifications.info("Nova mensagem no Chat7");
-
-        // Play notification sound if the current user owns the receiving device
-        if (data.receiverId) {
-            const userDevices = this.getUserAccessibleDevices();
-            const isReceiver = userDevices.some(device => device.id === data.receiverId);
-            if (isReceiver) {
-                // Check if the sender is muted for this receiver device
-                const isSenderMuted = this.isContactMutedForDevice(data.receiverId, data.senderId);
-                if (!isSenderMuted) {
-                    this.playNotificationSound(data.senderId, data.receiverId);
-                } else {
-                    console.log(`Cyberpunk Agent | Notification sound skipped - contact ${data.senderId} is muted for device ${data.receiverId}`);
-                }
-            }
-        }
+        // Notifications are handled by handleSendMessage in SocketLib integration
+        console.log("Cyberpunk Agent | Notifications handled by handleSendMessage in SocketLib integration");
 
         console.log("Cyberpunk Agent | Device message update processed successfully");
     }
@@ -6138,6 +6105,45 @@ class CyberpunkAgent {
     }
 
     /**
+     * Check if a message should trigger a visual notification
+     * @param {string} receiverId - The receiver device ID
+     * @param {string} senderId - The sender device ID
+     * @returns {boolean} True if notification should show, false otherwise
+     */
+    shouldShowNotification(receiverId, senderId) {
+        try {
+            // Get the user who owns the receiver device
+            const receiverUser = this._getUserForDevice(receiverId);
+            if (!receiverUser) {
+                console.log("Cyberpunk Agent | Could not determine receiver user, showing notification");
+                return true;
+            }
+
+            // Get the active conversation for this user
+            const activeConversation = this.getActiveConversation(receiverUser.id);
+            if (!activeConversation) {
+                console.log("Cyberpunk Agent | No active conversation for user, showing notification");
+                return true;
+            }
+
+            // Check if the message is for the currently active conversation
+            const isActiveConversation = (activeConversation.deviceId === receiverId && activeConversation.contactId === senderId) ||
+                (activeConversation.deviceId === senderId && activeConversation.contactId === receiverId);
+
+            if (isActiveConversation) {
+                console.log("Cyberpunk Agent | Message is for active conversation, skipping visual notification");
+                return false;
+            }
+
+            console.log("Cyberpunk Agent | Message is for different conversation, showing visual notification");
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error checking visual notification condition:", error);
+            return true; // Default to showing notification on error
+        }
+    }
+
+    /**
      * Get user who owns a device
      * @param {string} deviceId - The device ID
      * @returns {Object|null} The user object or null
@@ -6204,7 +6210,16 @@ class CyberpunkAgent {
 
             // If we have sender and receiver IDs, check if the contact is muted
             if (senderId && receiverId) {
-                const isMuted = this.isContactMuted(receiverId, senderId);
+                // Check if this is a device conversation (device IDs contain hyphens)
+                const isDeviceConversation = senderId.includes('-') || receiverId.includes('-');
+
+                let isMuted = false;
+                if (isDeviceConversation) {
+                    isMuted = this.isContactMutedForDevice(receiverId, senderId);
+                } else {
+                    isMuted = this.isContactMuted(receiverId, senderId);
+                }
+
                 if (isMuted) {
                     console.log("Cyberpunk Agent | Contact is muted, skipping notification sound");
                     return;
@@ -6224,6 +6239,54 @@ class CyberpunkAgent {
         } catch (error) {
             console.error("Cyberpunk Agent | Error playing notification sound:", error);
         }
+    }
+
+    /**
+     * Show UI notification for new messages if contact is not muted and not for active conversation
+     */
+    showMessageNotification(senderId = null, receiverId = null) {
+        try {
+            // If we have sender and receiver IDs, check if the contact is muted
+            if (senderId && receiverId) {
+                // Check if this is a device conversation (device IDs contain hyphens)
+                const isDeviceConversation = senderId.includes('-') || receiverId.includes('-');
+
+                let isMuted = false;
+                if (isDeviceConversation) {
+                    isMuted = this.isContactMutedForDevice(receiverId, senderId);
+                } else {
+                    isMuted = this.isContactMuted(receiverId, senderId);
+                }
+
+                if (isMuted) {
+                    console.log("Cyberpunk Agent | Contact is muted, skipping UI notification");
+                    return;
+                }
+
+                // Check if this message is for the currently active conversation
+                const shouldShow = this.shouldShowNotification(receiverId, senderId);
+                if (!shouldShow) {
+                    console.log("Cyberpunk Agent | Message is for active conversation, skipping UI notification");
+                    return;
+                }
+            }
+
+            // Show UI notification
+            ui.notifications.info("Você tem uma nova mensagem no seu Agente.");
+            console.log("Cyberpunk Agent | UI notification displayed");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error showing message notification:", error);
+        }
+    }
+
+    /**
+     * Handle both sound and UI notifications for new messages
+     * This method coordinates both notification types while keeping them as separate implementations
+     */
+    handleNewMessageNotifications(senderId = null, receiverId = null) {
+        // Trigger both notifications simultaneously but as separate method calls
+        this.playNotificationSound(senderId, receiverId);
+        this.showMessageNotification(senderId, receiverId);
     }
 
     /**
