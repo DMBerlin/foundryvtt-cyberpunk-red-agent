@@ -38,7 +38,7 @@ function testAutoFadeAlerts() {
   // Test success message auto-fade (simulate the state)
   console.log("🧪 Testing success message auto-fade...");
   testApp.addContactState = {
-    successMessage: "Test success message - should fade in 5 seconds",
+    successMessage: "Test success message - should fade in 3 seconds",
     errorMessage: null,
     searchResult: null,
     phoneNumber: ""
@@ -54,10 +54,10 @@ function testAutoFadeAlerts() {
         console.log("✅ Success message faded out");
       }, 500);
     }
-  }, 5000);
+  }, 3000);
 
   console.log("✅ Auto-fade tests initiated");
-  console.log("📝 Check the add contact interface to see the messages fade after 5 seconds");
+  console.log("📝 Check the add contact interface to see the messages fade after 3 seconds (success) or 5 seconds (error)");
 
   return true;
 }
@@ -71,8 +71,9 @@ function manualTestInstructions() {
   console.log("2. Navigate to 'Add Contact'");
   console.log("3. Try to search for a non-existent contact (should show error)");
   console.log("4. Try to add a valid contact (should show success)");
-  console.log("5. Both messages should fade away after 5 seconds");
-  console.log("6. Check that the fade animation is smooth");
+  console.log("5. Success message should fade away after 3 seconds and navigate to contacts");
+  console.log("6. Error message should fade away after 5 seconds");
+  console.log("7. Check that the fade animation is smooth");
 }
 
 /**
@@ -96,13 +97,84 @@ function checkCSSTransitions() {
   return true;
 }
 
+/**
+ * Test the corrected fadeout and navigation behavior
+ */
+function testCorrectedFadeoutBehavior() {
+  console.log("=== Testing Corrected Fadeout and Navigation Behavior ===");
+
+  // Check if AgentApplication is available
+  if (typeof AgentApplication === 'undefined') {
+    console.error("❌ AgentApplication not found");
+    return false;
+  }
+
+  // Check if we have a device to test with
+  const devices = window.CyberpunkAgent?.instance?.devices;
+  if (!devices || devices.size === 0) {
+    console.error("❌ No devices available for testing");
+    return false;
+  }
+
+  // Get the first available device
+  const device = devices.values().next().value;
+  console.log("✅ Using device for testing:", device);
+
+  // Create a test application instance
+  const testApp = new AgentApplication(device);
+
+  // Set current view to add-contact to simulate the scenario
+  testApp.currentView = 'add-contact';
+
+  console.log("🧪 Testing corrected success message behavior...");
+
+  // Simulate the success state
+  testApp.addContactState = {
+    successMessage: "Contato adicionado com sucesso!",
+    errorMessage: null,
+    searchResult: null,
+    phoneNumber: ""
+  };
+
+  console.log("📝 Success message should fade after 3 seconds and navigate to chat7");
+  console.log("📝 Current view:", testApp.currentView);
+
+  // Simulate the corrected fade logic
+  setTimeout(() => {
+    console.log("⏰ 3 seconds passed - starting fade animation");
+    const successElement = testApp.element?.find('.cp-success-message');
+    if (successElement) {
+      successElement.addClass('fading');
+      console.log("✅ Added 'fading' class to success message");
+
+      setTimeout(() => {
+        console.log("⏰ 500ms passed - fade animation complete");
+        testApp.addContactState.successMessage = null;
+        testApp.render(true);
+        testApp.navigateTo('chat7');
+        console.log("✅ Success message removed and navigated to chat7");
+        console.log("📝 New view:", testApp.currentView);
+      }, 500);
+    } else {
+      console.log("⚠️ No success element found, navigating immediately");
+      testApp.addContactState.successMessage = null;
+      testApp.render(true);
+      testApp.navigateTo('chat7');
+    }
+  }, 3000);
+
+  return true;
+}
+
 // Export functions for global access
 window.testAutoFadeAlerts = testAutoFadeAlerts;
 window.manualTestInstructions = manualTestInstructions;
 window.checkCSSTransitions = checkCSSTransitions;
+window.testCorrectedFadeoutBehavior = testCorrectedFadeoutBehavior;
 
 console.log("Cyberpunk Agent | Auto-fade alert tests loaded");
 console.log("Available functions:");
 console.log("- testAutoFadeAlerts()");
 console.log("- manualTestInstructions()");
-console.log("- checkCSSTransitions()"); 
+console.log("- checkCSSTransitions()");
+console.log("- testCorrectedFadeoutBehavior()"); 

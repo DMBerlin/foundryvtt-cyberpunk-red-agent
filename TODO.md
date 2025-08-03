@@ -89,7 +89,7 @@
 4. **MÉDIA**: Implementar mensagens privadas ✅ RESOLVIDO
 5. **BAIXA**: Melhorias de UX ✅ RESOLVIDO
 
-## Status Atual - v1.0.16
+## Status Atual - v1.0.17
 
 ### ✅ Funcionalidades Implementadas e Testadas
 - **Sistema de Mensagens**: Fluxo bidirecional GM ↔ Player funcionando
@@ -102,6 +102,20 @@
 - **Unread Chips**: Corrigidos para zerar quando chat é aberto
 - **Real-time Updates**: Corrigidos para atualizar quando novas mensagens chegam
 - **Interface Re-rendering**: Chat7 re-renderiza corretamente quando contadores mudam
+- **Fadeout de Avisos**: Corrigido comportamento do fadeout de avisos de contato adicionado
+
+### 🔧 Correções Recentes (v1.0.16)
+- **Contadores em Tempo Real**: Melhorada atualização imediata de contadores de mensagens não lidas
+- **Marcação Automática**: Melhorada marcação automática de mensagens como lidas ao abrir conversa
+- **Cache de Contadores**: Implementada limpeza forçada do cache para garantir recálculo correto
+- **Suporte Legacy**: Adicionado suporte para janelas Chat7Application legacy
+- **Múltiplas Estratégias**: Implementadas múltiplas estratégias de atualização da UI
+- **Logs de Debug**: Adicionados logs detalhados para melhor debugging
+
+### 🔧 Correções Recentes (v1.0.17)
+- **Fadeout de Avisos**: Corrigido problema onde o aviso de contato adicionado não fazia fadeout corretamente
+- **Navegação Após Adição**: Ajustada lógica para navegar de volta à lista de contatos apenas após o fadeout completo
+- **Timing de Animações**: Reduzido tempo de exibição do aviso de sucesso de 5 para 3 segundos para melhor UX
 
 ### 🔧 Correções Recentes (v1.0.16)
 - **Contadores em Tempo Real**: Melhorada atualização imediata de contadores de mensagens não lidas
@@ -134,6 +148,8 @@
 - `testMessageLoopFix()` - Teste do fix do loop de mensagens
 - `testContactMute()` - Teste do sistema de mute
 - `testScrollBehaviorFix()` - Teste do comportamento de scroll
+- `testAutoFadeAlerts()` - Teste do sistema de fadeout de avisos
+- `testCorrectedFadeoutBehavior()` - Teste específico do comportamento corrigido de fadeout e navegação
 
 ### 🎯 Próximos Passos Sugeridos
 - Melhorias de performance para grandes volumes de mensagens
