@@ -3629,7 +3629,7 @@ class CyberpunkAgent {
 
         // Create options for the select dropdown
         const options = allDevices.map((device, index) => ({
-            label: `${device.ownerName} - ${device.deviceName} (${device.phoneNumber})`,
+            label: `${device.ownerName}: ${device.phoneNumber}`,
             value: device.deviceId
         }));
 
