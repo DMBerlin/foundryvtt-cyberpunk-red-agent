@@ -57,14 +57,7 @@ function testClassAvailability() {
     console.log("✗ Chat7Application class not found");
   }
 
-  // Test ContactManagerApplication
-  if (typeof ContactManagerApplication !== 'undefined') {
-    console.log("✓ ContactManagerApplication class found");
-  } else if (typeof window.ContactManagerApplication !== 'undefined') {
-    console.log("✓ ContactManagerApplication class found in window");
-  } else {
-    console.log("✗ ContactManagerApplication class not found");
-  }
+
 
   // Test CyberpunkAgent
   if (typeof CyberpunkAgent !== 'undefined') {
@@ -86,8 +79,7 @@ function testSettings() {
   console.log("--- Test: Settings ---");
 
   try {
-    const contactNetworks = game.settings.get('cyberpunk-agent', 'contact-networks');
-    console.log("✓ Contact networks setting accessible:", contactNetworks);
+
 
     const agentData = game.settings.get('cyberpunk-agent', 'agent-data');
     console.log("✓ Agent data setting accessible:", agentData);
@@ -155,32 +147,7 @@ function testCreateAgentHome() {
   }
 }
 
-/**
- * Test creating ContactManagerApplication
- */
-function testCreateContactManager() {
-  console.log("--- Test: Creating ContactManagerApplication ---");
 
-  try {
-    const ContactClass = (typeof ContactManagerApplication !== 'undefined' ? ContactManagerApplication : null) ||
-      (typeof window.ContactManagerApplication !== 'undefined' ? window.ContactManagerApplication : null);
-    if (typeof ContactClass === 'undefined' || ContactClass === null) {
-      console.error("✗ ContactManagerApplication class not available");
-      return;
-    }
-
-    console.log("✓ ContactManagerApplication class available");
-    const contactManager = new ContactClass();
-    console.log("✓ ContactManagerApplication instance created");
-
-    // Test rendering
-    contactManager.render(true);
-    console.log("✓ ContactManagerApplication rendered successfully");
-
-  } catch (error) {
-    console.error("✗ Error creating ContactManagerApplication:", error);
-  }
-}
 
 // Make functions globally available
 window.runAllTests = runAllTests;
@@ -189,7 +156,7 @@ window.testClassAvailability = testClassAvailability;
 window.testSettings = testSettings;
 window.testActorAccess = testActorAccess;
 window.testCreateAgentHome = testCreateAgentHome;
-window.testCreateContactManager = testCreateContactManager;
+
 window.testNotificationSound = testNotificationSound;
 
 console.log("Cyberpunk Agent | test.js loaded successfully");
@@ -200,7 +167,7 @@ console.log("- testClassAvailability()");
 console.log("- testSettings()");
 console.log("- testActorAccess()");
 console.log("- testCreateAgentHome()");
-console.log("- testCreateContactManager()");
+
 console.log("- testNotificationSound()");
 console.log("Note: Use checkModuleStatus() for automatic status checking");
 console.log("Note: Use runAllTests() manually when needed"); 

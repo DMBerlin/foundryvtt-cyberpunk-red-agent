@@ -26,15 +26,6 @@
       "MESSAGE_PLACEHOLDER": "Digite sua mensagem...",
       "SEND": "Enviar"
     },
-    "CONTACT_MANAGER": {
-      "TITLE": "Gerenciador de Contatos",
-      "ADD_CONTACT": "Adicionar Contato",
-      "REMOVE_CONTACT": "Remover Contato",
-      "NO_CONTACTS_CONFIGURED": "Nenhum contato configurado",
-      "SELECT_CONTACT": "Selecione o contato para adicionar:",
-      "ADD": "Adicionar",
-      "CANCEL": "Cancelar"
-    },
     "DIALOGS": {
       "SELECT_ACTOR": "Selecionar Actor",
       "SELECT_ACTOR_DESC": "Escolha qual Actor usar com o Agent:",
@@ -43,25 +34,40 @@
     },
     "NOTIFICATIONS": {
       "NO_ACTOR_ACCESS": "Você não tem acesso a nenhum Actor para usar o Agent.",
-      "CONTACT_ADDED": "Contato adicionado com sucesso!",
-      "CONTACT_REMOVED": "Contato removido com sucesso!",
-      "ERROR_ADDING_CONTACT": "Erro ao adicionar contato.",
-      "ERROR_REMOVING_CONTACT": "Erro ao remover contato.",
-      "NO_CONTACTS_AVAILABLE": "Não há contatos disponíveis para adicionar.",
       "SUCCESS": "Operação concluída com sucesso",
       "ERROR": "Ocorreu um erro",
-      "WARNING": "Aviso",
-      "GM_ONLY": "Apenas o Game Master pode acessar o Gerenciador de Contatos."
+      "WARNING": "Aviso"
     },
     "SETTINGS": {
       "TITLE": "Configurações do Cyberpunk Agent",
-      "CONTACT_NETWORKS": "Redes de Contatos",
-      "CONTACT_NETWORKS_HINT": "Configure as redes de contatos para cada Actor",
-      "MANAGE_CONTACTS": "Gerenciar Contatos",
-      "CONTACT_MANAGER_BUTTON": "Gerenciamento de Contatos",
-      "CONTACT_MANAGER_HINT": "Abra o gerenciador de contatos para configurar as redes de cada personagem",
       "NOTIFICATION_SOUND": "Som de Notificação",
-      "NOTIFICATION_SOUND_HINT": "Toca um som quando você recebe uma nova mensagem"
+      "NOTIFICATION_SOUND_HINT": "Toca um som quando você recebe uma nova mensagem",
+      "GM_DATA_MANAGEMENT": {
+        "TITLE": "Gerenciamento de Dados GM",
+        "DESCRIPTION": "Gerencie todos os dados do Cyberpunk Agent em todos os dispositivos no registro",
+        "CLEAR_ALL_MESSAGES": {
+          "TITLE": "Limpar Todas as Mensagens",
+          "DESCRIPTION": "Isso irá deletar TODOS os históricos de mensagens de chat para TODOS os dispositivos no registro. Esta ação não pode ser desfeita.",
+          "BUTTON": "Limpar Todas as Mensagens",
+          "SUCCESS": "Todas as mensagens foram limpas com sucesso!",
+          "ERROR": "Erro ao limpar todas as mensagens: {error}"
+        },
+        "CLEAR_ALL_CONTACT_LISTS": {
+          "TITLE": "Limpar Todas as Listas de Contatos",
+          "DESCRIPTION": "Isso irá limpar a lista de contatos de todos os dispositivos agent no registro. Isso irá remover todos os contatos mas manter os dispositivos em si. Esta ação não pode ser desfeita.",
+          "BUTTON": "Limpar Todas as Listas de Contatos",
+          "SUCCESS": "Todas as listas de contatos foram limpas com sucesso!",
+          "ERROR": "Erro ao limpar todas as listas de contatos: {error}"
+        },
+        "SYNCHRONIZE_ALL_DEVICES": {
+          "TITLE": "Sincronizar Todos os Dispositivos",
+          "DESCRIPTION": "Isso irá sincronizar todos os dispositivos com o registro para garantir que todos os dispositivos tenham números de telefone anexados a eles. Isso irá atualizar quaisquer dispositivos que estejam faltando números de telefone.",
+          "BUTTON": "Sincronizar Todos os Dispositivos",
+          "SUCCESS": "Todos os dispositivos foram sincronizados com sucesso!",
+          "ERROR": "Erro ao sincronizar todos os dispositivos: {error}"
+        },
+        "WARNING": "Aviso: Estas ações são irreversíveis e afetarão todos os usuários no jogo."
+      }
     }
   }
 }

@@ -26,15 +26,6 @@
       "MESSAGE_PLACEHOLDER": "Type your message...",
       "SEND": "Send"
     },
-    "CONTACT_MANAGER": {
-      "TITLE": "Contact Manager",
-      "ADD_CONTACT": "Add Contact",
-      "REMOVE_CONTACT": "Remove Contact",
-      "NO_CONTACTS_CONFIGURED": "No contacts configured",
-      "SELECT_CONTACT": "Select contact to add:",
-      "ADD": "Add",
-      "CANCEL": "Cancel"
-    },
     "DIALOGS": {
       "SELECT_ACTOR": "Select Actor",
       "SELECT_ACTOR_DESC": "Choose which Actor to use with the Agent:",
@@ -43,25 +34,40 @@
     },
     "NOTIFICATIONS": {
       "NO_ACTOR_ACCESS": "You don't have access to any Actor to use the Agent.",
-      "CONTACT_ADDED": "Contact added successfully!",
-      "CONTACT_REMOVED": "Contact removed successfully!",
-      "ERROR_ADDING_CONTACT": "Error adding contact.",
-      "ERROR_REMOVING_CONTACT": "Error removing contact.",
-      "NO_CONTACTS_AVAILABLE": "No contacts available to add.",
       "SUCCESS": "Operation completed successfully",
       "ERROR": "An error occurred",
-      "WARNING": "Warning",
-      "GM_ONLY": "Only the Game Master can access the Contact Manager."
+      "WARNING": "Warning"
     },
     "SETTINGS": {
       "TITLE": "Cyberpunk Agent Settings",
-      "CONTACT_NETWORKS": "Contact Networks",
-      "CONTACT_NETWORKS_HINT": "Configure contact networks for each Actor",
-      "MANAGE_CONTACTS": "Manage Contacts",
-      "CONTACT_MANAGER_BUTTON": "Contact Management",
-      "CONTACT_MANAGER_HINT": "Open the contact manager to configure contact networks for each character",
       "NOTIFICATION_SOUND": "Notification Sound",
-      "NOTIFICATION_SOUND_HINT": "Play a sound when you receive a new message"
+      "NOTIFICATION_SOUND_HINT": "Play a sound when you receive a new message",
+      "GM_DATA_MANAGEMENT": {
+        "TITLE": "GM Data Management",
+        "DESCRIPTION": "Manage all Cyberpunk Agent data across all devices in the registry",
+        "CLEAR_ALL_MESSAGES": {
+          "TITLE": "Clear All Messages",
+          "DESCRIPTION": "This will delete ALL chat message histories for ALL devices in the registry. This action cannot be undone.",
+          "BUTTON": "Clear All Messages",
+          "SUCCESS": "All messages cleared successfully!",
+          "ERROR": "Error clearing all messages: {error}"
+        },
+        "CLEAR_ALL_CONTACT_LISTS": {
+          "TITLE": "Clear All Contact Lists",
+          "DESCRIPTION": "This will clear the contact list from all agent devices in the registry. This will remove all contacts but keep the devices themselves. This action cannot be undone.",
+          "BUTTON": "Clear All Contact Lists",
+          "SUCCESS": "All contact lists cleared successfully!",
+          "ERROR": "Error clearing all contact lists: {error}"
+        },
+        "SYNCHRONIZE_ALL_DEVICES": {
+          "TITLE": "Synchronize All Devices",
+          "DESCRIPTION": "This will synchronize all devices with the registry to ensure all devices have phone numbers attached to them. This will update any devices that are missing phone numbers.",
+          "BUTTON": "Synchronize All Devices",
+          "SUCCESS": "All devices synchronized successfully!",
+          "ERROR": "Error synchronizing all devices: {error}"
+        },
+        "WARNING": "Warning: These actions are irreversible and will affect all users in the game."
+      }
     }
   }
 }

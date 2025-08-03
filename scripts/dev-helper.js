@@ -64,7 +64,7 @@ class CyberpunkAgentDevHelper {
 
       if (CyberpunkAgent.instance) {
         console.log("✓ CyberpunkAgent instance active");
-        console.log("  - Contact networks:", CyberpunkAgent.instance.contactNetworks.size);
+
         console.log("  - Agent data entries:", CyberpunkAgent.instance.agentData.size);
       } else {
         console.log("✗ CyberpunkAgent instance not found");
@@ -122,11 +122,7 @@ class CyberpunkAgentDevHelper {
       console.log("✗ Chat7Application not available");
     }
 
-    if (typeof ContactManagerApplication !== 'undefined') {
-      console.log("✓ ContactManagerApplication available");
-    } else {
-      console.log("✗ ContactManagerApplication not available");
-    }
+
 
     // Test CSS
     const styleSheets = Array.from(document.styleSheets);

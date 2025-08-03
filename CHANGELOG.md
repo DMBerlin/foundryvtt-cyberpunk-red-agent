@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Device Management Settings**: Comprehensive device management system in Game Settings for GMs:
+  - **GM Data Management Menu**: New settings menu accessible only to GMs with device registry management tools
+  - **Clear All Messages**: Delete all chat message histories for all devices in the registry
+  - **Clear All Contact Lists**: Clear contact lists from all agent devices while keeping devices intact
+  - **Synchronize All Devices**: Ensure all devices in the registry have phone numbers attached
+  - **Confirmation Dialogs**: All destructive actions require confirmation with clear warnings
+  - **Cross-Client Synchronization**: All operations synchronized across all connected clients via SocketLib
+  - **Real-time Updates**: Changes immediately reflected across all client interfaces
+  - **Permission Enforcement**: Only GMs can access and use these management tools
+- **Enhanced Settings Registration**: Added new internal settings for comprehensive data management:
+  - **Contact Networks Setting**: Internal storage for contact network data
+  - **Improved Device Data Management**: Enhanced device data storage and management
+  - **Phone Number Registry**: Comprehensive phone number mapping system
+- **SocketLib Integration for Device Management**: New broadcast types and handlers:
+  - **allContactListsCleared**: Broadcast when contact lists are cleared
+  - **allDevicesSynchronized**: Broadcast when devices are synchronized
+  - **Cross-client Notifications**: Real-time notifications for all management operations
+  - **Fallback Handling**: Graceful degradation when SocketLib is unavailable
 - **Context Menu Ownership Restriction with GM Access**: Implemented security feature to restrict context menu access based on message ownership and user role
   - Regular players can only access context menu on messages they sent (own messages)
   - Game Masters can access context menu on all messages for administrative control
@@ -49,6 +67,15 @@ All notable changes to this project will be documented in this file.
   - Console-based testing functions for all new features
 
 ### Technical Details
+- **Device Management System**: Comprehensive GM-only settings interface for device registry management:
+  - **GMDataManagementMenu Class**: Custom FormApplication for device management interface
+  - **Settings Registration**: New internal settings for contact networks and enhanced device data
+  - **Permission Validation**: All operations verify GM permissions before execution
+  - **Data Persistence**: Changes saved to FoundryVTT settings and synchronized across clients
+- **SocketLib Broadcast System**: New broadcast types for device management operations:
+  - **handleAllContactListsCleared()**: Handles contact list clearing notifications
+  - **handleAllDevicesSynchronized()**: Handles device synchronization notifications
+  - **Cross-client Updates**: Real-time synchronization of all management operations
 - **Message Ownership Security**: Context menu access restricted to message owners based on `senderId` field, with GM override for administrative control
 - **Device-Specific Storage**: Messages are now stored and managed per device
 - **Context Menu Integration**: Added right-click context menu functionality to message balloons (own messages for players, all messages for GMs)
@@ -59,12 +86,25 @@ All notable changes to this project will be documented in this file.
 - **Ownership Detection**: Messages marked as "own" or "other" based on sender device ID
 
 ### Files Modified
+- `scripts/module.js`: Added device management methods, GMDataManagementMenu class, and enhanced settings registration
+- `templates/gm-data-management.html`: Updated with new device management buttons and improved descriptions
+- `scripts/socketlib-integration.js`: Added new broadcast handlers for device management operations
+- `lang/en.json`: Added device management settings labels and descriptions
+- `lang/pt-BR.json`: Added Portuguese translations for device management settings
+- `docs/DEVICE-MANAGEMENT-SETTINGS.md`: New comprehensive documentation for device management features
 - `scripts/module.js`: Added device message deletion methods and handlers
 - `scripts/agent-home.js`: Added message context menu functionality and handlers with ownership restriction
 - `scripts/socketlib-integration.js`: Added device message deletion SocketLib handlers
 - `templates/chat-conversation.html`: Added data attributes for message context menu
 - `styles/module.css`: Added styling for message context menu and hover effects (own messages only)
 - `scripts/test-device-message-deletion.js`: New comprehensive test script
+
+### Fixed
+- **SocketLib Broadcast Issue**: Fixed "Clear All Messages" not broadcasting to other clients due to incorrect socket access pattern
+- **TypeError in clearAllMessages**: Resolved `TypeError: Cannot read properties of undefined (reading 'executeAsGM')` by using correct `window.socket` access instead of `this.socketLibIntegration.socket`
+- **Cross-client Synchronization**: All GM data management operations now properly broadcast to all connected clients
+- **Broadcast Method Fix**: Changed from `executeAsGM('broadcastUpdate')` to `executeForEveryone()` for proper cross-client broadcasting
+- **Handler Registration**: Added direct handler registration for `allMessagesCleared`, `allContactListsCleared`, and `allDevicesSynchronized` events
 - `__tests__/test-context-menu-ownership.js`: New test script for context menu ownership restriction
 - `docs/CONTEXT-MENU-OWNERSHIP.md`: New documentation for context menu ownership feature
 - `CHANGELOG.md`: Added unreleased section with new features

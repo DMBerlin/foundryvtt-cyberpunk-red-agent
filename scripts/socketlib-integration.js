@@ -72,12 +72,18 @@ function initializeSocketLib() {
     socket.register("broadcastUpdate", handleBroadcastUpdate);
     socket.register("requestGMPhoneNumberSave", handleRequestGMPhoneNumberSave);
     socket.register("requestGMDeviceDataSave", handleRequestGMDeviceDataSave);
-    socket.register("requestGMContactNetworkSave", handleRequestGMContactNetworkSave);
+
     socket.register("gmPhoneNumberSaveResponse", handleGMPhoneNumberSaveResponse);
     socket.register("gmDeviceDataSaveResponse", handleGMDeviceDataSaveResponse);
-    socket.register("gmContactNetworkSaveResponse", handleGMContactNetworkSaveResponse);
+
     socket.register("requestDeviceMessageSync", handleDeviceMessageSyncRequest);
     socket.register("deviceMessageSyncResponse", handleDeviceMessageSyncResponse);
+
+    // Register GM data management handlers
+    socket.register("allMessagesCleared", handleAllMessagesCleared);
+    socket.register("allContactListsCleared", handleAllContactListsCleared);
+    socket.register("allDevicesSynchronized", handleAllDevicesSynchronized);
+
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
@@ -503,44 +509,75 @@ async function handleAllMessagesCleared(data) {
 }
 
 /**
- * Handle all contacts cleared notification
+ * Handle all contact lists cleared broadcast
  */
-async function handleAllContactsCleared(data) {
-  console.log("Cyberpunk Agent | Received all contacts cleared notification via SocketLib:", data);
+async function handleAllContactListsCleared(data) {
+  console.log("Cyberpunk Agent | Received all contact lists cleared broadcast via SocketLib:", data);
 
   // Prevent processing our own updates
   if (data.userId === game.user.id) {
-    console.log("Cyberpunk Agent | Ignoring own all contacts cleared notification");
+    console.log("Cyberpunk Agent | Ignoring own all contact lists cleared notification");
     return;
   }
 
   try {
+    // Clear contact lists from all devices but keep the devices themselves
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      // Clear local contact networks
-      window.CyberpunkAgent.instance.contactNetworks.clear();
+      let clearedCount = 0;
 
-      // Clear local messages (since contacts are removed)
-      window.CyberpunkAgent.instance.messages.clear();
-      window.CyberpunkAgent.instance.lastReadTimestamps.clear();
-
-      // Clear localStorage for current user
-      const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
-      const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
-      localStorage.removeItem(messagesStorageKey);
-      localStorage.removeItem(timestampsStorageKey);
-
-      console.log("Cyberpunk Agent | Cleared all contacts and messages locally");
+      for (const [deviceId, device] of window.CyberpunkAgent.instance.devices) {
+        if (device.contacts && device.contacts.length > 0) {
+          device.contacts = [];
+          clearedCount++;
+        }
+      }
 
       // Update all open interfaces
       window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
-      window.CyberpunkAgent.instance._updateContactManagerImmediately();
       window.CyberpunkAgent.instance.updateOpenInterfaces();
 
+      console.log(`Cyberpunk Agent | Contact lists cleared from ${clearedCount} devices`);
+
       // Show notification
-      ui.notifications.info("All contact connections and messages have been cleared by the GM");
+      ui.notifications.info("All contact lists have been cleared by the GM");
     }
   } catch (error) {
-    console.error("Cyberpunk Agent | Error handling all contacts cleared:", error);
+    console.error("Cyberpunk Agent | Error handling all contact lists cleared broadcast:", error);
+  }
+}
+
+/**
+ * Handle all devices synchronized broadcast
+ */
+async function handleAllDevicesSynchronized(data) {
+  console.log("Cyberpunk Agent | Received all devices synchronized broadcast via SocketLib:", data);
+
+  // Prevent processing our own updates
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own all devices synchronized notification");
+    return;
+  }
+
+  try {
+    // Reload device and phone number data to get the latest synchronized state
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Reload device data
+      window.CyberpunkAgent.instance.loadDeviceData();
+
+      // Reload phone number data
+      window.CyberpunkAgent.instance.loadPhoneNumberData();
+
+      // Update all open interfaces
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      console.log(`Cyberpunk Agent | Devices synchronized: ${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated`);
+
+      // Show notification
+      ui.notifications.info(`All devices have been synchronized by the GM (${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated)`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling all devices synchronized broadcast:", error);
   }
 }
 
@@ -838,8 +875,10 @@ async function handleBroadcastUpdate(data) {
     await handleMessageUpdate(data);
   } else if (data.type === 'allMessagesCleared') {
     await handleAllMessagesCleared(data);
-  } else if (data.type === 'allContactsCleared') {
-    await handleAllContactsCleared(data);
+  } else if (data.type === 'allContactListsCleared') {
+    await handleAllContactListsCleared(data);
+  } else if (data.type === 'allDevicesSynchronized') {
+    await handleAllDevicesSynchronized(data);
   }
 }
 
@@ -964,45 +1003,7 @@ async function handleRequestGMDeviceDataSave(data) {
 /**
  * Handle GM contact network save request from players
  */
-async function handleRequestGMContactNetworkSave(data) {
-  console.log("Cyberpunk Agent | GM contact network save request received:", data);
 
-  try {
-    // Only GMs can process this request
-    if (!game.user.isGM) {
-      console.warn("Cyberpunk Agent | Non-GM user received GM contact network save request, ignoring");
-      return;
-    }
-
-    const { contactNetworks, requestUserId, requestUserName } = data;
-
-    // Save the contact networks data
-    game.settings.set('cyberpunk-agent', 'contact-networks', contactNetworks);
-
-    console.log(`Cyberpunk Agent | GM saved contact networks for user ${requestUserName} (${requestUserId})`);
-
-    // Send success response back to the requesting user
-    if (socket && typeof socket.executeForUser === 'function') {
-      await socket.executeForUser(requestUserId, 'gmContactNetworkSaveResponse', {
-        success: true,
-        timestamp: Date.now(),
-        message: 'Contact networks saved successfully by GM'
-      });
-    }
-  } catch (error) {
-    console.error("Cyberpunk Agent | Error handling GM contact network save request:", error);
-
-    // Send error response back to the requesting user
-    if (socket && typeof socket.executeForUser === 'function') {
-      await socket.executeForUser(data.requestUserId, 'gmContactNetworkSaveResponse', {
-        success: false,
-        timestamp: Date.now(),
-        error: error.message,
-        message: 'Failed to save contact networks'
-      });
-    }
-  }
-}
 
 /**
  * Handle GM phone number save response (for players)
@@ -1037,17 +1038,7 @@ async function handleGMDeviceDataSaveResponse(data) {
 /**
  * Handle GM contact network save response (for players)
  */
-async function handleGMContactNetworkSaveResponse(data) {
-  console.log("Cyberpunk Agent | GM contact network save response received:", data);
 
-  if (data.success) {
-    console.log("Cyberpunk Agent | Contact networks saved successfully by GM");
-    ui.notifications.info("Contact networks saved successfully by GM");
-  } else {
-    console.error("Cyberpunk Agent | GM failed to save contact networks:", data.error);
-    ui.notifications.error(`Failed to save contact networks: ${data.error}`);
-  }
-}
 
 /**
  * Handle device message sync request from other clients
@@ -1611,27 +1602,7 @@ class SocketLibIntegration {
   /**
    * Request GM to save contact networks
    */
-  async requestGMContactNetworkSave(contactNetworks) {
-    if (!this.isAvailable || !socket) return false;
 
-    try {
-      const requestData = {
-        contactNetworks: contactNetworks,
-        requestUserId: game.user.id,
-        requestUserName: game.user.name,
-        timestamp: Date.now()
-      };
-
-      // Send request to GM
-      await socket.executeAsGM('requestGMContactNetworkSave', requestData);
-
-      console.log("Cyberpunk Agent | Contact network save request sent to GM via SocketLib");
-      return true;
-    } catch (error) {
-      console.error("Cyberpunk Agent | Error sending contact network save request to GM:", error);
-      return false;
-    }
-  }
 
   /**
    * Broadcast to all clients

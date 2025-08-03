@@ -20,10 +20,7 @@ function checkClassesLoaded() {
       global: typeof Chat7Application !== 'undefined',
       window: typeof window.Chat7Application !== 'undefined'
     },
-    'ContactManagerApplication': {
-      global: typeof ContactManagerApplication !== 'undefined',
-      window: typeof window.ContactManagerApplication !== 'undefined'
-    },
+
     'CyberpunkAgent': {
       global: typeof CyberpunkAgent !== 'undefined',
       window: typeof window.CyberpunkAgent !== 'undefined'
