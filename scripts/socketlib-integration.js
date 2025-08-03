@@ -59,6 +59,7 @@ function initializeSocketLib() {
     // These will be registered on all clients when the module loads
     socket.register("contactUpdate", handleContactUpdate);
     socket.register("messageUpdate", handleMessageUpdate);
+    socket.register("deviceMessageUpdate", handleDeviceMessageUpdate);
     socket.register("messageDeletion", handleMessageDeletion);
     socket.register("deviceMessageDeletion", handleDeviceMessageDeletion);
     socket.register("conversationClear", handleConversationClear);
@@ -187,6 +188,58 @@ async function handleContactUpdate(data) {
   ui.notifications.info(message);
 
   console.log("Cyberpunk Agent | Contact update processed via SocketLib successfully");
+}
+
+/**
+ * Handle device message update from other clients
+ */
+async function handleDeviceMessageUpdate(data) {
+  console.log("Cyberpunk Agent | Received device message update via SocketLib:", data);
+
+  // Prevent processing our own updates
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own device message update notification");
+    return;
+  }
+
+  // Check if this is a recent update to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore updates older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old device message update notification (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing device message update from:", data.userName);
+
+  // Call the main module's device message update handler
+  if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+    console.log("Cyberpunk Agent | Calling main module device message update handler...");
+    await window.CyberpunkAgent.instance.handleDeviceMessageUpdate(data);
+  } else {
+    console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for device message update");
+
+    // Fallback: reload device data from settings
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      console.log("Cyberpunk Agent | Reloading agent data...");
+      window.CyberpunkAgent.instance.loadDeviceData();
+    }
+
+    // Fallback: update all open interfaces
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      console.log("Cyberpunk Agent | Updating open interfaces...");
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+    }
+  }
+
+  // Show notification to user
+  const message = data.userName === game.user.name
+    ? "Sua mensagem foi enviada!"
+    : `Nova mensagem de ${data.userName}!`;
+
+  ui.notifications.info(message);
+
+  console.log("Cyberpunk Agent | Device message update processed via SocketLib successfully");
 }
 
 /**
@@ -873,6 +926,8 @@ async function handleBroadcastUpdate(data) {
     await handleContactUpdate(data);
   } else if (data.type === 'messageUpdate') {
     await handleMessageUpdate(data);
+  } else if (data.type === 'deviceMessageUpdate') {
+    await handleDeviceMessageUpdate(data);
   } else if (data.type === 'allMessagesCleared') {
     await handleAllMessagesCleared(data);
   } else if (data.type === 'allContactListsCleared') {
@@ -1207,6 +1262,50 @@ class SocketLibIntegration {
       return true;
     } catch (error) {
       console.error("Cyberpunk Agent | Error sending contact update via SocketLib:", error);
+      console.error("Error details:", {
+        error: error.message,
+        stack: error.stack,
+        socketlibAvailable: !!socketlib,
+        socketAvailable: !!socket
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Send device message update to all clients
+   */
+  async sendDeviceMessageUpdate(data) {
+    if (!this.isAvailable || !socket) {
+      console.warn("Cyberpunk Agent | SocketLib not available, using fallback");
+      return false;
+    }
+
+    try {
+      const updateData = {
+        timestamp: Date.now(),
+        userId: game.user.id,
+        userName: game.user.name,
+        sessionId: game.data.id,
+        ...data
+      };
+
+      console.log("Cyberpunk Agent | Attempting to send device message update via SocketLib:", updateData);
+
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib not available, cannot send update");
+        return false;
+      }
+
+      // Send to all clients using executeForEveryone
+      await socket.executeForEveryone('deviceMessageUpdate', updateData);
+
+      console.log("Cyberpunk Agent | Device message update sent via SocketLib to all clients successfully");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending device message update via SocketLib:", error);
       console.error("Error details:", {
         error: error.message,
         stack: error.stack,

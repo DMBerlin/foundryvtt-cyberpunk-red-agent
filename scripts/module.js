@@ -711,84 +711,96 @@ class CyberpunkAgent {
      * Add control button to the scene controls based on equipped agents
      */
     async addControlButton(controls) {
-        // Safety check: ensure controls is an array
-        if (!Array.isArray(controls)) {
-            console.warn("Cyberpunk Agent | addControlButton: controls is not an array:", controls);
-            return;
-        }
+        try {
+            console.log("Cyberpunk Agent | addControlButton called with controls:", controls);
 
-        // Find the token controls
-        const tokenControl = controls.find(control => control.name === "token");
-
-        if (tokenControl) {
-            // Safety check: ensure tools array exists
-            if (!Array.isArray(tokenControl.tools)) {
-                tokenControl.tools = [];
+            // Safety check: ensure controls is an array
+            if (!Array.isArray(controls)) {
+                console.warn("Cyberpunk Agent | addControlButton: controls is not an array:", controls);
+                return;
             }
 
-            // Remove any existing agent tools first
-            tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
+            // Ensure device data is loaded
+            if (!this.devices || this.devices.size === 0) {
+                console.log("Cyberpunk Agent | No devices loaded in addControlButton, loading device data...");
+                this.loadDeviceData();
+            }
 
-            // Different behavior for GM vs Players
-            if (game.user.isGM) {
-                // 🆕 GM: Access to ALL registered devices
-                const allDevices = this.getAllRegisteredDevices();
+            // Find the token controls
+            const tokenControl = controls.find(control => control.name === "token");
 
-                if (allDevices.length > 0) {
-                    if (allDevices.length === 1) {
-                        // Single device - open directly
-                        const device = allDevices[0];
-                        tokenControl.tools.push({
-                            name: "agent",
-                            title: `Agent: ${device.ownerName}`,
-                            icon: "fas fa-mobile-alt",
-                            onClick: () => {
-                                this.openSpecificAgent(device.deviceId);
-                            }
-                        });
-                    } else {
-                        // Multiple devices - show selection menu
-                        tokenControl.tools.push({
-                            name: "agent",
-                            title: `Agent (${allDevices.length} devices)`,
-                            icon: "fas fa-mobile-alt",
-                            onClick: () => {
-                                this.showAllDevicesMenu(allDevices);
-                            }
-                        });
+            if (tokenControl) {
+                // Safety check: ensure tools array exists
+                if (!Array.isArray(tokenControl.tools)) {
+                    tokenControl.tools = [];
+                }
+
+                // Remove any existing agent tools first
+                tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
+
+                // Different behavior for GM vs Players
+                if (game.user.isGM) {
+                    // 🆕 GM: Access to ALL registered devices
+                    const allDevices = this.getAllRegisteredDevices();
+
+                    if (allDevices.length > 0) {
+                        if (allDevices.length === 1) {
+                            // Single device - open directly
+                            const device = allDevices[0];
+                            tokenControl.tools.push({
+                                name: "agent",
+                                title: `Agent: ${device.ownerName}`,
+                                icon: "fas fa-mobile-alt",
+                                onClick: () => {
+                                    this.openSpecificAgent(device.deviceId);
+                                }
+                            });
+                        } else {
+                            // Multiple devices - show selection menu
+                            tokenControl.tools.push({
+                                name: "agent",
+                                title: `Agent (${allDevices.length} devices)`,
+                                icon: "fas fa-mobile-alt",
+                                onClick: () => {
+                                    this.showAllDevicesMenu(allDevices);
+                                }
+                            });
+                        }
+                        console.log(`Cyberpunk Agent | Added GM agent button for ${allDevices.length} registered device(s)`);
                     }
-                    console.log(`Cyberpunk Agent | Added GM agent button for ${allDevices.length} registered device(s)`);
+                } else {
+                    // Players: Access only to their equipped agents (existing behavior)
+                    const equippedAgents = await this.getEquippedAgentsForUser();
+
+                    if (equippedAgents.length > 0) {
+                        if (equippedAgents.length === 1) {
+                            const agent = equippedAgents[0];
+                            tokenControl.tools.push({
+                                name: "agent",
+                                title: `Agent: ${agent.actorName}`,
+                                icon: "fas fa-mobile-alt",
+                                onClick: () => {
+                                    this.openSpecificAgent(agent.deviceId);
+                                }
+                            });
+                        } else {
+                            tokenControl.tools.push({
+                                name: "agent",
+                                title: `Agent (${equippedAgents.length} equipped)`,
+                                icon: "fas fa-mobile-alt",
+                                onClick: () => {
+                                    this.showEquippedAgentMenu(equippedAgents);
+                                }
+                            });
+                        }
+                        console.log(`Cyberpunk Agent | Added player agent button for ${equippedAgents.length} equipped agent(s)`);
+                    }
                 }
             } else {
-                // Players: Access only to their equipped agents (existing behavior)
-                const equippedAgents = await this.getEquippedAgentsForUser();
-
-                if (equippedAgents.length > 0) {
-                    if (equippedAgents.length === 1) {
-                        const agent = equippedAgents[0];
-                        tokenControl.tools.push({
-                            name: "agent",
-                            title: `Agent: ${agent.actorName}`,
-                            icon: "fas fa-mobile-alt",
-                            onClick: () => {
-                                this.openSpecificAgent(agent.deviceId);
-                            }
-                        });
-                    } else {
-                        tokenControl.tools.push({
-                            name: "agent",
-                            title: `Agent (${equippedAgents.length} equipped)`,
-                            icon: "fas fa-mobile-alt",
-                            onClick: () => {
-                                this.showEquippedAgentMenu(equippedAgents);
-                            }
-                        });
-                    }
-                    console.log(`Cyberpunk Agent | Added player agent button for ${equippedAgents.length} equipped agent(s)`);
-                }
+                console.warn("Cyberpunk Agent | Token control not found in controls array");
             }
-        } else {
-            console.warn("Cyberpunk Agent | Token control not found in controls array");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error in addControlButton:", error);
         }
     }
 
@@ -1120,6 +1132,12 @@ class CyberpunkAgent {
         const equippedAgents = [];
 
         try {
+            // Ensure device data is loaded
+            if (!this.devices || this.devices.size === 0) {
+                console.log("Cyberpunk Agent | No devices loaded in getEquippedAgentsForUser, loading device data...");
+                this.loadDeviceData();
+            }
+
             // Get user's actors
             const userActors = this.getUserActors();
 
@@ -2173,8 +2191,8 @@ class CyberpunkAgent {
             // Add contact to the device
             const added = this.addContactToDevice(deviceId, contactDeviceId);
             if (added) {
-                // Add reciprocal contact (add the current device to the contact's list)
-                this.addContactToDevice(contactDeviceId, deviceId);
+                // Note: Reciprocal contact addition only happens when messages are sent
+                // This ensures the other device only becomes aware when communication occurs
 
                 // Notify real-time updates
                 this.notifyContactUpdate({
@@ -2798,6 +2816,9 @@ class CyberpunkAgent {
                 const success = await this.socketLibIntegration.sendMessage(senderDeviceId, receiverDeviceId, text.trim(), messageId);
                 if (success) {
                     console.log("Cyberpunk Agent | Device message sent successfully via SocketLib");
+
+                    // Notify real-time updates for the device message
+                    await this.notifyDeviceMessageUpdate(senderDeviceId, receiverDeviceId, message);
                 } else {
                     console.warn("Cyberpunk Agent | SocketLib device message sending failed, but message was saved locally");
                 }
@@ -3438,6 +3459,70 @@ class CyberpunkAgent {
     }
 
     /**
+     * Notify about device message updates
+     */
+    async notifyDeviceMessageUpdate(senderDeviceId, receiverDeviceId, message) {
+        // Only send cross-client notifications if there are multiple users
+        if (!this._needsCrossClientCommunication()) {
+            console.log("Cyberpunk Agent | Single user session, skipping device message notification");
+            return;
+        }
+
+        // Prevent duplicate notifications for the same message
+        const messageKey = `${senderDeviceId}-${receiverDeviceId}-${message.id}`;
+        const now = Date.now();
+        if (this._lastDeviceMessageNotifications && this._lastDeviceMessageNotifications[messageKey] &&
+            (now - this._lastDeviceMessageNotifications[messageKey]) < 2000) {
+            console.log("Cyberpunk Agent | Skipping duplicate device message notification");
+            return;
+        }
+
+        if (!this._lastDeviceMessageNotifications) {
+            this._lastDeviceMessageNotifications = {};
+        }
+        this._lastDeviceMessageNotifications[messageKey] = now;
+
+        // Check if SocketLib is available
+        if (!this._isSocketLibAvailable()) {
+            this._handleSocketLibUnavailable();
+            return;
+        }
+
+        console.log("Cyberpunk Agent | Sending device message notification via SocketLib");
+
+        const notificationData = {
+            type: 'deviceMessageUpdate',
+            data: {
+                timestamp: Date.now(),
+                userId: game.user.id,
+                userName: game.user.name,
+                sessionId: game.data.id,
+                senderId: senderDeviceId,
+                receiverId: receiverDeviceId,
+                message: message
+            }
+        };
+
+        try {
+            if (this.socketLibIntegration && this.socketLibIntegration.sendDeviceMessageUpdate) {
+                const success = await this.socketLibIntegration.sendDeviceMessageUpdate(notificationData);
+                if (success) {
+                    console.log("Cyberpunk Agent | SocketLib device message notification sent successfully");
+                } else {
+                    console.error("Cyberpunk Agent | SocketLib device message notification failed");
+                    ui.notifications.error("Falha ao enviar notificação de mensagem de dispositivo via SocketLib");
+                }
+            } else {
+                console.error("Cyberpunk Agent | SocketLib device message integration not available");
+                ui.notifications.error("Integração SocketLib para mensagens de dispositivo não disponível");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | SocketLib device message notification failed:", error);
+            ui.notifications.error("Erro na comunicação SocketLib: " + error.message);
+        }
+    }
+
+    /**
      * Notify about message updates
      */
     async notifyMessageUpdate(senderId, receiverId, message) {
@@ -3508,6 +3593,52 @@ class CyberpunkAgent {
 
 
 
+
+    /**
+     * Notify all clients about contact updates via SocketLib
+     * @param {object} contactData - Contact update data
+     */
+    async notifyContactUpdate(contactData) {
+        // Only send cross-client notifications if there are multiple users
+        if (!this._needsCrossClientCommunication()) {
+            console.log("Cyberpunk Agent | Single user session, skipping contact notification");
+            return;
+        }
+
+        // Check if SocketLib is available
+        if (!this._isSocketLibAvailable()) {
+            console.log("Cyberpunk Agent | SocketLib not available, skipping contact notification");
+            return;
+        }
+
+        console.log("Cyberpunk Agent | Sending contact notification via SocketLib");
+
+        const notificationData = {
+            type: 'contactUpdate',
+            data: {
+                timestamp: Date.now(),
+                userId: game.user.id,
+                userName: game.user.name,
+                sessionId: game.data.id,
+                ...contactData
+            }
+        };
+
+        try {
+            if (this.socketLibIntegration && this.socketLibIntegration.sendContactUpdate) {
+                const success = await this.socketLibIntegration.sendContactUpdate(notificationData);
+                if (success) {
+                    console.log("Cyberpunk Agent | SocketLib contact notification sent successfully");
+                } else {
+                    console.error("Cyberpunk Agent | SocketLib contact notification failed");
+                }
+            } else {
+                console.log("Cyberpunk Agent | SocketLib contact integration not available, skipping notification");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | SocketLib contact notification failed:", error);
+        }
+    }
 
     /**
      * Handle actor updates
@@ -3732,6 +3863,18 @@ class CyberpunkAgent {
      */
     getAllRegisteredDevices() {
         const allDevices = [];
+
+        // Ensure devices are loaded
+        if (!this.devices || this.devices.size === 0) {
+            console.log("Cyberpunk Agent | No devices loaded, attempting to load device data...");
+            this.loadDeviceData();
+        }
+
+        // Safety check after loading
+        if (!this.devices || this.devices.size === 0) {
+            console.log("Cyberpunk Agent | Still no devices available after loading");
+            return allDevices;
+        }
 
         for (const [deviceId, device] of this.devices) {
             const ownerName = this.getDeviceOwnerName(deviceId);
@@ -5187,6 +5330,136 @@ class CyberpunkAgent {
     }
 
     /**
+     * Handle device message updates (for device-based conversations)
+     */
+    async handleDeviceMessageUpdate(data) {
+        console.log("Cyberpunk Agent | Received device message update notification from:", data.userName);
+
+        // Prevent processing our own updates
+        if (data.userId === game.user.id) {
+            console.log("Cyberpunk Agent | Ignoring own device message update notification");
+            return;
+        }
+
+        // Check if this is a recent update to avoid duplicates
+        const now = Date.now();
+        const timeDiff = now - data.timestamp;
+        if (timeDiff > 30000) { // Ignore updates older than 30 seconds
+            console.log("Cyberpunk Agent | Ignoring old device message update notification (age:", timeDiff, "ms)");
+            return;
+        }
+
+        // If we have message data, add it to the device conversation locally
+        if (data.message && data.senderId && data.receiverId) {
+            console.log("Cyberpunk Agent | Adding device message to local conversation:", data.message);
+
+            try {
+                // Get the device conversation key
+                const conversationKey = this._getDeviceConversationKey(data.senderId, data.receiverId);
+
+                // Get or create conversation
+                if (!this.messages.has(conversationKey)) {
+                    this.messages.set(conversationKey, []);
+                }
+
+                const conversation = this.messages.get(conversationKey);
+
+                // Check if message already exists to avoid duplicates
+                const messageExists = conversation.some(msg => msg.id === data.message.id);
+                if (!messageExists) {
+                    // Add the message
+                    conversation.push(data.message);
+
+                    // Save messages for both sender and receiver devices
+                    await this.saveMessagesForDevice(data.senderId);
+                    if (data.senderId !== data.receiverId) {
+                        await this.saveMessagesForDevice(data.receiverId);
+                    }
+                    console.log("Cyberpunk Agent | Device message added to local conversation successfully");
+                } else {
+                    console.log("Cyberpunk Agent | Device message already exists in conversation, skipping");
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error adding device message to local conversation:", error);
+            }
+        } else {
+            // Fallback: reload device data from settings
+            console.log("Cyberpunk Agent | No device message data provided, reloading from settings");
+            this.loadDeviceData();
+            this.loadMessages();
+        }
+
+        // Clear unread count cache for this device conversation to force recalculation
+        this.unreadCounts.delete(this._getDeviceConversationKey(data.senderId, data.receiverId));
+
+        // Force immediate UI updates using multiple strategies
+        console.log("Cyberpunk Agent | Triggering immediate UI updates for device message update");
+
+        // Strategy 1: Use UI Controller if available
+        if (window.CyberpunkAgentUIController) {
+            const conversationComponentId = `agent-conversation-${data.senderId}-${data.receiverId}`;
+            const reverseConversationComponentId = `agent-conversation-${data.receiverId}-${data.senderId}`;
+            const chat7ComponentIds = [
+                `agent-chat7-${data.senderId}`,
+                `agent-chat7-${data.receiverId}`
+            ];
+
+            // Mark conversation components as dirty
+            window.CyberpunkAgentUIController.markDirtyMultiple([
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+
+            console.log("Cyberpunk Agent | Marked device components as dirty via UI Controller:", [
+                conversationComponentId,
+                reverseConversationComponentId,
+                ...chat7ComponentIds
+            ]);
+        }
+
+        // Strategy 2: Force immediate chat interface updates
+        this._updateChatInterfacesImmediately();
+
+        // Strategy 3: Update all open interfaces
+        this.updateOpenInterfaces();
+
+        // Strategy 4: Force Chat7 interfaces to refresh unread counts specifically
+        this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
+
+        // Strategy 5: Dispatch custom event for backward compatibility
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'deviceMessageUpdate',
+                senderId: data.senderId,
+                receiverId: data.receiverId,
+                message: data.message
+            }
+        }));
+
+        // Show notification to user
+        ui.notifications.info("Nova mensagem no Chat7");
+
+        // Play notification sound if the current user owns the receiving device
+        if (data.receiverId) {
+            const userDevices = this.getUserAccessibleDevices();
+            const isReceiver = userDevices.some(device => device.id === data.receiverId);
+            if (isReceiver) {
+                // Check if the sender is muted for this receiver device
+                const isSenderMuted = this.isContactMutedForDevice(data.receiverId, data.senderId);
+                if (!isSenderMuted) {
+                    this.playNotificationSound(data.senderId, data.receiverId);
+                } else {
+                    console.log(`Cyberpunk Agent | Notification sound skipped - contact ${data.senderId} is muted for device ${data.receiverId}`);
+                }
+            }
+        }
+
+        console.log("Cyberpunk Agent | Device message update processed successfully");
+    }
+
+    /**
      * Force Chat7 interfaces to refresh their unread count data and re-render
      * This ensures that when a new message arrives, the unread count chip appears immediately
      */
@@ -6492,61 +6765,78 @@ console.log("Cyberpunk Agent | module.js loaded successfully");
 
 // Initialize the module
 Hooks.once('init', () => {
-    console.log("Cyberpunk Agent | Init hook triggered");
-    CyberpunkAgent.registerSettings();
+    try {
+        console.log("Cyberpunk Agent | Init hook triggered");
+        CyberpunkAgent.registerSettings();
+        console.log("Cyberpunk Agent | Settings registered successfully");
+    } catch (error) {
+        console.error("Cyberpunk Agent | Error in init hook:", error);
+    }
 });
 
 Hooks.once('ready', () => {
-    console.log("Cyberpunk Agent | Ready hook triggered");
-    console.log("Cyberpunk Agent | Module loaded successfully!");
+    try {
+        console.log("Cyberpunk Agent | Ready hook triggered");
+        console.log("Cyberpunk Agent | Module loaded successfully!");
 
-    // Check if Cyberpunk RED system is active
-    if (game.system.id === 'cyberpunk-red-core') {
-        console.log("Cyberpunk Agent | Cyberpunk RED system detected!");
-    } else {
-        console.warn("Cyberpunk Agent | Warning: Cyberpunk RED system not detected. Current system:", game.system.id);
+        // Check if Cyberpunk RED system is active
+        if (game.system.id === 'cyberpunk-red-core') {
+            console.log("Cyberpunk Agent | Cyberpunk RED system detected!");
+        } else {
+            console.warn("Cyberpunk Agent | Warning: Cyberpunk RED system not detected. Current system:", game.system.id);
+        }
+
+        // Initialize the agent system
+        console.log("Cyberpunk Agent | Creating new CyberpunkAgent instance...");
+        CyberpunkAgent.instance = new CyberpunkAgent();
+        console.log("Cyberpunk Agent | Instance created successfully");
+        CyberpunkAgent.instance.setupAgentSystem();
+
+        // Make the instance globally available
+        window.cyberpunkAgent = CyberpunkAgent.instance;
+
+        // Hook for when a user joins
+        Hooks.on('userJoined', (user) => {
+            console.log(`Cyberpunk Agent | User ${user.name} joined the session`);
+        });
+
+        // Hook for when actors are updated
+        Hooks.on('updateActor', (actor, changes, options, userId) => {
+            if (CyberpunkAgent.instance) {
+                CyberpunkAgent.instance.handleActorUpdate(actor, changes, options, userId);
+            }
+        });
+
+        // Hook for when the controls toolbar is rendered
+        Hooks.on('getSceneControlButtons', (controls) => {
+            try {
+                console.log("Cyberpunk Agent | getSceneControlButtons hook triggered");
+                if (CyberpunkAgent.instance) {
+                    console.log("Cyberpunk Agent | Adding control button...");
+                    CyberpunkAgent.instance.addControlButton(controls);
+                } else {
+                    console.warn("Cyberpunk Agent | Instance not available in getSceneControlButtons hook");
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in getSceneControlButtons hook:", error);
+            }
+        });
+
+        // Additional hook to ensure button appears on UI render
+        Hooks.on('renderSceneControls', (controls, html) => {
+            if (CyberpunkAgent.instance && Array.isArray(controls)) {
+                // Force a small delay to ensure controls are fully rendered
+                setTimeout(() => {
+                    CyberpunkAgent.instance.addControlButton(controls);
+                }, 100);
+            }
+        });
+
+        // Hook for settings changes (backup for real-time updates)
+
+    } catch (error) {
+        console.error("Cyberpunk Agent | Error in ready hook:", error);
     }
-
-    // Initialize the agent system
-    CyberpunkAgent.instance = new CyberpunkAgent();
-    CyberpunkAgent.instance.setupAgentSystem();
-
-    // Make the instance globally available
-    window.cyberpunkAgent = CyberpunkAgent.instance;
-
-    // Hook for when a user joins
-    Hooks.on('userJoined', (user) => {
-        console.log(`Cyberpunk Agent | User ${user.name} joined the session`);
-    });
-
-    // Hook for when actors are updated
-    Hooks.on('updateActor', (actor, changes, options, userId) => {
-        if (CyberpunkAgent.instance) {
-            CyberpunkAgent.instance.handleActorUpdate(actor, changes, options, userId);
-        }
-    });
-
-    // Hook for when the controls toolbar is rendered
-    Hooks.on('getSceneControlButtons', (controls) => {
-        if (CyberpunkAgent.instance) {
-            CyberpunkAgent.instance.addControlButton(controls);
-        }
-    });
-
-    // Additional hook to ensure button appears on UI render
-    Hooks.on('renderSceneControls', (controls, html) => {
-        if (CyberpunkAgent.instance && Array.isArray(controls)) {
-            // Force a small delay to ensure controls are fully rendered
-            setTimeout(() => {
-                CyberpunkAgent.instance.addControlButton(controls);
-            }, 100);
-        }
-    });
-
-    // Hook for settings changes (backup for real-time updates)
-
-
-
 });
 
 Hooks.once('disableModule', () => {
@@ -6685,6 +6975,32 @@ window.testRealtimeMessages = () => {
             console.error("Cyberpunk Agent | Need at least 2 character actors for realtime message test");
             ui.notifications.error("Precisa de pelo menos 2 personagens para testar mensagens em tempo real");
         }
+    } else {
+        console.error("Cyberpunk Agent | Instance not available");
+    }
+};
+
+window.forceTokenControlsUpdate = () => {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        console.log("Cyberpunk Agent | Forcing token controls update...");
+
+        // Force device discovery first
+        window.CyberpunkAgent.instance.discoverAndCreateDevices().then(() => {
+            console.log("Cyberpunk Agent | Device discovery completed");
+
+            // Force token controls update
+            window.CyberpunkAgent.instance.updateTokenControls();
+
+            // Also try to manually trigger the hook
+            if (ui.controls && ui.controls.controls) {
+                console.log("Cyberpunk Agent | Manually triggering addControlButton...");
+                window.CyberpunkAgent.instance.addControlButton(ui.controls.controls);
+            }
+
+            console.log("Cyberpunk Agent | Token controls update completed");
+        }).catch(error => {
+            console.error("Cyberpunk Agent | Error updating token controls:", error);
+        });
     } else {
         console.error("Cyberpunk Agent | Instance not available");
     }

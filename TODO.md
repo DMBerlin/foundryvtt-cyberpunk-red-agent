@@ -141,3 +141,4 @@
 - Integração com outros módulos de chat
 - Temas visuais adicionais
 - Sistema de grupos de contatos 
+- Transformar o Agent em uma plataforma inicial e que todos os apps sejam módulos que possam ser instalados individualmente; exemplo: O "Chat7" seria um módulo a parte que para poder ser instalado, precisa do Cyberpunk Agent como dependência, da mesma forma que o Cyberpunk Agent precisa do Socketlib para funcionar

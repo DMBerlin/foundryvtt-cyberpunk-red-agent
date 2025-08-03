@@ -3,16 +3,24 @@
   "title": "Cyberpunk Agent",
   "description": "A comprehensive phone system for Cyberpunk RED characters",
   "version": "2.0.0",
-  "author": "Daniel Marinho",
-  "minimumCoreVersion": "10",
-  "compatibleCoreVersion": "11",
+  "authors": [
+    {
+      "name": "Daniel Marinho",
+      "url": "https://gitlab.com/dmberlin",
+      "email": "contact@danielmarinho.dev",
+      "discord": "dmberlin#1345",
+      "flags": {}
+    }
+  ],
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11"
+  },
   "scripts": [
     "scripts/module.js",
     "scripts/agent-home.js",
-    "scripts/contact-manager.js",
     "scripts/contact-search.js",
-    "scripts/socketlib-integration.js",
-    "scripts/test-device-system.js"
+    "scripts/socketlib-integration.js"
   ],
   "styles": [
     "styles/module.css"
