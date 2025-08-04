@@ -2756,6 +2756,29 @@ class CyberpunkAgent {
         if (!this.isDeviceContact(senderDeviceId, receiverDeviceId)) {
             console.log(`Cyberpunk Agent | Adding ${receiverDeviceId} to ${senderDeviceId} contacts automatically`);
             this.addContactToDevice(senderDeviceId, receiverDeviceId);
+
+            // Notify real-time updates for the sender
+            this.notifyContactUpdate({
+                action: 'auto-add',
+                deviceId: senderDeviceId,
+                contactDeviceId: receiverDeviceId,
+                reason: 'message-sent'
+            });
+
+            // Also dispatch a local contact update event for immediate UI refresh
+            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                detail: {
+                    type: 'contactUpdate',
+                    deviceId: senderDeviceId,
+                    contactDeviceId: receiverDeviceId,
+                    action: 'auto-add',
+                    reason: 'message-sent',
+                    timestamp: Date.now()
+                }
+            }));
+
+            // Update Chat7 interfaces immediately for the sender
+            this._updateChat7Interfaces();
         }
 
         // Check if sender is in receiver's contacts, if not, add them
@@ -5390,6 +5413,19 @@ class CyberpunkAgent {
                 } else {
                     console.log("Cyberpunk Agent | Device message already exists in conversation, skipping");
                 }
+
+                // Ensure contacts are added automatically for both sender and receiver
+                // This is important for player-to-player communication
+                if (!this.isDeviceContact(data.senderId, data.receiverId)) {
+                    console.log(`Cyberpunk Agent | Auto-adding ${data.receiverId} to ${data.senderId} contacts via device message update`);
+                    this.addContactToDevice(data.senderId, data.receiverId);
+                }
+
+                if (!this.isDeviceContact(data.receiverId, data.senderId)) {
+                    console.log(`Cyberpunk Agent | Auto-adding ${data.senderId} to ${data.receiverId} contacts via device message update`);
+                    this.addContactToDevice(data.receiverId, data.senderId);
+                }
+
             } catch (error) {
                 console.error("Cyberpunk Agent | Error adding device message to local conversation:", error);
             }
@@ -5444,8 +5480,21 @@ class CyberpunkAgent {
                 timestamp: Date.now(),
                 type: 'deviceMessageUpdate',
                 senderId: data.senderId,
-                receiverId: data.receiverId,
-                message: data.message
+                receiverId: data.receiverId
+            }
+        }));
+
+        // Strategy 6: Also dispatch contact update event to ensure contact list is refreshed
+        // This is important for cases where the contact was added but the UI wasn't updated
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+                timestamp: Date.now(),
+                type: 'contactUpdate',
+                deviceId: data.receiverId,
+                contactDeviceId: data.senderId,
+                action: 'auto-add',
+                reason: 'message-received',
+                force: true
             }
         }));
 
@@ -5469,7 +5518,7 @@ class CyberpunkAgent {
         openWindows.forEach(window => {
             if (window && window.rendered && window.constructor.name === 'AgentApplication') {
                 // Check if this is a Chat7 view for the receiver
-                if (window.currentView === 'chat7' && window.actor && window.actor.id === receiverId) {
+                if (window.currentView === 'chat7' && window.device && window.device.id === receiverId) {
                     console.log("Cyberpunk Agent | Found Chat7 view for receiver, forcing re-render for unread count update");
                     try {
                         // Force a complete re-render to refresh the unread count data

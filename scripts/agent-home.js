@@ -1475,14 +1475,18 @@ class AgentApplication extends FormApplication {
               setTimeout(() => {
                 this.addContactState.successMessage = null;
                 this.render(true);
-                // Navigate back to contacts list after fade completes
-                this.navigateTo('chat7');
+                // Navegar para a lista de contatos só se o usuário ainda estiver na tela de adicionar contato
+                if (this.currentView === 'add-contact') {
+                  this.navigateTo('chat7');
+                }
               }, 500);
             } else {
               this.addContactState.successMessage = null;
               this.render(true);
-              // Navigate back immediately if no element found
-              this.navigateTo('chat7');
+              // Navegar para a lista de contatos só se o usuário ainda estiver na tela de adicionar contato
+              if (this.currentView === 'add-contact') {
+                this.navigateTo('chat7');
+              }
             }
           }
         }, 3000);

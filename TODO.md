@@ -167,3 +167,9 @@
 - **Chat7 Interface Updates**: Melhorada atualização de interfaces Chat7 para incluir tanto Chat7Application legacy quanto AgentApplication unificado
 - **Auto-contact Addition**: Aprimorado sistema de adição automática de contatos para atualizar a UI imediatamente
 - **UI Component Updates**: Corrigida identificação de componentes para usar device.id em vez de actor.id no AgentApplication unificado
+- **Bidirectional Contact Updates**: Corrigido problema onde contatos não eram atualizados em tempo real quando players enviavam mensagens para GMs
+- **Device Message Update Enhancement**: Adicionado dispatch de eventos de contato no handleDeviceMessageUpdate para garantir atualização da lista de contatos
+- **GM-Player Contact Sync**: Garantido que tanto GMs quanto Players recebem atualizações de contato em tempo real em ambas as direções
+- **Player-to-Player Contact Updates**: Corrigido problema onde contatos não eram atualizados em tempo real para comunicação entre players
+- **Device ID Fix**: Corrigida identificação de dispositivos no _forceChat7UnreadCountUpdate para usar device.id em vez de actor.id
+- **Auto-contact Addition**: Adicionada lógica para adicionar contatos automaticamente no handleDeviceMessageUpdate para comunicação entre players
