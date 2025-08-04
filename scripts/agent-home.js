@@ -302,7 +302,7 @@ class AgentApplication extends FormApplication {
   /**
    * Navigate to a different view
    */
-  navigateTo(view, contact = null) {
+  async navigateTo(view, contact = null) {
     console.log(`AgentApplication | Navigating to view: ${view}`, contact);
 
     // Register or clear active conversation based on navigation
@@ -315,6 +315,15 @@ class AgentApplication extends FormApplication {
           contact.id
         );
         console.log(`AgentApplication | Registered active conversation: ${this.device.id} -> ${contact.id}`);
+
+        // Sync with server before opening conversation to ensure all messages are up to date
+        console.log(`AgentApplication | Syncing device ${this.device.id} with server before opening conversation`);
+        try {
+          await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id);
+          console.log(`AgentApplication | Server sync completed for device ${this.device.id}`);
+        } catch (error) {
+          console.error(`AgentApplication | Error syncing with server:`, error);
+        }
       } else {
         // Clear active conversation when navigating away from conversation view
         window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
@@ -379,12 +388,24 @@ class AgentApplication extends FormApplication {
   /**
    * Render conversation view
    */
-  _renderConversationView() {
+  async _renderConversationView() {
     console.log("AgentApplication | Rendering conversation view for contact:", this.currentContact);
 
     if (!this.currentContact) {
       console.error("AgentApplication | No contact specified for conversation view");
       return;
+    }
+
+    // Additional sync check to ensure messages are up to date
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      console.log("AgentApplication | Performing additional sync check for conversation view");
+      try {
+        // Quick sync to ensure we have the latest messages
+        await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id);
+        console.log("AgentApplication | Additional sync completed for conversation view");
+      } catch (error) {
+        console.error("AgentApplication | Error in additional sync:", error);
+      }
     }
 
     // Mark conversation as read when opening (not during re-renders)
@@ -712,7 +733,7 @@ class AgentApplication extends FormApplication {
   /**
    * Handle contact chat button click
    */
-  _onContactChatClick(event) {
+  async _onContactChatClick(event) {
     event.preventDefault();
     const contactId = event.currentTarget.dataset.contactId;
     console.log("Contact chat clicked for contact:", contactId);
@@ -740,8 +761,8 @@ class AgentApplication extends FormApplication {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Navigate to conversation view
-    this.navigateTo('conversation', contact);
+    // Navigate to conversation view (this will trigger server sync)
+    await this.navigateTo('conversation', contact);
   }
 
   /**

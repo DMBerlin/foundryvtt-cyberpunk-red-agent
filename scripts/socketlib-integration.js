@@ -700,24 +700,23 @@ async function handleSendMessage(data) {
 
       // Play notification sound if the current user is the receiver
       if (data.receiverId) {
-        // Check if the current user owns the receiving device
-        const userActors = window.CyberpunkAgent.instance.getUserActors();
+        // Check if the current user is the actual owner of the receiving device
+        const receiverUser = window.CyberpunkAgent.instance._getUserForDevice(data.receiverId);
         let isReceiver = false;
 
-        // First check if it's a direct actor message
-        isReceiver = userActors.some(actor => actor.id === data.receiverId);
-
-        // If not, check if it's a device message
-        if (!isReceiver) {
-          const userDevices = window.CyberpunkAgent.instance.getUserAccessibleDevices();
-          isReceiver = userDevices.some(device => device.id === data.receiverId);
+        if (receiverUser && receiverUser.id === game.user.id) {
+          isReceiver = true;
+        } else {
+          // Fallback: check if it's a direct actor message (legacy support)
+          const userActors = window.CyberpunkAgent.instance.getUserActors();
+          isReceiver = userActors.some(actor => actor.id === data.receiverId);
         }
 
         if (isReceiver) {
-          console.log("Cyberpunk Agent | Handling notifications for received message");
+          console.log("Cyberpunk Agent | Handling notifications for received message - user is the actual receiver");
           window.CyberpunkAgent.instance.handleNewMessageNotifications(data.senderId, data.receiverId);
         } else {
-          console.log("Cyberpunk Agent | User is not the receiver, skipping notifications");
+          console.log("Cyberpunk Agent | User is not the actual receiver device owner, skipping notifications");
         }
       }
 

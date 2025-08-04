@@ -1,5 +1,111 @@
 # TODO - Refatoração do Cyberpunk Agent
 
+## 🔄 NOVA REFATORAÇÃO: Sistema de Mensagens Baseado em Servidor
+
+### 🎯 Objetivo
+Refatorar o sistema de mensagens para usar arquitetura baseada em servidor centralizado (Foundry Server) em vez de comunicação direta entre clientes.
+
+### 📋 Tarefas da Refatoração
+
+#### 🔴 Críticas
+- [x] **Implementar armazenamento de mensagens no servidor Foundry**
+  - [x] Criar sistema de storage de mensagens em `game.settings`
+  - [x] Implementar estrutura de dados para mensagens por dispositivo
+  - [x] Criar métodos para salvar/carregar mensagens do servidor
+
+- [x] **Refatorar sistema de envio de mensagens**
+  - [x] Remover comunicação direta entre clientes via SocketLib
+  - [x] Implementar envio de mensagens para servidor Foundry
+  - [x] Criar sistema de fila de mensagens para dispositivos offline
+
+- [x] **Implementar sistema de sincronização**
+  - [x] Criar método de sincronização ao conectar
+  - [x] Implementar verificação de mensagens não recebidas
+  - [x] Adicionar sistema de timestamp para controle de sincronização
+
+#### 🟡 Importantes
+- [x] **Sistema de contatos automáticos**
+  - [x] Implementar adição automática de contatos ao receber mensagem
+  - [x] Criar sistema de contatos anônimos para mensagens de desconhecidos
+  - [x] Manter lista de contatos sincronizada com servidor
+
+- [x] **Sistema de notificações offline**
+  - [x] Implementar notificações quando dispositivo volta online
+  - [x] Criar sistema de contadores de mensagens não lidas
+  - [x] Adicionar indicadores visuais de mensagens pendentes
+
+- [x] **Otimização de performance**
+  - [x] Implementar sincronização incremental
+  - [x] Adicionar cache local para mensagens recentes
+  - [x] Otimizar queries de mensagens do servidor
+
+#### 🟢 Melhorias
+- [ ] **Interface de gerenciamento**
+  - [ ] Criar interface para visualizar mensagens no servidor
+  - [ ] Adicionar ferramentas de limpeza de mensagens antigas
+  - [ ] Implementar backup/restore de mensagens
+
+- [ ] **Logs e debugging**
+  - [ ] Adicionar logs detalhados de sincronização
+  - [ ] Criar ferramentas de diagnóstico de conectividade
+  - [ ] Implementar métricas de performance
+
+### 🏗️ Arquitetura Proposta
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   GM Client     │    │ Player Client   │    │ Player Client   │
+│   (Device A)    │    │   (Device B)    │    │   (Device C)    │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │                      │                      │
+          └──────────────────────┼──────────────────────┘
+                                 │
+                    ┌─────────────▼─────────────┐
+                    │    Foundry VTT Server     │
+                    │   (Message Storage)       │
+                    │  - game.settings          │
+                    │  - Centralized Messages   │
+                    │  - Contact Lists          │
+                    └───────────────────────────┘
+```
+
+### 📝 Fluxo de Mensagens
+
+1. **Envio**: Dispositivo envia mensagem → Servidor Foundry
+2. **Armazenamento**: Servidor salva mensagem em `game.settings`
+3. **Sincronização**: Clientes sincronizam com servidor ao conectar
+4. **Recebimento**: Cliente carrega mensagens do servidor
+5. **Contatos**: Contatos são adicionados automaticamente se necessário
+
+### 🔧 Implementação Técnica
+
+#### Estrutura de Dados no Servidor
+```javascript
+// game.settings para mensagens
+{
+  'cyberpunk-agent-messages': {
+    [deviceId]: {
+      [conversationKey]: [
+        {
+          id: 'message-id',
+          senderId: 'device-id',
+          receiverId: 'device-id',
+          text: 'message text',
+          timestamp: 1234567890,
+          read: false
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Métodos Principais
+- `saveMessageToServer(deviceId, conversationKey, message)`
+- `loadMessagesFromServer(deviceId)`
+- `syncMessagesWithServer(deviceId)`
+- `addContactAutomatically(deviceId, contactDeviceId)`
+
 ## Problemas Identificados
 
 ### 🔴 Críticos
@@ -173,3 +279,35 @@
 - **Player-to-Player Contact Updates**: Corrigido problema onde contatos não eram atualizados em tempo real para comunicação entre players
 - **Device ID Fix**: Corrigida identificação de dispositivos no _forceChat7UnreadCountUpdate para usar device.id em vez de actor.id
 - **Auto-contact Addition**: Adicionada lógica para adicionar contatos automaticamente no handleDeviceMessageUpdate para comunicação entre players
+
+### 🔧 Correções Recentes (v1.0.19)
+- **processNewMessagesAndContacts Error Fix**: Corrigido erro "Cannot read properties of undefined (reading 'devices')" no método processNewMessagesAndContacts
+- **Device Data Loading**: Melhorado método loadDeviceData para garantir que this.devices seja sempre um Map válido
+- **Debug Logging**: Adicionados logs detalhados para melhor debugging do sistema de carregamento de dados
+- **Error Handling**: Implementado tratamento de erro mais robusto no processamento de mensagens e contatos
+- **Cache Management**: Adicionada função forceCacheRefresh para limpar e recarregar dados em cache
+- **Test Suite**: Criado script de teste específico __tests__/test-error-fix.js para verificar a correção do erro
+
+### 🔧 Correções Recentes (v1.0.20)
+- **GM Notification Filtering**: Corrigido problema onde GMs recebiam notificações de mensagens entre players
+- **Device Ownership Verification**: Implementada verificação precisa de propriedade de dispositivos para notificações
+- **SocketLib Notification Logic**: Corrigida lógica no SocketLib para filtrar notificações baseada no proprietário real do dispositivo
+- **Unread Message Notification**: Implementado sistema para notificar sobre mensagens não lidas quando player se reconecta
+- **Notification Sound Filtering**: Melhorada lógica de filtragem para sons de notificação baseada no proprietário do dispositivo
+- **Visual Notification Filtering**: Melhorada lógica de filtragem para notificações visuais baseada no proprietário do dispositivo
+- **Test Suite**: Criado script de teste específico __tests__/test-gm-notification-fix.js para verificar as correções
+
+### 🔧 Correções Recentes (v1.0.22)
+- **Server-Based Message System Fix**: Corrigido método sendDeviceMessage para usar saveMessageToServer em vez de saveMessagesForDevice
+- **Message Persistence**: Garantido que todas as mensagens sejam salvas no servidor Foundry, não apenas no localStorage
+- **Offline Message Retrieval**: Investigado problema de mensagens offline não aparecendo quando jogador reconecta
+- **Test Suite**: Criado script de teste específico __tests__/test-offline-message-retrieval.js para investigar problemas de recuperação
+
+### 🔧 Correções Recentes (v1.0.21)
+- **Automatic Chat Sync**: Implementada sincronização automática com o servidor quando um chat é aberto
+- **Sync Before Rendering**: Adicionada sincronização adicional no render da conversa para garantir mensagens atualizadas
+- **Async Navigation**: Convertido método navigateTo para async para suportar sincronização
+- **Async Contact Chat**: Convertido método _onContactChatClick para async para aguardar sincronização
+- **Async Conversation View**: Convertido método _renderConversationView para async para sincronização adicional
+- **Performance Optimization**: Sincronização otimizada para não impactar a experiência do usuário
+- **Test Suite**: Criado script de teste específico __tests__/test-chat-sync.js para verificar a sincronização automática

@@ -16,6 +16,13 @@
     "minimum": "11",
     "verified": "11"
   },
+  "dependencies": [
+    {
+      "name": "socketlib",
+      "type": "module",
+      "manifest": "https://raw.githubusercontent.com/manuelVo/foundryvtt-socketlib/master/module.json"
+    }
+  ],
   "scripts": [
     "scripts/module.js",
     "scripts/agent-home.js",

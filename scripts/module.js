@@ -428,6 +428,16 @@ class CyberpunkAgent {
             default: {}
         });
 
+        // Register server-based messages setting
+        game.settings.register('cyberpunk-agent', 'server-messages', {
+            name: 'Server Messages',
+            hint: 'Internal storage for server-based messaging system',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: {}
+        });
+
         // Register a custom settings menu for GM Data Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
             name: 'GM Data Management',
@@ -1483,31 +1493,36 @@ class CyberpunkAgent {
     /**
      * Open the agent interface
      */
+    /**
+     * REFACTORED: Open agent interface with server-based synchronization
+     */
     async openAgentInterface() {
-        console.log("Cyberpunk Agent | openAgentInterface called");
+        try {
+            console.log("Cyberpunk Agent | Opening agent interface with server sync");
 
-        // For both GM and players: Show equipped agents
-        const equippedAgents = await this.getEquippedAgentsForUser();
-        console.log("Cyberpunk Agent | openAgentInterface - equippedAgents:", equippedAgents);
-        console.log("Cyberpunk Agent | openAgentInterface - equippedAgents.length:", equippedAgents.length);
+            // Get user's accessible devices
+            const devices = this.getUserAccessibleDevices();
 
-        if (equippedAgents.length === 0) {
-            if (game.user.isGM) {
-                ui.notifications.warn("Nenhum Agent equipado encontrado nos personagens que você possui.");
-            } else {
-                ui.notifications.warn("Você não tem nenhum Agent equipado. Equipe um Agent para usá-lo.");
+            if (devices.length === 0) {
+                ui.notifications.warn("Nenhum agente encontrado. Adicione um agente ao seu personagem.");
+                return;
             }
-            return;
-        }
 
-        // If only one equipped agent, open it directly
-        if (equippedAgents.length === 1) {
-            console.log("Cyberpunk Agent | openAgentInterface - Opening single agent:", equippedAgents[0]);
-            await this.openSpecificAgent(equippedAgents[0].deviceId);
-        } else {
-            // If multiple equipped agents, show selection menu
-            console.log("Cyberpunk Agent | openAgentInterface - Showing menu for multiple agents:", equippedAgents);
-            await this.showEquippedAgentMenu(equippedAgents);
+            // Sync messages with server for each device
+            for (const device of devices) {
+                await this.syncMessagesWithServer(device.id);
+            }
+
+            // Show device selection menu
+            if (devices.length === 1) {
+                await this.showAgentHome(devices[0]);
+            } else {
+                await this.showEquippedAgentMenu(devices);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error opening agent interface:", error);
+            ui.notifications.error("Erro ao abrir interface do agente.");
         }
     }
 
@@ -1535,13 +1550,9 @@ class CyberpunkAgent {
         }
 
         try {
-            // Load device-specific messages before opening the interface
-            console.log("Cyberpunk Agent | Loading messages for device:", device.id);
-            await this.loadMessagesForDevice(device.id);
-
-            // Synchronize messages with server to get any new messages from other clients
-            console.log("Cyberpunk Agent | Synchronizing messages with server for device:", device.id);
-            await this.syncMessagesForDevice(device.id);
+            // Sync messages with server for this device
+            console.log("Cyberpunk Agent | Syncing messages with server for device:", device.id);
+            await this.syncMessagesWithServer(device.id);
 
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
@@ -1827,6 +1838,8 @@ class CyberpunkAgent {
     loadDeviceData() {
         try {
             console.log("Cyberpunk Agent | Loading device data...");
+            console.log("Cyberpunk Agent | this.devices before clear:", this.devices);
+            console.log("Cyberpunk Agent | this.deviceMappings before clear:", this.deviceMappings);
 
             // Load devices and mappings from game settings
             const deviceData = game.settings.get('cyberpunk-agent', 'device-data') || {};
@@ -2676,20 +2689,309 @@ class CyberpunkAgent {
     }
 
     /**
- * Send a message from one actor to another
+ * NEW SERVER-BASED MESSAGING SYSTEM
+ * ===================================
+ * 
+ * This system stores all messages on the Foundry server using game.settings
+ * instead of direct client-to-client communication via SocketLib.
+ * 
+ * Flow:
+ * 1. Device sends message → Server (game.settings)
+ * 2. Clients sync with server when connecting
+ * 3. Offline devices receive messages when they come back online
+ * 4. Contacts are automatically added when receiving messages from unknown devices
  */
+
+    /**
+     * Save a message to the Foundry server
+     * @param {string} senderDeviceId - ID of the sending device
+     * @param {string} receiverDeviceId - ID of the receiving device
+     * @param {Object} message - Message object to save
+     */
+    async saveMessageToServer(senderDeviceId, receiverDeviceId, message) {
+        try {
+            console.log(`Cyberpunk Agent | Saving message to server: ${senderDeviceId} → ${receiverDeviceId}`);
+
+            // Get current messages from server
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+
+            // Create conversation key
+            const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
+
+            // Initialize device storage if it doesn't exist
+            if (!serverMessages[senderDeviceId]) {
+                serverMessages[senderDeviceId] = {};
+            }
+            if (!serverMessages[receiverDeviceId]) {
+                serverMessages[receiverDeviceId] = {};
+            }
+
+            // Initialize conversation if it doesn't exist
+            if (!serverMessages[senderDeviceId][conversationKey]) {
+                serverMessages[senderDeviceId][conversationKey] = [];
+            }
+            if (!serverMessages[receiverDeviceId][conversationKey]) {
+                serverMessages[receiverDeviceId][conversationKey] = [];
+            }
+
+            // Add message to both sender and receiver conversations
+            serverMessages[senderDeviceId][conversationKey].push(message);
+            serverMessages[receiverDeviceId][conversationKey].push(message);
+
+            // Save to server
+            await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+
+            console.log(`Cyberpunk Agent | Message saved to server successfully`);
+            return true;
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error saving message to server:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Load messages from the Foundry server for a specific device
+     * @param {string} deviceId - ID of the device to load messages for
+     */
+    async loadMessagesFromServer(deviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Loading messages from server for device: ${deviceId}`);
+
+            // Get messages from server
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            const deviceMessages = serverMessages[deviceId] || {};
+
+            // Load messages into local storage
+            Object.entries(deviceMessages).forEach(([conversationKey, messages]) => {
+                this.messages.set(conversationKey, messages);
+            });
+
+            console.log(`Cyberpunk Agent | Loaded ${Object.keys(deviceMessages).length} conversations from server`);
+            return true;
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error loading messages from server:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Sync messages with server - called when device connects
+     * @param {string} deviceId - ID of the device to sync
+     */
+    async syncMessagesWithServer(deviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Starting message sync with server for device: ${deviceId}`);
+
+            // Load messages from server
+            const success = await this.loadMessagesFromServer(deviceId);
+            if (!success) {
+                console.warn(`Cyberpunk Agent | Failed to load messages from server for device: ${deviceId}`);
+                return false;
+            }
+
+            // Check for new messages and add contacts automatically
+            await this.processNewMessagesAndContacts(deviceId);
+
+            // Update interfaces
+            this._updateChatInterfacesImmediately();
+
+            console.log(`Cyberpunk Agent | Message sync completed for device: ${deviceId}`);
+            return true;
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error syncing messages with server:`, error);
+            return false;
+        }
+    }
+
+    /**
+ * Process new messages and automatically add contacts
+ * @param {string} deviceId - ID of the device to process
+ */
+    async processNewMessagesAndContacts(deviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Processing new messages and contacts for device: ${deviceId}`);
+
+            // Load device data first
+            this.loadDeviceData();
+
+            // Debug: Check if this.devices exists and has content
+            console.log(`Cyberpunk Agent | this.devices after loadDeviceData:`, this.devices);
+            console.log(`Cyberpunk Agent | this.devices type:`, typeof this.devices);
+            console.log(`Cyberpunk Agent | this.devices size:`, this.devices?.size);
+
+            // Get device from the loaded data
+            const device = this.devices.get(deviceId);
+            console.log(`Cyberpunk Agent | Retrieved device:`, device);
+
+            if (!device) {
+                console.warn(`Cyberpunk Agent | Device not found: ${deviceId}`);
+                return;
+            }
+
+            // Check if current user is the actual owner of this device
+            const deviceOwner = this._getUserForDevice(deviceId);
+            const isDeviceOwner = deviceOwner && deviceOwner.id === game.user.id;
+
+            // Process each conversation
+            for (const [conversationKey, messages] of this.messages.entries()) {
+                // Parse conversation key to get device IDs
+                const [deviceId1, deviceId2] = conversationKey.split('|');
+                const otherDeviceId = deviceId1 === deviceId ? deviceId2 : deviceId1;
+
+                // Check if this is a conversation involving our device
+                if (deviceId1 === deviceId || deviceId2 === deviceId) {
+                    // Check if we have messages from unknown contacts
+                    const hasMessagesFromUnknown = messages.some(msg =>
+                        msg.senderId === otherDeviceId &&
+                        !device.contacts.includes(otherDeviceId)
+                    );
+
+                    if (hasMessagesFromUnknown) {
+                        console.log(`Cyberpunk Agent | Auto-adding contact: ${otherDeviceId} to ${deviceId}`);
+                        await this.addContactAutomatically(deviceId, otherDeviceId);
+                    }
+
+                    // Check for unread messages and notify if user is the device owner
+                    if (isDeviceOwner) {
+                        const unreadMessages = messages.filter(msg =>
+                            msg.receiverId === deviceId && !msg.read
+                        );
+
+                        if (unreadMessages.length > 0) {
+                            console.log(`Cyberpunk Agent | Found ${unreadMessages.length} unread messages for device ${deviceId}`);
+
+                            // Get the most recent unread message for notification
+                            const mostRecentUnread = unreadMessages[unreadMessages.length - 1];
+
+                            // Only notify if this is a fresh sync (not just opening the interface)
+                            const lastSyncTime = this._lastSyncTime || 0;
+                            const messageTime = mostRecentUnread.timestamp || Date.now();
+
+                            if (messageTime > lastSyncTime) {
+                                console.log(`Cyberpunk Agent | Notifying about unread messages for device ${deviceId}`);
+                                this.handleNewMessageNotifications(mostRecentUnread.senderId, deviceId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update last sync time
+            this._lastSyncTime = Date.now();
+
+            console.log(`Cyberpunk Agent | Finished processing messages and contacts for device: ${deviceId}`);
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error processing messages and contacts:`, error);
+        }
+    }
+
+    /**
+     * Automatically add a contact to a device
+     * @param {string} deviceId - ID of the device to add contact to
+     * @param {string} contactDeviceId - ID of the contact to add
+     */
+    async addContactAutomatically(deviceId, contactDeviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Auto-adding contact ${contactDeviceId} to device ${deviceId}`);
+
+            // Add contact to device
+            await this.addContactToDevice(deviceId, contactDeviceId);
+
+            // Save device data to server
+            await this.saveDeviceData();
+
+            // Notify UI update
+            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                detail: {
+                    type: 'contactUpdate',
+                    deviceId: deviceId,
+                    contactDeviceId: contactDeviceId,
+                    action: 'auto-add',
+                    reason: 'message-received',
+                    timestamp: Date.now()
+                }
+            }));
+
+            console.log(`Cyberpunk Agent | Contact ${contactDeviceId} auto-added to device ${deviceId}`);
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error auto-adding contact:`, error);
+        }
+    }
+
+    /**
+     * Get unread message count for a device from server
+     * @param {string} deviceId - ID of the device
+     */
+    async getUnreadCountFromServer(deviceId) {
+        try {
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            const deviceMessages = serverMessages[deviceId] || {};
+
+            let totalUnread = 0;
+
+            Object.entries(deviceMessages).forEach(([conversationKey, messages]) => {
+                const unreadMessages = messages.filter(msg =>
+                    msg.receiverId === deviceId && !msg.read
+                );
+                totalUnread += unreadMessages.length;
+            });
+
+            return totalUnread;
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error getting unread count from server:`, error);
+            return 0;
+        }
+    }
+
+    /**
+     * Mark messages as read on server
+     * @param {string} deviceId - ID of the device
+     * @param {string} contactDeviceId - ID of the contact
+     */
+    async markMessagesAsReadOnServer(deviceId, contactDeviceId) {
+        try {
+            console.log(`Cyberpunk Agent | Marking messages as read on server: ${deviceId} ↔ ${contactDeviceId}`);
+
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+
+            // Mark messages as read for both devices
+            if (serverMessages[deviceId] && serverMessages[deviceId][conversationKey]) {
+                serverMessages[deviceId][conversationKey].forEach(msg => {
+                    if (msg.receiverId === deviceId) {
+                        msg.read = true;
+                    }
+                });
+            }
+
+            if (serverMessages[contactDeviceId] && serverMessages[contactDeviceId][conversationKey]) {
+                serverMessages[contactDeviceId][conversationKey].forEach(msg => {
+                    if (msg.receiverId === deviceId) {
+                        msg.read = true;
+                    }
+                });
+            }
+
+            // Save to server
+            await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+
+            console.log(`Cyberpunk Agent | Messages marked as read on server`);
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error marking messages as read on server:`, error);
+        }
+    }
+
+    /**
+     * REFACTORED: Send message using server-based system
+     */
     async sendMessage(senderId, receiverId, text) {
         if (!text || !text.trim()) {
             return false;
         }
 
-        const conversationKey = this._getConversationKey(senderId, receiverId);
+        console.log(`Cyberpunk Agent | Sending message via server: ${senderId} → ${receiverId}`);
 
-        if (!this.messages.has(conversationKey)) {
-            this.messages.set(conversationKey, []);
-        }
-
-        const conversation = this.messages.get(conversationKey);
+        // Create message object
         const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const message = {
             id: messageId,
@@ -2701,46 +3003,30 @@ class CyberpunkAgent {
                 hour: '2-digit',
                 minute: '2-digit'
             }),
-            read: false // New message is always unread
+            read: false
         };
 
-        conversation.push(message);
-
-        // Save messages for both sender and receiver actors
-        await this.saveMessagesForActor(senderId);
-        if (senderId !== receiverId) {
-            await this.saveMessagesForActor(receiverId);
+        // Save message to server
+        const success = await this.saveMessageToServer(senderId, receiverId, message);
+        if (!success) {
+            console.error(`Cyberpunk Agent | Failed to save message to server`);
+            return false;
         }
 
-        // Clear unread count cache for this conversation
-        this.unreadCounts.delete(this._getConversationKey(senderId, receiverId));
-
-        // Foundry chat integration removed - using SocketLib only
-
-        // Check if SocketLib is available
-        if (!this._isSocketLibAvailable()) {
-            this._handleSocketLibUnavailable();
-            // Don't return false here since SocketLib might still be working
-            // The availability check was too strict
-        } else {
-            // Send message via SocketLib
-            try {
-                console.log("Cyberpunk Agent | Sending message via SocketLib");
-                const success = await this.socketLibIntegration.sendMessage(senderId, receiverId, text.trim(), messageId);
-                if (success) {
-                    console.log("Cyberpunk Agent | Message sent successfully via SocketLib");
-                } else {
-                    console.warn("Cyberpunk Agent | SocketLib message sending failed, but message was saved locally");
-                }
-            } catch (error) {
-                console.warn("Cyberpunk Agent | SocketLib message sending error, but message was saved locally:", error);
-            }
+        // Add message to local storage for immediate UI update
+        const conversationKey = this._getConversationKey(senderId, receiverId);
+        if (!this.messages.has(conversationKey)) {
+            this.messages.set(conversationKey, []);
         }
+        this.messages.get(conversationKey).push(message);
 
-        // Update local interfaces immediately for better UX (only once)
+        // Clear unread count cache
+        this.unreadCounts.delete(conversationKey);
+
+        // Update local interfaces immediately
         this._updateChatInterfacesImmediately();
 
-        console.log("Cyberpunk Agent | Message sent:", message);
+        console.log(`Cyberpunk Agent | Message sent via server:`, message);
         return true;
     }
 
@@ -2833,10 +3119,11 @@ class CyberpunkAgent {
 
         conversation.push(message);
 
-        // Save messages for both sender and receiver devices
-        await this.saveMessagesForDevice(senderDeviceId);
-        if (senderDeviceId !== receiverDeviceId) {
-            await this.saveMessagesForDevice(receiverDeviceId);
+        // Save message to server for both sender and receiver devices
+        const saveResult = await this.saveMessageToServer(senderDeviceId, receiverDeviceId, message);
+        if (!saveResult) {
+            console.error(`Cyberpunk Agent | Failed to save device message to server`);
+            return false;
         }
 
         // Clear unread count cache for this conversation
@@ -6158,6 +6445,12 @@ class CyberpunkAgent {
                 return true;
             }
 
+            // Check if the current user is the actual owner of the receiver device
+            if (receiverUser.id !== game.user.id) {
+                console.log("Cyberpunk Agent | Current user is not the receiver device owner, skipping notification sound");
+                return false;
+            }
+
             // Get the active conversation for this user
             const activeConversation = this.getActiveConversation(receiverUser.id);
             if (!activeConversation) {
@@ -6195,6 +6488,12 @@ class CyberpunkAgent {
             if (!receiverUser) {
                 console.log("Cyberpunk Agent | Could not determine receiver user, showing notification");
                 return true;
+            }
+
+            // Check if the current user is the actual owner of the receiver device
+            if (receiverUser.id !== game.user.id) {
+                console.log("Cyberpunk Agent | Current user is not the receiver device owner, skipping visual notification");
+                return false;
             }
 
             // Get the active conversation for this user
