@@ -12,17 +12,34 @@
       "flags": {}
     }
   ],
+  "minimumCoreVersion": "10",
+  "compatibleCoreVersion": "11",
   "compatibility": {
-    "minimum": "11",
+    "minimum": "10",
     "verified": "11"
   },
-  "dependencies": [
-    {
-      "name": "socketlib",
-      "type": "module",
-      "manifest": "https://raw.githubusercontent.com/manuelVo/foundryvtt-socketlib/master/module.json"
-    }
-  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "cyberpunk-red",
+        "type": "system",
+        "compatibility": {
+          "minimum": "10",
+          "verified": "11"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "compatibility": {
+          "minimum": "10",
+          "verified": "11"
+        }
+      }
+    ]
+  },
   "scripts": [
     "scripts/module.js",
     "scripts/agent-home.js",
