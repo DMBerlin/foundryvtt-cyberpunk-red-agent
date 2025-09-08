@@ -1,0 +1,33 @@
+<div class="cyberpunk-agent-chat-preview">
+  <div class="cp-preview-header">
+    <div class="cp-preview-icon">
+      <i class="fas fa-mobile-alt"></i>
+    </div>
+    <div class="cp-preview-title">
+      <span class="cp-preview-app">CHAT7</span>
+      <span class="cp-preview-subtitle">Nova Mensagem</span>
+    </div>
+    <div class="cp-preview-time">{{timestamp}}</div>
+  </div>
+
+  <div class="cp-preview-content">
+    <div class="cp-preview-sender">
+      <img src="{{senderImg}}" alt="{{senderName}}" class="cp-preview-avatar" />
+      <span class="cp-preview-sender-name">{{senderName}}</span>
+    </div>
+
+    <div class="cp-preview-message">
+      <div class="cp-preview-text">{{messagePreview}}</div>
+    </div>
+
+    <div class="cp-preview-actions">
+      <button class="cp-preview-action" data-action="open-chat7" title="Abrir Chat7">
+        <i class="fas fa-comments"></i>
+        <span>Abrir</span>
+      </button>
+      <button class="cp-preview-action" data-action="dismiss" title="Fechar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+</div>
