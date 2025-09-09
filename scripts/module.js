@@ -820,9 +820,57 @@ window.cyberpunkAgentCheckStatus = function () {
 };
 
 
-console.log("🔧 Cyberpunk Agent GM functions loaded:");
+// Debug function for token controls
+window.cyberpunkAgentFixTokenControls = function () {
+    console.log("🔧 === CYBERPUNK AGENT - FIXING TOKEN CONTROLS ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    console.log("🔍 Checking current state...");
+    console.log("  - Devices loaded:", agent.devices.size);
+    console.log("  - UI controls available:", !!ui.controls);
+    console.log("  - Controls array:", !!ui.controls?.controls);
+
+    if (ui.controls && ui.controls.controls) {
+        console.log("🔄 Force updating token controls...");
+
+        // Add the button to current controls
+        agent.addControlButton(ui.controls.controls);
+
+        // Force a render without re-initialization to avoid loops
+        ui.controls.render();
+
+        console.log("✅ Token controls refresh completed");
+
+        // Check if button was added
+        setTimeout(() => {
+            const tokenControl = ui.controls.controls.find(c => c.name === "token");
+            const agentTool = tokenControl?.tools?.find(t => t.name === "agent");
+
+            if (agentTool) {
+                console.log("✅ Agent button found in token controls");
+            } else {
+                console.log("❌ Agent button still missing from token controls");
+                console.log("Available tools:", tokenControl?.tools?.map(t => t.name));
+            }
+        }, 200);
+
+        return true;
+    } else {
+        console.log("❌ UI controls not available");
+        return false;
+    }
+};
+
+console.log("🔧 Cyberpunk Agent functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
+console.log("  - cyberpunkAgentFixTokenControls() - Força atualização dos controles");
 
 /**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
@@ -1541,18 +1589,19 @@ class CyberpunkAgent {
      */
     async addControlButton(controls) {
         try {
-            console.log("Cyberpunk Agent | addControlButton called with controls:", controls);
-
             // Safety check: ensure controls is an array
             if (!Array.isArray(controls)) {
-                console.warn("Cyberpunk Agent | addControlButton: controls is not an array:", controls);
                 return;
             }
 
             // Ensure device data is loaded
             if (!this.devices || this.devices.size === 0) {
-                console.log("Cyberpunk Agent | No devices loaded in addControlButton, loading device data...");
                 this.loadDeviceData();
+
+                // If still no devices after loading, device discovery might not be complete
+                if (this.devices.size === 0) {
+                    return;
+                }
             }
 
             // Find the token controls
@@ -1564,7 +1613,7 @@ class CyberpunkAgent {
                     tokenControl.tools = [];
                 }
 
-                // Remove any existing agent tools first
+                // Remove any existing agent tools first to prevent duplicates
                 tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
 
                 // Different behavior for GM vs Players
@@ -1595,7 +1644,7 @@ class CyberpunkAgent {
                                 }
                             });
                         }
-                        console.log(`Cyberpunk Agent | Added GM agent button for ${allDevices.length} registered device(s)`);
+                        // GM agent button added successfully
                     }
                 } else {
                     // Players: Access only to their equipped agents (existing behavior)
@@ -1622,11 +1671,9 @@ class CyberpunkAgent {
                                 }
                             });
                         }
-                        console.log(`Cyberpunk Agent | Added player agent button for ${equippedAgents.length} equipped agent(s)`);
+                        // Player agent button added successfully
                     }
                 }
-            } else {
-                console.warn("Cyberpunk Agent | Token control not found in controls array");
             }
         } catch (error) {
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
@@ -1901,14 +1948,58 @@ class CyberpunkAgent {
      * Update token controls to reflect current equipment state
      */
     updateTokenControls() {
-        // Force refresh of scene controls
-        if (game.scenes.active) {
-            // Trigger a refresh of the scene controls
-            const controls = ui.controls.controls;
-            if (controls) {
-                this.addControlButton(controls);
-                console.log("Cyberpunk Agent | Token controls updated for equipment changes");
+        try {
+            if (game.scenes.active && ui.controls && ui.controls.controls) {
+                // Add button to current controls without re-initializing
+                this.addControlButton(ui.controls.controls);
+
+                // Force a render update only
+                ui.controls.render();
             }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error updating token controls:", error);
+        }
+    }
+
+    /**
+     * Force add token control button (bypasses broken hooks from other modules)
+     */
+    forceAddTokenControlButton() {
+        try {
+            console.log("Cyberpunk Agent | Force adding token control button...");
+
+            // Check if UI is ready
+            if (!ui.controls || !ui.controls.controls) {
+                console.log("Cyberpunk Agent | UI controls not ready, retrying...");
+                setTimeout(() => this.forceAddTokenControlButton(), 500);
+                return;
+            }
+
+            // Find token control
+            const tokenControl = ui.controls.controls.find(c => c.name === "token");
+            if (!tokenControl) {
+                console.log("Cyberpunk Agent | Token control not found, retrying...");
+                setTimeout(() => this.forceAddTokenControlButton(), 500);
+                return;
+            }
+
+            // Check if button already exists
+            const existingButton = tokenControl.tools?.find(t => t.name === "agent");
+            if (existingButton) {
+                console.log("Cyberpunk Agent | Agent button already exists in token controls");
+                return;
+            }
+
+            // Add the button
+            this.addControlButton(ui.controls.controls);
+
+            // Force render
+            ui.controls.render();
+
+            console.log("Cyberpunk Agent | Token control button force-added successfully");
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error force adding token control button:", error);
         }
     }
 
@@ -8108,28 +8199,75 @@ Hooks.once('ready', () => {
             }
         });
 
-        // Hook for when the controls toolbar is rendered
+        // Hook for when the controls toolbar is built (defensive against other module errors)
         Hooks.on('getSceneControlButtons', (controls) => {
             try {
-                console.log("Cyberpunk Agent | getSceneControlButtons hook triggered");
-                if (CyberpunkAgent.instance) {
-                    console.log("Cyberpunk Agent | Adding control button...");
+                if (CyberpunkAgent.instance && controls) {
                     CyberpunkAgent.instance.addControlButton(controls);
-                } else {
-                    console.warn("Cyberpunk Agent | Instance not available in getSceneControlButtons hook");
                 }
             } catch (error) {
                 console.error("Cyberpunk Agent | Error in getSceneControlButtons hook:", error);
             }
         });
 
-        // Additional hook to ensure button appears on UI render
-        Hooks.on('renderSceneControls', (controls, html) => {
-            if (CyberpunkAgent.instance && Array.isArray(controls)) {
-                // Force a small delay to ensure controls are fully rendered
-                setTimeout(() => {
-                    CyberpunkAgent.instance.addControlButton(controls);
-                }, 100);
+        // Hook to refresh controls when scene controls are rendered
+        Hooks.on('renderSceneControls', (sceneControls, html, data) => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    // Simply ensure our button is in the controls without re-initializing
+                    setTimeout(() => {
+                        if (ui.controls && ui.controls.controls) {
+                            CyberpunkAgent.instance.addControlButton(ui.controls.controls);
+                        }
+                    }, 50);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in renderSceneControls hook:", error);
+            }
+        });
+
+        // Hook to ensure button appears when canvas is ready (fixes initial load issue)
+        Hooks.on('canvasReady', () => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    // Aggressive fallback: ensure button appears even if other modules break getSceneControlButtons
+                    setTimeout(() => {
+                        CyberpunkAgent.instance.forceAddTokenControlButton();
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in canvasReady hook:", error);
+            }
+        });
+
+        // Hook for when token layer is activated (when user switches to token controls)
+        Hooks.on('activateTokensLayer', () => {
+            try {
+                if (CyberpunkAgent.instance && ui.controls && ui.controls.controls) {
+                    // This runs when user switches to token controls
+                    setTimeout(() => {
+                        CyberpunkAgent.instance.addControlButton(ui.controls.controls);
+                        ui.controls.render();
+                    }, 50);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in activateTokensLayer hook:", error);
+            }
+        });
+
+        // Additional hook for when controls are actually rendered (backup)
+        Hooks.on('renderApplication', (app, html, data) => {
+            try {
+                if (app.constructor.name === 'SceneControls' && CyberpunkAgent.instance) {
+                    // Small delay to ensure the controls are fully rendered
+                    setTimeout(() => {
+                        if (ui.controls && ui.controls.controls) {
+                            CyberpunkAgent.instance.addControlButton(ui.controls.controls);
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                // Silent fail for this backup hook
             }
         });
 
