@@ -867,10 +867,282 @@ window.cyberpunkAgentFixTokenControls = function () {
     }
 };
 
+// Test function for contact list behavior
+window.cyberpunkAgentTestContactLogic = async function () {
+    console.log("📋 === CYBERPUNK AGENT - TESTING CONTACT LOGIC ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // Get available devices for testing
+    const devices = Array.from(agent.devices.values());
+    if (devices.length < 2) {
+        console.log("❌ Need at least 2 devices for testing contact logic");
+        console.log("Available devices:", devices.length);
+        return false;
+    }
+
+    const device1 = devices[0];
+    const device2 = devices[1];
+
+    console.log(`🔍 Testing contact logic between:`);
+    console.log(`  - Device 1: ${device1.ownerName || device1.deviceName} (${device1.id})`);
+    console.log(`  - Device 2: ${device2.ownerName || device2.deviceName} (${device2.id})`);
+
+    // Check initial contact lists
+    const device1Contacts = device1.contacts || [];
+    const device2Contacts = device2.contacts || [];
+
+    console.log(`📱 Initial contact lists:`);
+    console.log(`  - Device 1 contacts: ${device1Contacts.length}`);
+    console.log(`  - Device 2 contacts: ${device2Contacts.length}`);
+    console.log(`  - Device 1 has Device 2: ${device1Contacts.includes(device2.id)}`);
+    console.log(`  - Device 2 has Device 1: ${device2Contacts.includes(device1.id)}`);
+
+    // Test sending a message from device1 to device2
+    console.log(`📤 Sending test message from Device 1 to Device 2...`);
+    const testMessage = `Contact test message ${Date.now()}`;
+
+    try {
+        const success = await agent.sendDeviceMessage(device1.id, device2.id, testMessage);
+
+        if (success) {
+            console.log("✅ Message sent successfully");
+
+            // Check if contacts were auto-added
+            setTimeout(() => {
+                // Reload device data to see changes
+                agent.loadDeviceData();
+
+                const updatedDevice1 = agent.devices.get(device1.id);
+                const updatedDevice2 = agent.devices.get(device2.id);
+
+                const device1ContactsAfter = updatedDevice1.contacts || [];
+                const device2ContactsAfter = updatedDevice2.contacts || [];
+
+                console.log(`📱 Contact lists after message:`);
+                console.log(`  - Device 1 contacts: ${device1ContactsAfter.length}`);
+                console.log(`  - Device 2 contacts: ${device2ContactsAfter.length}`);
+                console.log(`  - Device 1 has Device 2: ${device1ContactsAfter.includes(device2.id)}`);
+                console.log(`  - Device 2 has Device 1: ${device2ContactsAfter.includes(device1.id)}`);
+
+                // Verify automatic addition worked
+                const device1Added = device1ContactsAfter.includes(device2.id);
+                const device2Added = device2ContactsAfter.includes(device1.id);
+
+                if (device1Added && device2Added) {
+                    console.log("✅ Automatic contact addition working correctly!");
+                } else {
+                    console.log("❌ Automatic contact addition failed:");
+                    console.log(`  - Device 1 → Device 2: ${device1Added ? 'Added' : 'Missing'}`);
+                    console.log(`  - Device 2 → Device 1: ${device2Added ? 'Added' : 'Missing'}`);
+                }
+
+                // Check conversation
+                const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
+                const conversation = agent.messages.get(conversationKey);
+
+                if (conversation && conversation.length > 0) {
+                    console.log(`✅ Message found in conversation (${conversation.length} messages)`);
+                    const lastMessage = conversation[conversation.length - 1];
+                    console.log(`  - Last message: "${lastMessage.text}"`);
+                } else {
+                    console.log("❌ Message not found in conversation");
+                }
+
+            }, 1000); // Wait 1 second for processing
+
+        } else {
+            console.log("❌ Message sending failed");
+        }
+    } catch (error) {
+        console.error("❌ Error testing contact logic:", error);
+    }
+
+    console.log("📋 === CONTACT LOGIC TEST COMPLETED ===");
+    return true;
+};
+
+// Test function for NPC messaging scenarios
+window.cyberpunkAgentTestNPCMessaging = async function () {
+    console.log("🤖 === CYBERPUNK AGENT - TESTING NPC MESSAGING ===");
+
+    if (!game.user.isGM) {
+        console.log("❌ This test requires GM access");
+        return false;
+    }
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // Get all character actors
+    const allActors = game.actors.filter(a => a.type === 'character');
+    if (allActors.length < 2) {
+        console.log("❌ Need at least 2 character actors for testing");
+        return false;
+    }
+
+    const npc = allActors[0];  // Use first as NPC
+    const pc = allActors[1];   // Use second as PC
+
+    console.log(`🔍 Testing NPC → PC messaging:`);
+    console.log(`  - NPC: ${npc.name} (${npc.id})`);
+    console.log(`  - PC: ${pc.name} (${pc.id})`);
+
+    // Check if both have devices
+    const npcDevices = agent.deviceMappings.get(npc.id) || [];
+    const pcDevices = agent.deviceMappings.get(pc.id) || [];
+
+    console.log(`📱 Current device status:`);
+    console.log(`  - NPC devices: ${npcDevices.length}`);
+    console.log(`  - PC devices: ${pcDevices.length}`);
+
+    // Send message from NPC to PC
+    console.log(`📤 Sending message from NPC to PC...`);
+    const testMessage = `NPC test message from ${npc.name} to ${pc.name} - ${Date.now()}`;
+
+    try {
+        const success = await agent.sendMessage(npc.id, pc.id, testMessage);
+
+        if (success) {
+            console.log("✅ Message sent successfully");
+
+            // Check device status after message
+            setTimeout(() => {
+                agent.loadDeviceData();
+
+                const npcDevicesAfter = agent.deviceMappings.get(npc.id) || [];
+                const pcDevicesAfter = agent.deviceMappings.get(pc.id) || [];
+
+                console.log(`📱 Device status after message:`);
+                console.log(`  - NPC devices: ${npcDevicesAfter.length}`);
+                console.log(`  - PC devices: ${pcDevicesAfter.length}`);
+
+                if (npcDevicesAfter.length > 0 && pcDevicesAfter.length > 0) {
+                    const npcDevice = agent.devices.get(npcDevicesAfter[0]);
+                    const pcDevice = agent.devices.get(pcDevicesAfter[0]);
+
+                    console.log(`🔍 Device details:`);
+                    console.log(`  - NPC Device: ${npcDevice?.deviceName} (${npcDevice?.id})`);
+                    console.log(`  - NPC Avatar: ${npcDevice?.img}`);
+                    console.log(`  - PC Device: ${pcDevice?.deviceName} (${pcDevice?.id})`);
+                    console.log(`  - PC Avatar: ${pcDevice?.img}`);
+
+                    // Check conversation
+                    const conversationKey = agent._getDeviceConversationKey(npcDevicesAfter[0], pcDevicesAfter[0]);
+                    const conversation = agent.messages.get(conversationKey);
+
+                    if (conversation && conversation.length > 0) {
+                        console.log(`✅ Message found in device conversation (${conversation.length} messages)`);
+                        const lastMessage = conversation[conversation.length - 1];
+                        console.log(`  - Last message: "${lastMessage.text}"`);
+                        console.log(`  - Sender ID: ${lastMessage.senderId}`);
+                        console.log(`  - Receiver ID: ${lastMessage.receiverId}`);
+                    } else {
+                        console.log("❌ Message not found in device conversation");
+                        console.log(`  - Conversation key: ${conversationKey}`);
+                        console.log(`  - Available conversations:`, Array.from(agent.messages.keys()));
+                    }
+
+                    // Check contact lists
+                    const npcContacts = npcDevice.contacts || [];
+                    const pcContacts = pcDevice.contacts || [];
+
+                    console.log(`📋 Contact lists after message:`);
+                    console.log(`  - NPC contacts: ${npcContacts.length} (has PC: ${npcContacts.includes(pcDevicesAfter[0])})`);
+                    console.log(`  - PC contacts: ${pcContacts.length} (has NPC: ${pcContacts.includes(npcDevicesAfter[0])})`);
+                }
+
+            }, 1500); // Wait 1.5 seconds for processing
+
+        } else {
+            console.log("❌ Message sending failed");
+        }
+    } catch (error) {
+        console.error("❌ Error testing NPC messaging:", error);
+    }
+
+    console.log("🤖 === NPC MESSAGING TEST COMPLETED ===");
+    return true;
+};
+
+// Debug function to check actor-device mapping
+window.cyberpunkAgentDebugActorDevices = function () {
+    console.log("🔍 === CYBERPUNK AGENT - ACTOR-DEVICE MAPPING ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    const allActors = game.actors.filter(a => a.type === 'character');
+
+    console.log(`📋 Analyzing ${allActors.length} character actors:`);
+    console.log("");
+
+    for (const actor of allActors) {
+        // Check for Agent items
+        const agentItems = actor.items?.filter(item =>
+            item.type === 'gear' &&
+            item.name.toLowerCase().includes('agent')
+        ) || [];
+
+        const equippedAgentItems = agentItems.filter(item => item.system?.equipped);
+
+        // Check registered devices
+        const registeredDevices = agent.deviceMappings.get(actor.id) || [];
+
+        console.log(`👤 ${actor.name} (${actor.id}):`);
+        console.log(`   📱 Agent items: ${agentItems.length} (${equippedAgentItems.length} equipped)`);
+        console.log(`   🔧 Registered devices: ${registeredDevices.length}`);
+
+        if (registeredDevices.length > 0) {
+            registeredDevices.forEach((deviceId, index) => {
+                const device = agent.devices.get(deviceId);
+                const phoneNumber = agent.devicePhoneNumbers.get(deviceId);
+                const isVirtual = device?.isVirtual || false;
+
+                console.log(`      ${index + 1}. ${device?.deviceName || 'Unknown'} (${deviceId})`);
+                console.log(`         📞 Phone: ${phoneNumber ? agent.formatPhoneNumberForDisplay(phoneNumber) : 'No phone'}`);
+                console.log(`         👻 Virtual: ${isVirtual}`);
+                console.log(`         📋 Contacts: ${device?.contacts?.length || 0}`);
+            });
+        }
+
+        // Check for mismatches
+        if (equippedAgentItems.length > 0 && registeredDevices.length === 0) {
+            console.log(`   ⚠️  MISMATCH: Has equipped Agent items but no registered devices!`);
+        }
+        if (equippedAgentItems.length === 0 && registeredDevices.length > 0) {
+            const hasVirtual = registeredDevices.some(deviceId => agent.devices.get(deviceId)?.isVirtual);
+            if (!hasVirtual) {
+                console.log(`   ⚠️  MISMATCH: No equipped Agent items but has non-virtual devices!`);
+            }
+        }
+
+        console.log("");
+    }
+
+    console.log("🔍 === END ACTOR-DEVICE MAPPING ===");
+    return true;
+};
+
 console.log("🔧 Cyberpunk Agent functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
 console.log("  - cyberpunkAgentFixTokenControls() - Força atualização dos controles");
+console.log("  - cyberpunkAgentTestContactLogic() - Testa lógica de contatos automática");
+console.log("  - cyberpunkAgentTestNPCMessaging() - Testa mensagens NPC → PC");
+console.log("  - cyberpunkAgentDebugActorDevices() - Debug actor-device mapping");
 
 /**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
@@ -909,6 +1181,9 @@ class GMDataManagementMenu extends FormApplication {
 
         // Synchronize All Devices button
         html.find('.synchronize-all-devices').click(this._onSynchronizeAllDevices.bind(this));
+
+        // Master Reset System button
+        html.find('.master-reset-system').click(this._onMasterResetSystem.bind(this));
     }
 
     async _onClearAllMessages(event) {
@@ -1010,6 +1285,25 @@ class GMDataManagementMenu extends FormApplication {
                 console.error("Error synchronizing all devices:", error);
                 ui.notifications.error("Error synchronizing all devices: " + error.message);
             }
+        }
+    }
+
+    async _onMasterResetSystem(event) {
+        event.preventDefault();
+
+        try {
+            // Call the global master reset function
+            if (typeof window.cyberpunkAgentMasterReset === 'function') {
+                await window.cyberpunkAgentMasterReset();
+                // The master reset function handles its own confirmation dialog
+                // and will close this dialog when it completes
+            } else {
+                console.error("Master reset function not available");
+                ui.notifications.error("Master reset function not available");
+            }
+        } catch (error) {
+            console.error("Error executing master reset:", error);
+            ui.notifications.error("Error executing master reset: " + error.message);
         }
     }
 }
@@ -3792,6 +4086,165 @@ class CyberpunkAgent {
     }
 
     /**
+     * Ensure an actor has at least one device (create virtual device ONLY if no Agent items)
+     * This should only create virtual devices for NPCs that don't have physical Agent items
+     * @param {string} actorId - ID of the actor
+     */
+    async ensureActorHasDevice(actorId) {
+        try {
+            const actor = game.actors.get(actorId);
+            if (!actor) {
+                console.error(`Cyberpunk Agent | Actor ${actorId} not found`);
+                return false;
+            }
+
+            // First, check if actor has Agent items - if so, ensure devices are registered
+            const agentItems = actor.items?.filter(item =>
+                item.type === 'gear' &&
+                item.name.toLowerCase().includes('agent') &&
+                item.system?.equipped
+            ) || [];
+
+            if (agentItems.length > 0) {
+                console.log(`Cyberpunk Agent | Actor ${actor.name} has ${agentItems.length} equipped Agent items`);
+
+                // Ensure devices are registered for all Agent items
+                await this.checkAndCreateDevicesForActor(actor);
+
+                // Check if devices were created successfully
+                const registeredDevices = this.deviceMappings.get(actorId) || [];
+                if (registeredDevices.length > 0) {
+                    console.log(`Cyberpunk Agent | Actor ${actor.name} has ${registeredDevices.length} registered devices`);
+                    return true;
+                }
+            }
+
+            // Check if actor already has devices from previous registration
+            const existingDevices = this.deviceMappings.get(actorId) || [];
+            if (existingDevices.length > 0) {
+                console.log(`Cyberpunk Agent | Actor ${actor.name} already has ${existingDevices.length} registered devices`);
+
+                // Ensure existing devices have proper data
+                for (const deviceId of existingDevices) {
+                    const device = this.devices.get(deviceId);
+                    if (device) {
+                        // Ensure device has proper name and image
+                        if (!device.deviceName || device.deviceName === `Device ${deviceId}`) {
+                            device.deviceName = actor.name;
+                            device.ownerName = actor.name;
+                        }
+                        if (!device.img) {
+                            device.img = actor.img || 'icons/svg/mystery-man.svg';
+                        }
+                    }
+                }
+                return true;
+            }
+
+            // ONLY create virtual device if actor has NO Agent items AND no existing devices
+            console.log(`Cyberpunk Agent | Actor ${actor.name} has no Agent items - creating virtual device for NPC messaging`);
+
+            const virtualDeviceId = `virtual-device-${actorId}`;
+            const virtualDevice = {
+                id: virtualDeviceId,
+                ownerActorId: actorId,
+                ownerName: actor.name,
+                deviceName: actor.name,
+                img: actor.img || 'icons/svg/mystery-man.svg',
+                contacts: [],
+                isVirtual: true, // Mark as virtual device for NPCs
+                settings: {
+                    muteAll: false,
+                    notificationSounds: true
+                }
+            };
+
+            // Add device to registry
+            this.devices.set(virtualDeviceId, virtualDevice);
+
+            // Add to device mappings
+            this.deviceMappings.set(actorId, [virtualDeviceId]);
+
+            // Generate phone number for virtual device
+            await this.getDevicePhoneNumber(virtualDeviceId);
+
+            // Save device data
+            await this.saveDeviceData();
+            await this.savePhoneNumberData();
+
+            console.log(`Cyberpunk Agent | Virtual device created for NPC ${actor.name}: ${virtualDeviceId}`);
+            return true;
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error ensuring actor has device:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Handle automatic contact addition between two devices (bidirectional)
+     * @param {string} senderDeviceId - ID of the sending device
+     * @param {string} receiverDeviceId - ID of the receiving device
+     */
+    async handleAutomaticContactAddition(senderDeviceId, receiverDeviceId) {
+        try {
+            let contactsAdded = false;
+
+            // Check if receiver is in sender's contacts, if not, add them
+            if (!this.isDeviceContact(senderDeviceId, receiverDeviceId)) {
+                console.log(`Cyberpunk Agent | Auto-adding ${receiverDeviceId} to ${senderDeviceId} contacts`);
+                await this.addContactToDevice(senderDeviceId, receiverDeviceId);
+                contactsAdded = true;
+
+                // Notify real-time updates for the sender
+                this.notifyContactUpdate({
+                    action: 'auto-add',
+                    deviceId: senderDeviceId,
+                    contactDeviceId: receiverDeviceId,
+                    reason: 'message-sent'
+                });
+            }
+
+            // Check if sender is in receiver's contacts, if not, add them
+            if (!this.isDeviceContact(receiverDeviceId, senderDeviceId)) {
+                console.log(`Cyberpunk Agent | Auto-adding ${senderDeviceId} to ${receiverDeviceId} contacts`);
+                await this.addContactToDevice(receiverDeviceId, senderDeviceId);
+                contactsAdded = true;
+
+                // Notify real-time updates for the receiver
+                this.notifyContactUpdate({
+                    action: 'auto-add',
+                    deviceId: receiverDeviceId,
+                    contactDeviceId: senderDeviceId,
+                    reason: 'message-received'
+                });
+            }
+
+            if (contactsAdded) {
+                // Save device data if contacts were added
+                await this.saveDeviceData();
+
+                // Update UI
+                this._updateChat7Interfaces();
+
+                // Dispatch update events
+                document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                    detail: {
+                        type: 'contactUpdate',
+                        deviceId: senderDeviceId,
+                        contactDeviceId: receiverDeviceId,
+                        action: 'auto-add-bidirectional',
+                        timestamp: Date.now()
+                    }
+                }));
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error handling automatic contact addition:", error);
+        }
+    }
+
+    /**
      * Automatically add a contact to a device
      * @param {string} deviceId - ID of the device to add contact to
      * @param {string} contactDeviceId - ID of the contact to add
@@ -3889,6 +4342,7 @@ class CyberpunkAgent {
 
     /**
      * REFACTORED: Send message using server-based system
+     * Enhanced to handle automatic contact addition for actor-based messaging
      */
     async sendMessage(senderId, receiverId, text) {
         if (!text || !text.trim()) {
@@ -3896,6 +4350,41 @@ class CyberpunkAgent {
         }
 
         console.log(`Cyberpunk Agent | Sending message via server: ${senderId} → ${receiverId}`);
+
+        // Check if these are actor IDs or device IDs
+        const senderIsActor = game.actors.get(senderId);
+        const receiverIsActor = game.actors.get(receiverId);
+
+        if (senderIsActor && receiverIsActor) {
+            // Both are actors - we need to handle this properly at device level
+            console.log("Cyberpunk Agent | Actor-to-actor message detected, ensuring devices exist...");
+
+            // Ensure both actors have devices (create if needed)
+            await this.ensureActorHasDevice(senderId);
+            await this.ensureActorHasDevice(receiverId);
+
+            // Get devices for both actors
+            const senderDevices = this.deviceMappings.get(senderId) || [];
+            const receiverDevices = this.deviceMappings.get(receiverId) || [];
+
+            if (senderDevices.length > 0 && receiverDevices.length > 0) {
+                // Use the first device of each actor for messaging
+                const senderDeviceId = senderDevices[0];
+                const receiverDeviceId = receiverDevices[0];
+
+                console.log(`Cyberpunk Agent | Routing actor message through devices: ${senderId} → ${senderDeviceId}, ${receiverId} → ${receiverDeviceId}`);
+
+                // Handle automatic contact addition at device level
+                await this.handleAutomaticContactAddition(senderDeviceId, receiverDeviceId);
+
+                // Convert this to a device message for proper handling
+                console.log("Cyberpunk Agent | Converting actor message to device message for proper handling");
+                return await this.sendDeviceMessage(senderDeviceId, receiverDeviceId, text);
+            } else {
+                console.error("Cyberpunk Agent | Cannot send message - one or both actors have no devices");
+                return false;
+            }
+        }
 
         // Create message object with enhanced ID generation
         const messageId = window.CyberpunkAgentMessageUtils ?
@@ -3965,63 +4454,8 @@ class CyberpunkAgent {
             return false;
         }
 
-        // Check if receiver is in sender's contacts, if not, add them
-        if (!this.isDeviceContact(senderDeviceId, receiverDeviceId)) {
-            console.log(`Cyberpunk Agent | Adding ${receiverDeviceId} to ${senderDeviceId} contacts automatically`);
-            this.addContactToDevice(senderDeviceId, receiverDeviceId);
-
-            // Notify real-time updates for the sender
-            this.notifyContactUpdate({
-                action: 'auto-add',
-                deviceId: senderDeviceId,
-                contactDeviceId: receiverDeviceId,
-                reason: 'message-sent'
-            });
-
-            // Also dispatch a local contact update event for immediate UI refresh
-            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
-                detail: {
-                    type: 'contactUpdate',
-                    deviceId: senderDeviceId,
-                    contactDeviceId: receiverDeviceId,
-                    action: 'auto-add',
-                    reason: 'message-sent',
-                    timestamp: Date.now()
-                }
-            }));
-
-            // Update Chat7 interfaces immediately for the sender
-            this._updateChat7Interfaces();
-        }
-
-        // Check if sender is in receiver's contacts, if not, add them
-        if (!this.isDeviceContact(receiverDeviceId, senderDeviceId)) {
-            console.log(`Cyberpunk Agent | Adding ${senderDeviceId} to ${receiverDeviceId} contacts automatically`);
-            this.addContactToDevice(receiverDeviceId, senderDeviceId);
-
-            // Notify real-time updates for the receiver
-            this.notifyContactUpdate({
-                action: 'auto-add',
-                deviceId: receiverDeviceId,
-                contactDeviceId: senderDeviceId,
-                reason: 'message-received'
-            });
-
-            // Also dispatch a local contact update event for immediate UI refresh
-            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
-                detail: {
-                    type: 'contactUpdate',
-                    deviceId: receiverDeviceId,
-                    contactDeviceId: senderDeviceId,
-                    action: 'auto-add',
-                    reason: 'message-received',
-                    timestamp: Date.now()
-                }
-            }));
-
-            // Update Chat7 interfaces immediately for the receiver
-            this._updateChat7Interfaces();
-        }
+        // Handle automatic contact addition for both sender and receiver
+        await this.handleAutomaticContactAddition(senderDeviceId, receiverDeviceId);
 
         const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
 
