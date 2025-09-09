@@ -819,6 +819,7 @@ window.cyberpunkAgentCheckStatus = function () {
     };
 };
 
+
 console.log("🔧 Cyberpunk Agent GM functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
@@ -1376,11 +1377,11 @@ class CyberpunkAgent {
 
         // Load device data
         this.loadDeviceData();
-        console.log('Cyberpunk Agent | After loadDeviceData, this.devices.size:', this.devices?.size);
+        // Device data loaded
 
         // Load messages
         await this.loadMessages();
-        console.log('Cyberpunk Agent | After loadMessages, this.messages.size:', this.messages?.size);
+        // Messages loaded
 
         // Initialize device discovery for existing agent items
         this.initializeDeviceDiscovery();
@@ -1396,16 +1397,16 @@ class CyberpunkAgent {
 
         // Additional SocketLib initialization check after a delay
         setTimeout(() => {
-            console.log("Cyberpunk Agent | Checking SocketLib status after delay...");
+            // Check SocketLib status after delay
             if (!this._isSocketLibAvailable()) {
-                console.warn("Cyberpunk Agent | SocketLib not available after delay, attempting manual initialization...");
+                // SocketLib not ready yet, attempting manual initialization
 
                 // Try to initialize SocketLib manually
                 if (typeof window.initializeSocketLib === 'function') {
                     const success = window.initializeSocketLib();
                     if (success && this.socketLibIntegration) {
                         this.socketLibIntegration.updateSocket(window.socket);
-                        console.log("Cyberpunk Agent | SocketLib manually initialized successfully");
+                        console.log("Cyberpunk Agent | SocketLib initialized successfully");
                     } else {
                         console.error("Cyberpunk Agent | Manual SocketLib initialization failed");
                     }
@@ -1451,7 +1452,7 @@ class CyberpunkAgent {
             return;
         }
 
-        console.log("Cyberpunk Agent | Initializing device discovery...");
+        // Initializing device discovery
 
         // Run device discovery after a short delay to ensure everything is loaded
         setTimeout(async () => {
@@ -1467,7 +1468,7 @@ class CyberpunkAgent {
      * Discover existing agent items and create devices
      */
     async discoverAndCreateDevices() {
-        console.log("Cyberpunk Agent | Discovering existing agent items...");
+        // Discovering existing agent items
 
         const actors = game.actors.filter(actor => actor.type === 'character');
         let devicesCreated = 0;
@@ -1487,7 +1488,7 @@ class CyberpunkAgent {
 
                     // Check if device already exists
                     if (this.devices.has(deviceId)) {
-                        console.log(`Cyberpunk Agent | Device ${deviceId} already exists, skipping`);
+                        // Device already exists, skipping
                         continue;
                     }
 
@@ -1531,7 +1532,7 @@ class CyberpunkAgent {
             await this.saveDeviceData();
             console.log(`Cyberpunk Agent | Device discovery created ${devicesCreated} new devices`);
         } else {
-            console.log("Cyberpunk Agent | No new devices discovered");
+            // Device discovery completed
         }
     }
 
@@ -1782,7 +1783,7 @@ class CyberpunkAgent {
 
                 // Check if device already exists
                 if (this.devices.has(deviceId)) {
-                    console.log(`Cyberpunk Agent | Device ${deviceId} already exists, skipping`);
+                    // Device already exists, skipping
                     continue;
                 }
 
@@ -2656,12 +2657,10 @@ class CyberpunkAgent {
     loadDeviceData() {
         try {
             console.log("Cyberpunk Agent | Loading device data...");
-            console.log("Cyberpunk Agent | this.devices before clear:", this.devices);
-            console.log("Cyberpunk Agent | this.deviceMappings before clear:", this.deviceMappings);
 
             // Load devices and mappings from game settings
             const deviceData = game.settings.get('cyberpunk-agent', 'device-data') || {};
-            console.log("Cyberpunk Agent | Raw device data from settings:", deviceData);
+            // Loading device data from settings
 
             // Clear existing data
             this.devices.clear();
@@ -2688,8 +2687,6 @@ class CyberpunkAgent {
             }
 
             console.log("Cyberpunk Agent | Device data loaded successfully");
-            console.log("Cyberpunk Agent | Final this.devices.size:", this.devices.size);
-            console.log("Cyberpunk Agent | Final this.deviceMappings.size:", this.deviceMappings.size);
 
             // Load phone number data
             this.loadPhoneNumberData();

@@ -117,27 +117,15 @@ function testSocketLibSetup() {
     // Check if module is registered
     const modules = socketlib.modules && Array.isArray(socketlib.modules) ? socketlib.modules : [];
     const isRegistered = modules.includes('cyberpunk-agent');
-    console.log(`Cyberpunk Agent | Module registered with SocketLib: ${isRegistered}`);
-
-    // Log available methods
-    console.log("Cyberpunk Agent | SocketLib methods:", Object.keys(socketlib).filter(key => typeof socketlib[key] === 'function'));
-
-    if (!isRegistered) {
-      console.warn("Cyberpunk Agent | Module not properly registered with SocketLib");
-    }
-
     // Test if our socket has the required methods
     if (socket) {
       const socketMethods = Object.keys(socket).filter(key => typeof socket[key] === 'function');
-      console.log("Cyberpunk Agent | Socket methods:", socketMethods);
-
       const requiredMethods = ['executeForEveryone', 'executeForOthers', 'executeAsGM', 'executeAsUser'];
       const missingMethods = requiredMethods.filter(method => !socketMethods.includes(method));
 
-      if (missingMethods.length > 0) {
-        console.warn("Cyberpunk Agent | Missing required socket methods:", missingMethods);
-      } else {
-        console.log("Cyberpunk Agent | All required socket methods available");
+      // Only warn if SocketLib should be ready (not during initial loading)
+      if (missingMethods.length > 0 && socketlib && socketlib.ready !== false) {
+        console.warn("Cyberpunk Agent | SocketLib methods not ready yet, will retry...");
       }
     }
   } catch (error) {
@@ -1309,10 +1297,8 @@ class SocketLibIntegration {
   constructor() {
     this.socketlib = socket;
     this.isAvailable = !!socket && typeof socketlib !== 'undefined';
-    console.log("Cyberpunk Agent | SocketLib integration initialized, available:", this.isAvailable);
-
     if (!this.isAvailable) {
-      console.warn("Cyberpunk Agent | SocketLib integration not available - socket:", !!socket, "socketlib:", typeof socketlib);
+      console.warn("Cyberpunk Agent | SocketLib integration not available - initializing...");
     }
   }
 
@@ -1322,7 +1308,9 @@ class SocketLibIntegration {
   updateSocket(newSocket) {
     this.socketlib = newSocket;
     this.isAvailable = !!newSocket && typeof socketlib !== 'undefined';
-    console.log("Cyberpunk Agent | SocketLib integration updated, available:", this.isAvailable);
+    if (this.isAvailable) {
+      console.log("Cyberpunk Agent | SocketLib integration ready");
+    }
   }
 
   /**
