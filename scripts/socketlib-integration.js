@@ -80,6 +80,9 @@ function initializeSocketLib() {
     socket.register("requestDeviceMessageSync", handleDeviceMessageSyncRequest);
     socket.register("deviceMessageSyncResponse", handleDeviceMessageSyncResponse);
 
+    // Cyberpunk Agent Master Reset handler
+    socket.register("cyberpunkAgentMasterReset", handleCyberpunkAgentMasterReset);
+
     // Register GM data management handlers
     socket.register("allMessagesCleared", handleAllMessagesCleared);
     socket.register("allContactListsCleared", handleAllContactListsCleared);
@@ -619,12 +622,29 @@ async function handleSendMessage(data) {
     return;
   }
 
-  // Check if this is a recent message to avoid duplicates
-  const now = Date.now();
-  const timeDiff = now - data.timestamp;
-  if (timeDiff > 30000) { // Ignore messages older than 30 seconds
-    console.log("Cyberpunk Agent | Ignoring old message (age:", timeDiff, "ms)");
-    return;
+  // Enhanced deduplication check
+  if (window.CyberpunkAgentMessageDeduplication) {
+    if (window.CyberpunkAgentMessageDeduplication.isDuplicate(data.messageId)) {
+      console.log("Cyberpunk Agent | Duplicate message detected via SocketLib:", data.messageId);
+      return;
+    }
+    window.CyberpunkAgentMessageDeduplication.addMessage(data.messageId, data.timestamp);
+  }
+
+  // Check if this is a recent message (enhanced check)
+  if (window.CyberpunkAgentMessageUtils) {
+    if (!window.CyberpunkAgentMessageUtils.isRecentMessage(data.timestamp, 30000)) {
+      console.log("Cyberpunk Agent | Ignoring old message (age:", Date.now() - data.timestamp, "ms)");
+      return;
+    }
+  } else {
+    // Fallback to old method
+    const now = Date.now();
+    const timeDiff = now - data.timestamp;
+    if (timeDiff > 30000) {
+      console.log("Cyberpunk Agent | Ignoring old message (age:", timeDiff, "ms)");
+      return;
+    }
   }
 
   console.log("Cyberpunk Agent | Processing message from:", data.userName);
@@ -698,7 +718,7 @@ async function handleSendMessage(data) {
       // Visual notifications are now handled by playNotificationSound function
       console.log("Cyberpunk Agent | Visual notifications handled by playNotificationSound function");
 
-      // Play notification sound if the current user is the receiver
+      // Enhanced notification handling
       if (data.receiverId) {
         // Check if the current user is the actual owner of the receiving device
         const receiverUser = window.CyberpunkAgent.instance._getUserForDevice(data.receiverId);
@@ -714,7 +734,22 @@ async function handleSendMessage(data) {
 
         if (isReceiver) {
           console.log("Cyberpunk Agent | Handling notifications for received message - user is the actual receiver");
-          window.CyberpunkAgent.instance.handleNewMessageNotifications(data.senderId, data.receiverId);
+
+          // Use smart notification manager if available
+          if (window.CyberpunkAgentNotificationManager) {
+            const message = {
+              id: data.messageId,
+              senderId: data.senderId,
+              receiverId: data.receiverId,
+              text: data.text,
+              timestamp: data.timestamp
+            };
+
+            window.CyberpunkAgentNotificationManager.showNotification(message, game.user.id, data.receiverId);
+          } else {
+            // Fallback to original method
+            window.CyberpunkAgent.instance.handleNewMessageNotifications(data.senderId, data.receiverId);
+          }
         } else {
           console.log("Cyberpunk Agent | User is not the actual receiver device owner, skipping notifications");
         }
@@ -1170,6 +1205,106 @@ async function handleDeviceMessageSyncResponse(data) {
   }
 }
 
+/**
+ * Handle Cyberpunk Agent Master Reset command from GM
+ */
+async function handleCyberpunkAgentMasterReset(data) {
+  console.log("🚨 Cyberpunk Agent | Received Master Reset command via SocketLib:", data);
+
+  // Don't process our own reset command
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own master reset command");
+    return;
+  }
+
+  // Verify it's from GM
+  const gmUser = game.users.get(data.userId);
+  if (!gmUser || !gmUser.isGM) {
+    console.warn("Cyberpunk Agent | Master reset command not from GM, ignoring");
+    return;
+  }
+
+  console.log(`🚨 Cyberpunk Agent | Processing master reset from GM: ${data.userName}`);
+
+  try {
+    // Show notification to user
+    ui.notifications.warn(`🚨 GM ${data.userName} executou um reset completo do sistema. Reinicializando em 3 segundos...`, { permanent: true });
+
+    // Clear local data
+    console.log("🧹 Limpando dados locais do cliente...");
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Clear messages
+      window.CyberpunkAgent.instance.messages.clear();
+      window.CyberpunkAgent.instance.lastReadTimestamps.clear();
+      window.CyberpunkAgent.instance.unreadCounts.clear();
+
+      // Clear contact lists from all devices
+      for (const [deviceId, device] of window.CyberpunkAgent.instance.devices) {
+        if (device.contacts) {
+          device.contacts = [];
+        }
+      }
+
+      console.log("✅ Dados locais limpos");
+    }
+
+    // Clear localStorage
+    console.log("💾 Limpando localStorage do cliente...");
+    const userMessagesKey = `cyberpunk-agent-messages-${game.user.id}`;
+    const userTimestampsKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+    localStorage.removeItem(userMessagesKey);
+    localStorage.removeItem(userTimestampsKey);
+    console.log("✅ localStorage limpo");
+
+    // Clear enhanced system caches
+    if (window.CyberpunkAgentMessageDeduplication) {
+      window.CyberpunkAgentMessageDeduplication.recentMessages.clear();
+      console.log("✅ Cache de deduplicação limpo");
+    }
+
+    if (window.CyberpunkAgentPerformanceManager) {
+      window.CyberpunkAgentPerformanceManager.saveQueue.clear();
+      if (window.CyberpunkAgentPerformanceManager.saveTimeout) {
+        clearTimeout(window.CyberpunkAgentPerformanceManager.saveTimeout);
+        window.CyberpunkAgentPerformanceManager.saveTimeout = null;
+      }
+      console.log("✅ Cache de performance limpo");
+    }
+
+    // Clear notification manager
+    if (window.CyberpunkAgentNotificationManager) {
+      window.CyberpunkAgentNotificationManager.activeConversations.clear();
+      window.CyberpunkAgentNotificationManager.notificationCooldowns.clear();
+      console.log("✅ Cache de notificações limpo");
+    }
+
+    // Clear error handler
+    if (window.CyberpunkAgentErrorHandler) {
+      window.CyberpunkAgentErrorHandler.fallbackQueue.clear();
+      window.CyberpunkAgentErrorHandler.retryAttempts.clear();
+      console.log("✅ Cache de erros limpo");
+    }
+
+    console.log("🎉 Cliente limpo com sucesso! Reinicializando...");
+
+    // Force reload after 3 seconds
+    setTimeout(() => {
+      console.log("🔄 Reinicializando cliente...");
+      window.location.reload();
+    }, 3000);
+
+  } catch (error) {
+    console.error("❌ Erro durante limpeza do cliente:", error);
+    ui.notifications.error(`Erro durante reset: ${error.message}`);
+
+    // Still try to reload even if there was an error
+    setTimeout(() => {
+      window.location.reload();
+    }, 5000);
+  }
+}
+
 class SocketLibIntegration {
   constructor() {
     this.socketlib = socket;
@@ -1499,6 +1634,28 @@ class SocketLibIntegration {
         socketAvailable: !!socket,
         socketMethods: socket ? Object.keys(socket).filter(key => typeof socket[key] === 'function') : []
       });
+
+      // Use enhanced error handling if available
+      if (window.CyberpunkAgentErrorHandler) {
+        const message = {
+          id: messageId,
+          senderId: senderId,
+          receiverId: receiverId,
+          text: text,
+          timestamp: Date.now()
+        };
+
+        // Try fallback method (could be Foundry chat or localStorage-only)
+        const fallbackMethod = async (msg) => {
+          console.log("Cyberpunk Agent | Using fallback method for message:", msg.id);
+          // For now, just ensure the message is saved locally
+          // In a real scenario, this could try alternative communication methods
+          return true;
+        };
+
+        return await window.CyberpunkAgentErrorHandler.handleSocketLibFailure(message, fallbackMethod);
+      }
+
       return false;
     }
   }

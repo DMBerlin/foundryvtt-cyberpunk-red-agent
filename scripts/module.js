@@ -6,6 +6,824 @@
 console.log("Cyberpunk Agent | Loading module.js...");
 
 /**
+ * Enhanced Messaging System for Cyberpunk Agent
+ * Integrated directly into module.js for FoundryVTT v11.315 compatibility
+ */
+console.log("Cyberpunk Agent | Loading enhanced messaging system...");
+
+/**
+ * Message utilities for improved handling
+ */
+class MessageUtils {
+    /**
+     * Generate a unique message ID
+     */
+    static generateMessageId(senderId, receiverId, text) {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substr(2, 9);
+        const textHash = MessageUtils.simpleHash(text);
+        return `${senderId}-${receiverId}-${timestamp}-${textHash}-${random}`;
+    }
+
+    /**
+     * Simple hash function for text content
+     */
+    static simpleHash(text) {
+        let hash = 0;
+        if (text.length === 0) return hash.toString(36);
+        for (let i = 0; i < text.length; i++) {
+            const char = text.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(36);
+    }
+
+    /**
+     * Validate message object
+     */
+    static validateMessage(message) {
+        return message &&
+            typeof message.id === 'string' &&
+            typeof message.senderId === 'string' &&
+            typeof message.receiverId === 'string' &&
+            typeof message.text === 'string' &&
+            typeof message.timestamp === 'number' &&
+            message.text.trim().length > 0;
+    }
+
+    /**
+     * Create consistent conversation key
+     */
+    static getConversationKey(id1, id2) {
+        return [id1, id2].sort().join('|');
+    }
+
+    /**
+     * Check if message is recent
+     */
+    static isRecentMessage(timestamp, threshold = 30000) {
+        return (Date.now() - timestamp) <= threshold;
+    }
+}
+
+/**
+ * Message deduplication manager
+ */
+class MessageDeduplicationManager {
+    constructor() {
+        this.recentMessages = new Map();
+        this.cleanupInterval = null;
+        this.maxAge = 60000;
+        this.startCleanup();
+    }
+
+    isDuplicate(messageId) {
+        return this.recentMessages.has(messageId);
+    }
+
+    addMessage(messageId, timestamp = Date.now()) {
+        this.recentMessages.set(messageId, timestamp);
+    }
+
+    cleanup() {
+        const now = Date.now();
+        const toDelete = [];
+
+        for (const [messageId, timestamp] of this.recentMessages.entries()) {
+            if (now - timestamp > this.maxAge) {
+                toDelete.push(messageId);
+            }
+        }
+
+        toDelete.forEach(messageId => this.recentMessages.delete(messageId));
+
+        // Cleanup completed silently
+    }
+
+    startCleanup() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+        }
+
+        this.cleanupInterval = setInterval(() => {
+            this.cleanup();
+        }, 30000);
+    }
+
+    stopCleanup() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
+    }
+
+    getStats() {
+        return {
+            totalMessages: this.recentMessages.size,
+            oldestMessage: Math.min(...this.recentMessages.values()),
+            newestMessage: Math.max(...this.recentMessages.values()),
+            maxAge: this.maxAge
+        };
+    }
+}
+
+/**
+ * Performance optimization utilities
+ */
+class MessagePerformanceManager {
+    constructor() {
+        this.pageSize = 50;
+        this.maxCacheSize = 1000;
+        this.saveQueue = new Map();
+        this.saveTimeout = null;
+        this.saveDelay = 1000;
+    }
+
+    getPaginatedMessages(messages, page = 0, pageSize = this.pageSize) {
+        const totalMessages = messages.length;
+        const totalPages = Math.ceil(totalMessages / pageSize);
+        const startIndex = page * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalMessages);
+
+        const sortedMessages = [...messages].sort((a, b) => b.timestamp - a.timestamp);
+        const pageMessages = sortedMessages.slice(startIndex, endIndex);
+
+        return {
+            messages: pageMessages,
+            page,
+            pageSize,
+            totalMessages,
+            totalPages,
+            hasMore: page < totalPages - 1,
+            hasPrevious: page > 0
+        };
+    }
+
+    getRecentMessages(messages, count = this.pageSize) {
+        return [...messages]
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, count);
+    }
+
+    queueSave(conversationKey, messages) {
+        this.saveQueue.set(conversationKey, messages);
+
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+
+        this.saveTimeout = setTimeout(async () => {
+            await this.processSaveQueue();
+        }, this.saveDelay);
+    }
+
+    async processSaveQueue() {
+        if (this.saveQueue.size === 0) return;
+
+        // Processing save queue silently
+
+        try {
+            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const existingData = localStorage.getItem(storageKey);
+            const messagesData = existingData ? JSON.parse(existingData) : {};
+
+            for (const [conversationKey, messages] of this.saveQueue.entries()) {
+                messagesData[conversationKey] = messages;
+            }
+
+            localStorage.setItem(storageKey, JSON.stringify(messagesData));
+
+            // Conversations saved to localStorage successfully
+            this.saveQueue.clear();
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error processing save queue:", error);
+        }
+    }
+
+    async forceSave() {
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = null;
+        }
+        await this.processSaveQueue();
+    }
+}
+
+/**
+ * Smart notification manager
+ */
+class SmartNotificationManager {
+    constructor() {
+        this.activeConversations = new Map();
+        this.notificationCooldowns = new Map();
+        this.cooldownPeriod = 5000;
+        this.userPreferences = new Map();
+    }
+
+    setActiveConversation(userId, deviceId, contactId) {
+        this.activeConversations.set(userId, {
+            deviceId,
+            contactId,
+            timestamp: Date.now()
+        });
+    }
+
+    clearActiveConversation(userId) {
+        this.activeConversations.delete(userId);
+    }
+
+    isActiveConversation(userId, deviceId, contactId) {
+        const active = this.activeConversations.get(userId);
+        if (!active) return false;
+
+        const isActive = active.deviceId === deviceId && active.contactId === contactId;
+        const isRecent = (Date.now() - active.timestamp) < 30000;
+
+        return isActive && isRecent;
+    }
+
+    shouldNotify(conversationKey, receiverUserId, receiverDeviceId, senderDeviceId) {
+        if (this.isActiveConversation(receiverUserId, receiverDeviceId, senderDeviceId)) {
+            return false;
+        }
+
+        const lastNotification = this.notificationCooldowns.get(conversationKey);
+        if (lastNotification && (Date.now() - lastNotification) < this.cooldownPeriod) {
+            return false;
+        }
+
+        return true;
+    }
+
+    recordNotification(conversationKey) {
+        this.notificationCooldowns.set(conversationKey, Date.now());
+    }
+
+    async showNotification(message, receiverUserId, receiverDeviceId) {
+        const conversationKey = MessageUtils.getConversationKey(message.senderId, message.receiverId);
+
+        if (!this.shouldNotify(conversationKey, receiverUserId, receiverDeviceId, message.senderId)) {
+            return;
+        }
+
+        try {
+            const senderDevice = window.CyberpunkAgent?.instance?.devices?.get(message.senderId);
+            const senderName = senderDevice?.ownerName || senderDevice?.deviceName || 'Unknown';
+
+            this.showNotificationBanner(senderName, message.text);
+            await this.playNotificationSound();
+            this.updateUnreadBadge(receiverDeviceId);
+            this.recordNotification(conversationKey);
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error showing smart notification:", error);
+        }
+    }
+
+    showNotificationBanner(senderName, text) {
+        const preview = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        ui.notifications.info(`📱 ${senderName}: ${preview}`);
+    }
+
+    async playNotificationSound() {
+        try {
+            const audio = new Audio('modules/cyberpunk-agent/assets/sfx/notification-message.sfx.mp3');
+            audio.volume = 0.5;
+            await audio.play();
+        } catch (error) {
+            console.warn("Cyberpunk Agent | Could not play notification sound:", error);
+        }
+    }
+
+    updateUnreadBadge(deviceId) {
+        document.dispatchEvent(new CustomEvent('cyberpunk-agent-unread-update', {
+            detail: { deviceId }
+        }));
+    }
+}
+
+/**
+ * Enhanced error handling manager
+ */
+class ErrorHandlingManager {
+    constructor() {
+        this.fallbackQueue = new Map();
+        this.retryAttempts = new Map();
+        this.maxRetries = 3;
+        this.retryDelay = 2000;
+    }
+
+    async handleSocketLibFailure(message, fallbackMethod) {
+        console.warn("Cyberpunk Agent | SocketLib failed, using fallback method");
+
+        try {
+            const success = await fallbackMethod(message);
+            if (success) {
+                console.log("Cyberpunk Agent | Fallback method succeeded");
+                return true;
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Fallback method also failed:", error);
+        }
+
+        this.queueForRetry(message);
+        return false;
+    }
+
+    queueForRetry(message) {
+        const attempts = this.retryAttempts.get(message.id) || 0;
+
+        if (attempts < this.maxRetries) {
+            this.fallbackQueue.set(message.id, message);
+            this.retryAttempts.set(message.id, attempts + 1);
+
+            setTimeout(() => {
+                this.retryMessage(message.id);
+            }, this.retryDelay * (attempts + 1));
+
+            // Message queued for retry
+        } else {
+            console.error(`Cyberpunk Agent | Message failed after ${this.maxRetries} attempts:`, message.id);
+            this.retryAttempts.delete(message.id);
+        }
+    }
+
+    async retryMessage(messageId) {
+        const message = this.fallbackQueue.get(messageId);
+        if (!message) return;
+
+        // Retrying message silently
+
+        try {
+            if (window.CyberpunkAgent?.instance?.socketLibIntegration) {
+                const success = await window.CyberpunkAgent.instance.socketLibIntegration.sendMessage(
+                    message.senderId,
+                    message.receiverId,
+                    message.text,
+                    message.id
+                );
+
+                if (success) {
+                    this.fallbackQueue.delete(messageId);
+                    this.retryAttempts.delete(messageId);
+                    return;
+                }
+            }
+
+            this.queueForRetry(message);
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Retry failed for message ${messageId}:`, error);
+            this.queueForRetry(message);
+        }
+    }
+
+    getQueueStatus() {
+        return {
+            queuedMessages: this.fallbackQueue.size,
+            totalRetryAttempts: Array.from(this.retryAttempts.values()).reduce((a, b) => a + b, 0),
+            maxRetries: this.maxRetries
+        };
+    }
+}
+
+// Create global instances
+window.CyberpunkAgentMessageUtils = MessageUtils;
+window.CyberpunkAgentMessageDeduplication = new MessageDeduplicationManager();
+window.CyberpunkAgentPerformanceManager = new MessagePerformanceManager();
+window.CyberpunkAgentNotificationManager = new SmartNotificationManager();
+window.CyberpunkAgentErrorHandler = new ErrorHandlingManager();
+
+console.log("Cyberpunk Agent | Enhanced messaging system loaded successfully");
+
+// Quick validation function (for development/troubleshooting)
+window.quickValidateEnhancements = function () {
+    console.log("🔍 === CYBERPUNK AGENT - VALIDATION ===");
+
+    const results = {
+        enhancedMessaging: false,
+        cyberpunkAgent: false,
+        socketLibIntegration: false,
+        backwardsCompatibility: false
+    };
+
+    // Check enhanced messaging utilities
+    if (window.CyberpunkAgentMessageUtils &&
+        window.CyberpunkAgentMessageDeduplication &&
+        window.CyberpunkAgentPerformanceManager &&
+        window.CyberpunkAgentNotificationManager &&
+        window.CyberpunkAgentErrorHandler) {
+        results.enhancedMessaging = true;
+        console.log("✅ Enhanced messaging utilities loaded");
+    } else {
+        console.log("❌ Enhanced messaging utilities missing");
+    }
+
+    // Check main CyberpunkAgent instance
+    if (window.CyberpunkAgent &&
+        window.CyberpunkAgent.instance &&
+        window.CyberpunkAgent.instance.devices &&
+        window.CyberpunkAgent.instance.messages) {
+        results.cyberpunkAgent = true;
+        console.log("✅ CyberpunkAgent instance available");
+    } else {
+        console.log("❌ CyberpunkAgent instance missing");
+    }
+
+    // Check SocketLib integration
+    if (window.CyberpunkAgent?.instance?.socketLibIntegration) {
+        results.socketLibIntegration = true;
+        console.log("✅ SocketLib integration available");
+    } else {
+        console.log("❌ SocketLib integration missing");
+    }
+
+    // Check backwards compatibility
+    const requiredMethods = ['sendMessage', 'sendDeviceMessage', 'loadMessages'];
+    let methodsAvailable = 0;
+
+    if (window.CyberpunkAgent?.instance) {
+        for (const method of requiredMethods) {
+            if (typeof window.CyberpunkAgent.instance[method] === 'function') {
+                methodsAvailable++;
+            }
+        }
+    }
+
+    if (methodsAvailable === requiredMethods.length) {
+        results.backwardsCompatibility = true;
+        console.log("✅ Backwards compatibility maintained");
+    } else {
+        console.log(`❌ Backwards compatibility issues (${methodsAvailable}/${requiredMethods.length} methods available)`);
+    }
+
+    // Summary
+    const passedChecks = Object.values(results).filter(Boolean).length;
+    const totalChecks = Object.keys(results).length;
+
+    console.log(`\n📊 Validation Summary: ${passedChecks}/${totalChecks} checks passed`);
+
+    if (passedChecks === totalChecks) {
+        console.log("🎉 All enhancements loaded successfully!");
+        console.log("\n🧪 Run 'testBasicMessaging()' to test messaging");
+        console.log("🚀 Run 'testEnhancedFeatures()' to test enhanced features");
+    } else {
+        console.log("⚠️ Some enhancements failed to load properly");
+    }
+
+    return results;
+};
+
+// Test basic messaging function (for development/troubleshooting)
+window.testBasicMessaging = function () {
+    console.log("📱 === CYBERPUNK AGENT - TESTING MESSAGING ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    const userActors = agent.getUserActors();
+
+    if (userActors.length < 2) {
+        console.log("⚠️ Need at least 2 user actors to test messaging");
+        console.log("Available actors:", userActors.map(a => a.name));
+        return false;
+    }
+
+    const actor1 = userActors[0];
+    const actor2 = userActors[1];
+    const testMessage = `Enhanced test message ${Date.now()}`;
+
+    console.log(`📤 Sending message from ${actor1.name} to ${actor2.name}: "${testMessage}"`);
+
+    agent.sendMessage(actor1.id, actor2.id, testMessage)
+        .then(success => {
+            if (success) {
+                console.log("✅ Message sent successfully with enhanced features");
+
+                const conversationKey = agent._getConversationKey(actor1.id, actor2.id);
+                const conversation = agent.messages.get(conversationKey);
+
+                if (conversation && conversation.length > 0) {
+                    const lastMessage = conversation[conversation.length - 1];
+                    console.log("✅ Message found in conversation:", lastMessage.text);
+
+                    if (lastMessage.id.includes('-') && lastMessage.id.length > 20) {
+                        console.log("✅ Enhanced message ID format detected");
+                    } else {
+                        console.log("⚠️ Using fallback message ID format");
+                    }
+                } else {
+                    console.log("❌ Message not found in conversation");
+                }
+            } else {
+                console.log("❌ Message sending failed");
+            }
+        })
+        .catch(error => {
+            console.error("❌ Message sending error:", error);
+        });
+
+    return true;
+};
+
+// Test enhanced features function (for development/troubleshooting)
+window.testEnhancedFeatures = function () {
+    console.log("🚀 === CYBERPUNK AGENT - TESTING ENHANCED FEATURES ===");
+
+    // Test message deduplication
+    if (window.CyberpunkAgentMessageDeduplication) {
+        const testId = `test-${Date.now()}`;
+        if (!window.CyberpunkAgentMessageDeduplication.isDuplicate(testId)) {
+            window.CyberpunkAgentMessageDeduplication.addMessage(testId);
+
+            if (window.CyberpunkAgentMessageDeduplication.isDuplicate(testId)) {
+                console.log("✅ Message deduplication working");
+            } else {
+                console.log("❌ Message deduplication failed");
+            }
+        }
+
+        const stats = window.CyberpunkAgentMessageDeduplication.getStats();
+        console.log("📊 Deduplication stats:", stats);
+    }
+
+    // Test performance manager
+    if (window.CyberpunkAgentPerformanceManager) {
+        const testMessages = [
+            { id: "1", text: "Test 1", timestamp: Date.now() },
+            { id: "2", text: "Test 2", timestamp: Date.now() + 1000 },
+            { id: "3", text: "Test 3", timestamp: Date.now() + 2000 }
+        ];
+
+        const recent = window.CyberpunkAgentPerformanceManager.getRecentMessages(testMessages, 2);
+        if (recent.length === 2) {
+            console.log("✅ Performance optimizations working");
+        } else {
+            console.log("❌ Performance optimizations failed");
+        }
+    }
+
+    // Test smart notifications
+    if (window.CyberpunkAgentNotificationManager) {
+        const userId = "test-user";
+        const deviceId = "test-device";
+        const contactId = "test-contact";
+        const conversationKey = `${deviceId}|${contactId}`;
+
+        if (window.CyberpunkAgentNotificationManager.shouldNotify(conversationKey, userId, deviceId, contactId)) {
+            console.log("✅ Smart notifications working");
+        } else {
+            console.log("❌ Smart notifications failed");
+        }
+    }
+
+    console.log("🎯 Enhanced features test completed");
+};
+
+console.log("Cyberpunk Agent | Enhanced features integrated into module.js");
+
+/**
+ * GM Master Reset Function
+ * Limpa todas as mensagens, contatos e força reinicialização de todos os clientes
+ */
+window.cyberpunkAgentMasterReset = async function () {
+    console.log("🚨 === CYBERPUNK AGENT MASTER RESET INICIADO ===");
+
+    // Verificar se é GM
+    if (!game.user.isGM) {
+        console.error("❌ Apenas o GM pode executar esta função!");
+        ui.notifications.error("Apenas o GM pode executar o Cyberpunk Agent Master Reset!");
+        return false;
+    }
+
+    // Confirmação de segurança
+    const confirmReset = await Dialog.confirm({
+        title: "⚠️ CYBERPUNK AGENT - CONFIRMAÇÃO DE RESET TOTAL",
+        content: `
+            <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 15px;">
+                ⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!
+            </div>
+            <p>Esta ação irá:</p>
+            <ul>
+                <li>🗑️ Limpar TODAS as mensagens de TODOS os Cyberpunk Agents</li>
+                <li>📱 Limpar TODAS as listas de contatos dos dispositivos</li>
+                <li>🔄 Forçar reinicialização de TODOS os clientes conectados</li>
+                <li>💾 Remover dados do localStorage de todos os usuários</li>
+            </ul>
+            <div style="color: #ff6b6b; font-weight: bold; margin-top: 15px;">
+                Tem certeza que deseja continuar?
+            </div>
+        `,
+        yes: () => true,
+        no: () => false,
+        defaultYes: false
+    });
+
+    if (!confirmReset) {
+        console.log("🚫 Reset cancelado pelo usuário");
+        return false;
+    }
+
+    try {
+        console.log("🧹 Iniciando limpeza completa...");
+
+        // Passo 1: Limpar mensagens locais do GM
+        console.log("📱 1/6 - Limpando mensagens locais...");
+        if (window.CyberpunkAgent?.instance) {
+            window.CyberpunkAgent.instance.messages.clear();
+            window.CyberpunkAgent.instance.lastReadTimestamps.clear();
+            window.CyberpunkAgent.instance.unreadCounts.clear();
+            console.log("✅ Mensagens locais limpas");
+        }
+
+        // Passo 2: Limpar listas de contatos de todos os dispositivos
+        console.log("📋 2/6 - Limpando listas de contatos...");
+        let clearedContactLists = 0;
+        if (window.CyberpunkAgent?.instance) {
+            for (const [deviceId, device] of window.CyberpunkAgent.instance.devices) {
+                if (device.contacts && device.contacts.length > 0) {
+                    device.contacts = [];
+                    clearedContactLists++;
+                }
+            }
+            console.log(`✅ ${clearedContactLists} listas de contatos limpas`);
+
+            // Salvar dados dos dispositivos atualizados
+            await window.CyberpunkAgent.instance.saveDeviceData();
+        }
+
+        // Passo 3: Limpar dados do servidor (Foundry settings)
+        console.log("🗄️ 3/6 - Limpando dados do servidor...");
+        try {
+            await game.settings.set('cyberpunk-agent', 'server-messages', {});
+            console.log("✅ Mensagens do servidor limpas");
+        } catch (error) {
+            console.warn("⚠️ Erro ao limpar mensagens do servidor:", error);
+        }
+
+        // Passo 4: Limpar localStorage do GM
+        console.log("💾 4/6 - Limpando localStorage local...");
+        const gmMessagesKey = `cyberpunk-agent-messages-${game.user.id}`;
+        const gmTimestampsKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+        localStorage.removeItem(gmMessagesKey);
+        localStorage.removeItem(gmTimestampsKey);
+        console.log("✅ localStorage do GM limpo");
+
+        // Passo 5: Notificar todos os clientes para limpar dados e reiniciar
+        console.log("📡 5/6 - Notificando todos os clientes...");
+
+        // Enviar comando de reset via SocketLib
+        if (window.CyberpunkAgent?.instance?.socketLibIntegration) {
+            try {
+                await window.CyberpunkAgent.instance.socketLibIntegration.broadcastToAll('cyberpunkAgentMasterReset', {
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    command: 'masterReset',
+                    message: 'GM executou reset completo do sistema'
+                });
+                console.log("✅ Comando de reset enviado via SocketLib");
+            } catch (error) {
+                console.warn("⚠️ Erro ao enviar via SocketLib:", error);
+            }
+        }
+
+        // Fallback: usar hook nativo do Foundry
+        try {
+            game.socket.emit('module.cyberpunk-agent', {
+                type: 'masterReset',
+                userId: game.user.id,
+                userName: game.user.name,
+                timestamp: Date.now()
+            });
+            console.log("✅ Comando de reset enviado via socket nativo");
+        } catch (error) {
+            console.warn("⚠️ Erro ao enviar via socket nativo:", error);
+        }
+
+        // Passo 6: Atualizar interfaces locais
+        console.log("🔄 6/6 - Atualizando interfaces...");
+        if (window.CyberpunkAgent?.instance) {
+            window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+            window.CyberpunkAgent.instance.updateOpenInterfaces();
+            console.log("✅ Interfaces atualizadas");
+        }
+
+        // Forçar limpeza dos caches de performance
+        if (window.CyberpunkAgentPerformanceManager) {
+            await window.CyberpunkAgentPerformanceManager.forceSave();
+            window.CyberpunkAgentPerformanceManager.saveQueue.clear();
+            console.log("✅ Cache de performance limpo");
+        }
+
+        // Limpar cache de deduplicação
+        if (window.CyberpunkAgentMessageDeduplication) {
+            window.CyberpunkAgentMessageDeduplication.recentMessages.clear();
+            console.log("✅ Cache de deduplicação limpo");
+        }
+
+        // Notificação de sucesso
+        console.log("🎉 === CYBERPUNK AGENT RESET COMPLETO EXECUTADO COM SUCESSO ===");
+        ui.notifications.info("🎉 Reset completo executado! Todos os clientes serão reinicializados.", { permanent: true });
+
+        // Programar reinicialização do próprio GM após 3 segundos
+        setTimeout(() => {
+            console.log("🔄 Reinicializando cliente do GM...");
+            window.location.reload();
+        }, 3000);
+
+        return true;
+
+    } catch (error) {
+        console.error("❌ Erro durante o reset:", error);
+        ui.notifications.error(`Erro durante o reset: ${error.message}`);
+        return false;
+    }
+};
+
+/**
+ * Função auxiliar para verificar status antes do reset
+ */
+window.cyberpunkAgentCheckStatus = function () {
+    console.log("📊 === CYBERPUNK AGENT - STATUS DO SISTEMA ===");
+
+    if (!game.user.isGM) {
+        console.error("❌ Apenas o GM pode verificar o status!");
+        return false;
+    }
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.error("❌ CyberpunkAgent não está disponível!");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // Contar dispositivos e contatos
+    let totalDevices = agent.devices.size;
+    let totalContacts = 0;
+    let devicesWithContacts = 0;
+
+    for (const [deviceId, device] of agent.devices) {
+        if (device.contacts && device.contacts.length > 0) {
+            totalContacts += device.contacts.length;
+            devicesWithContacts++;
+        }
+    }
+
+    // Contar mensagens
+    let totalConversations = agent.messages.size;
+    let totalMessages = 0;
+
+    for (const [conversationKey, messages] of agent.messages) {
+        if (messages && Array.isArray(messages)) {
+            totalMessages += messages.length;
+        }
+    }
+
+    // Contar usuários conectados
+    const connectedUsers = game.users.filter(u => u.active).length;
+
+    console.log(`📱 Dispositivos registrados: ${totalDevices}`);
+    console.log(`📋 Dispositivos com contatos: ${devicesWithContacts}`);
+    console.log(`👥 Total de contatos: ${totalContacts}`);
+    console.log(`💬 Conversas ativas: ${totalConversations}`);
+    console.log(`📨 Total de mensagens: ${totalMessages}`);
+    console.log(`🌐 Usuários conectados: ${connectedUsers}`);
+
+    // Status dos sistemas enhanced
+    if (window.CyberpunkAgentMessageDeduplication) {
+        const dedupStats = window.CyberpunkAgentMessageDeduplication.getStats();
+        console.log(`🔍 Cache de deduplicação: ${dedupStats.totalMessages} entradas`);
+    }
+
+    if (window.CyberpunkAgentPerformanceManager) {
+        const queueSize = window.CyberpunkAgentPerformanceManager.saveQueue.size;
+        console.log(`⚡ Fila de salvamento: ${queueSize} pendentes`);
+    }
+
+    console.log("📊 === CYBERPUNK AGENT - FIM DO STATUS ===");
+
+    return {
+        totalDevices,
+        devicesWithContacts,
+        totalContacts,
+        totalConversations,
+        totalMessages,
+        connectedUsers
+    };
+};
+
+console.log("🔧 Cyberpunk Agent GM functions loaded:");
+console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
+console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
+
+/**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
  */
 class GMDataManagementMenu extends FormApplication {
@@ -2991,8 +3809,11 @@ class CyberpunkAgent {
 
         console.log(`Cyberpunk Agent | Sending message via server: ${senderId} → ${receiverId}`);
 
-        // Create message object
-        const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        // Create message object with enhanced ID generation
+        const messageId = window.CyberpunkAgentMessageUtils ?
+            window.CyberpunkAgentMessageUtils.generateMessageId(senderId, receiverId, text.trim()) :
+            `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
         const message = {
             id: messageId,
             senderId: senderId,
@@ -3005,6 +3826,15 @@ class CyberpunkAgent {
             }),
             read: false
         };
+
+        // Check for message deduplication
+        if (window.CyberpunkAgentMessageDeduplication) {
+            if (window.CyberpunkAgentMessageDeduplication.isDuplicate(messageId)) {
+                console.log("Cyberpunk Agent | Duplicate message detected, skipping:", messageId);
+                return false;
+            }
+            window.CyberpunkAgentMessageDeduplication.addMessage(messageId, message.timestamp);
+        }
 
         // Save message to server
         const success = await this.saveMessageToServer(senderId, receiverId, message);
@@ -3022,6 +3852,15 @@ class CyberpunkAgent {
 
         // Clear unread count cache
         this.unreadCounts.delete(conversationKey);
+
+        // Use performance manager for debounced saves
+        if (window.CyberpunkAgentPerformanceManager) {
+            const allMessages = {};
+            for (const [key, msgs] of this.messages.entries()) {
+                allMessages[key] = msgs;
+            }
+            window.CyberpunkAgentPerformanceManager.queueSave(`user-${game.user.id}`, allMessages);
+        }
 
         // Update local interfaces immediately
         this._updateChatInterfacesImmediately();
@@ -3103,7 +3942,12 @@ class CyberpunkAgent {
         }
 
         const conversation = this.messages.get(conversationKey);
-        const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Create message with enhanced ID generation
+        const messageId = window.CyberpunkAgentMessageUtils ?
+            window.CyberpunkAgentMessageUtils.generateMessageId(senderDeviceId, receiverDeviceId, text.trim()) :
+            `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
         const message = {
             id: messageId,
             senderId: senderDeviceId,
@@ -3117,6 +3961,21 @@ class CyberpunkAgent {
             read: false // New message is always unread
         };
 
+        // Check for message deduplication
+        if (window.CyberpunkAgentMessageDeduplication) {
+            if (window.CyberpunkAgentMessageDeduplication.isDuplicate(messageId)) {
+                console.log("Cyberpunk Agent | Duplicate device message detected, skipping:", messageId);
+                return false;
+            }
+            window.CyberpunkAgentMessageDeduplication.addMessage(messageId, message.timestamp);
+        }
+
+        // Validate message
+        if (window.CyberpunkAgentMessageUtils && !window.CyberpunkAgentMessageUtils.validateMessage(message)) {
+            console.error("Cyberpunk Agent | Invalid message object:", message);
+            return false;
+        }
+
         conversation.push(message);
 
         // Save message to server for both sender and receiver devices
@@ -3128,6 +3987,11 @@ class CyberpunkAgent {
 
         // Clear unread count cache for this conversation
         this.unreadCounts.delete(this._getDeviceConversationKey(senderDeviceId, receiverDeviceId));
+
+        // Use performance manager for debounced saves
+        if (window.CyberpunkAgentPerformanceManager) {
+            window.CyberpunkAgentPerformanceManager.queueSave(conversationKey, conversation);
+        }
 
         // Check if SocketLib is available
         if (!this._isSocketLibAvailable()) {
