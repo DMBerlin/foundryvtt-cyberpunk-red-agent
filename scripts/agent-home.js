@@ -1642,29 +1642,23 @@ class AgentApplication extends FormApplication {
 
         this.render(true);
 
-        // Auto-fade success message after 3 seconds and navigate back after fade completes
+        // Auto-fade success message after 3 seconds but stay on add contact screen
         setTimeout(() => {
           if (this.addContactState.successMessage === result.message) {
             // Add fading class for smooth transition
             const successElement = this.element?.find('.cp-success-message');
             if (successElement) {
               successElement.addClass('fading');
-              // Navigate back after fade animation completes
+              // Clear success message after fade animation completes (but don't navigate)
               setTimeout(() => {
                 this.addContactState.successMessage = null;
                 this.render(true);
-                // Navegar para a lista de contatos só se o usuário ainda estiver na tela de adicionar contato
-                if (this.currentView === 'add-contact') {
-                  this.navigateTo('chat7');
-                }
+                // User stays on add-contact screen - they can navigate manually using back button
               }, 500);
             } else {
               this.addContactState.successMessage = null;
               this.render(true);
-              // Navegar para a lista de contatos só se o usuário ainda estiver na tela de adicionar contato
-              if (this.currentView === 'add-contact') {
-                this.navigateTo('chat7');
-              }
+              // User stays on add-contact screen - they can navigate manually using back button
             }
           }
         }, 3000);
