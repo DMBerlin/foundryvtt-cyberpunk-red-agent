@@ -83,6 +83,15 @@ function initializeSocketLib() {
     // Cyberpunk Agent Master Reset handler
     socket.register("cyberpunkAgentMasterReset", handleCyberpunkAgentMasterReset);
 
+    // Enhanced message broker handlers
+    socket.register("saveMessageToServer", handleSaveMessageToServer);
+    socket.register("requestServerMessageSync", handleRequestServerMessageSync);
+    socket.register("syncMessagesFromServer", handleSyncMessagesFromServer);
+
+    // Offline message queue handlers
+    socket.register("queueOfflineMessage", handleQueueOfflineMessage);
+    socket.register("deliverOfflineMessage", handleDeliverOfflineMessage);
+
     // Register GM data management handlers
     socket.register("allMessagesCleared", handleAllMessagesCleared);
     socket.register("allContactListsCleared", handleAllContactListsCleared);
@@ -1190,6 +1199,311 @@ async function handleDeviceMessageSyncResponse(data) {
     } catch (error) {
       console.error("Cyberpunk Agent | Error processing device message sync response:", error);
     }
+  }
+}
+
+/**
+ * Handle message save request from players (GM Message Broker)
+ */
+async function handleSaveMessageToServer(data) {
+  console.log("Cyberpunk Agent | GM received message save request:", data);
+
+  // Only GM can handle this
+  if (!game.user.isGM) {
+    console.warn("Cyberpunk Agent | Non-GM received message save request, ignoring");
+    return;
+  }
+
+  try {
+    const { senderDeviceId, receiverDeviceId, message, requestingUserId, requestingUserName } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Save message to server storage
+      const success = await window.CyberpunkAgent.instance.saveMessageToServerAsGM(senderDeviceId, receiverDeviceId, message);
+
+      if (success) {
+        console.log(`Cyberpunk Agent | GM saved message from ${requestingUserName} to server`);
+
+        // Get the receiver's user to send targeted message
+        const receiverUser = window.CyberpunkAgent.instance._getUserForDevice(receiverDeviceId);
+
+        if (receiverUser && receiverUser.active) {
+          // Send directly to the receiver user if online
+          await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+            receiverUser.id,
+            'syncMessagesFromServer',
+            {
+              conversationKey: window.CyberpunkAgent.instance._getDeviceConversationKey(senderDeviceId, receiverDeviceId),
+              message: message,
+              timestamp: Date.now(),
+              broadcastBy: game.user.id
+            }
+          );
+          console.log(`Cyberpunk Agent | Message sent directly to receiver ${receiverUser.name}`);
+        } else {
+          // Receiver offline - message is on server and will sync when they join
+          console.log(`Cyberpunk Agent | Receiver offline - message saved to server for sync on join`);
+        }
+
+        // Also broadcast to all clients for real-time updates (but don't show duplicate notifications)
+        await window.CyberpunkAgent.instance.socketLibIntegration.broadcastToAll('syncMessagesFromServer', {
+          conversationKey: window.CyberpunkAgent.instance._getDeviceConversationKey(senderDeviceId, receiverDeviceId),
+          message: message,
+          timestamp: Date.now(),
+          broadcastBy: game.user.id,
+          silent: true // Mark as silent to prevent duplicate notifications
+        });
+
+        console.log("Cyberpunk Agent | Message broadcasted to all clients");
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling message save request:", error);
+  }
+}
+
+/**
+ * Handle server message sync request from clients (enhanced broker)
+ */
+async function handleRequestServerMessageSync(data) {
+  console.log("Cyberpunk Agent | GM received message sync request:", data);
+
+  // Only GM can handle this
+  if (!game.user.isGM) {
+    return;
+  }
+
+  try {
+    const { requestingUserId, deviceId } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Get all messages for this device from server
+      const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+      const deviceMessages = {};
+
+      // Find all conversations involving this device
+      for (const [conversationKey, messages] of Object.entries(serverMessages)) {
+        if (conversationKey.includes(deviceId)) {
+          deviceMessages[conversationKey] = messages;
+          console.log(`Cyberpunk Agent | Found conversation for device ${deviceId}: ${conversationKey} (${messages.length} messages)`);
+        }
+      }
+
+      console.log(`Cyberpunk Agent | Found ${Object.keys(deviceMessages).length} conversations for device ${deviceId}`);
+
+      // Send messages back to requesting user
+      await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+        requestingUserId,
+        'syncMessagesFromServer',
+        {
+          deviceId,
+          messages: deviceMessages,
+          syncedAt: Date.now()
+        }
+      );
+
+      console.log(`Cyberpunk Agent | Sent message sync to user ${requestingUserId} for device ${deviceId}`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling message sync request:", error);
+  }
+}
+
+/**
+ * Handle message sync from server (broadcast or direct)
+ */
+async function handleSyncMessagesFromServer(data) {
+  console.log("Cyberpunk Agent | Received message sync from server:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { conversationKey, message, messages, deviceId, silent } = data;
+
+      if (message) {
+        // Single message sync (broadcast)
+        if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+          window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+        }
+
+        const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+        const messageExists = conversation.some(msg => msg.id === message.id);
+
+        if (!messageExists) {
+          conversation.push(message);
+          console.log("Cyberpunk Agent | Synced single message from server:", message.text);
+
+          // Save to localStorage
+          await window.CyberpunkAgent.instance.saveMessagesForDevice(message.receiverId);
+          if (message.senderId !== message.receiverId) {
+            await window.CyberpunkAgent.instance.saveMessagesForDevice(message.senderId);
+          }
+
+          // Update UI
+          window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+        }
+      } else if (messages && deviceId) {
+        // Bulk message sync (user requested)
+        console.log(`Cyberpunk Agent | Processing bulk message sync for device ${deviceId}`);
+        console.log(`Cyberpunk Agent | Received conversations:`, Object.keys(messages));
+
+        let syncedCount = 0;
+
+        for (const [convKey, msgs] of Object.entries(messages)) {
+          console.log(`Cyberpunk Agent | Processing conversation ${convKey} with ${msgs.length} messages`);
+
+          if (!window.CyberpunkAgent.instance.messages.has(convKey)) {
+            window.CyberpunkAgent.instance.messages.set(convKey, []);
+            console.log(`Cyberpunk Agent | Created new conversation: ${convKey}`);
+          }
+
+          const conversation = window.CyberpunkAgent.instance.messages.get(convKey);
+
+          for (const msg of msgs) {
+            const messageExists = conversation.some(existingMsg => existingMsg.id === msg.id);
+            if (!messageExists) {
+              conversation.push(msg);
+              syncedCount++;
+              console.log(`Cyberpunk Agent | Added message: "${msg.text}" to conversation ${convKey}`);
+            } else {
+              console.log(`Cyberpunk Agent | Message already exists: ${msg.id}`);
+            }
+          }
+        }
+
+        if (syncedCount > 0) {
+          console.log(`Cyberpunk Agent | Synced ${syncedCount} messages from server for device ${deviceId}`);
+
+          // Save to localStorage for all affected conversations
+          for (const convKey of Object.keys(messages)) {
+            // Extract device IDs from conversation key to save for both devices
+            const deviceIds = convKey.split('-').filter(part => part.startsWith('device'));
+            for (const devId of deviceIds) {
+              await window.CyberpunkAgent.instance.saveMessagesForDevice(devId);
+            }
+          }
+
+          // Update UI
+          window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+          // Only show notification if not silent and significant number of messages
+          if (!silent && syncedCount > 0) {
+            ui.notifications.info(`📱 Sincronizadas ${syncedCount} mensagens do servidor`);
+          }
+        } else {
+          console.log(`Cyberpunk Agent | No new messages to sync for device ${deviceId}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error syncing messages from server:", error);
+  }
+}
+
+/**
+ * Handle offline message queue request from players
+ */
+async function handleQueueOfflineMessage(data) {
+  console.log("Cyberpunk Agent | GM received offline message queue request:", data);
+
+  // Only GM can handle this
+  if (!game.user.isGM) {
+    console.warn("Cyberpunk Agent | Non-GM received offline message queue request, ignoring");
+    return;
+  }
+
+  try {
+    const { receiverUserId, message } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const success = await window.CyberpunkAgent.instance.saveToOfflineQueue(receiverUserId, message);
+
+      if (success) {
+        console.log(`Cyberpunk Agent | Message queued for offline user ${receiverUserId}`);
+        ui.notifications.info(`Message queued for offline user`);
+      } else {
+        console.error("Cyberpunk Agent | Failed to queue offline message");
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling offline message queue request:", error);
+  }
+}
+
+/**
+ * Handle offline message delivery to user
+ */
+async function handleDeliverOfflineMessage(data) {
+  console.log("Cyberpunk Agent | Received offline message delivery:", data);
+
+  try {
+    const { message, deliveredAt } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      console.log("Cyberpunk Agent | Processing offline message:", {
+        messageId: message.id,
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        text: message.text
+      });
+
+      // Add the message to local conversation using the same logic as regular messages
+      const conversationKey = window.CyberpunkAgent.instance._getDeviceConversationKey(message.senderId, message.receiverId);
+      console.log("Cyberpunk Agent | Using conversation key for offline message:", conversationKey);
+
+      if (!window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+        window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+        console.log("Cyberpunk Agent | Created new conversation for offline message");
+      }
+
+      const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+
+      // Check if message already exists
+      const messageExists = conversation.some(msg => msg.id === message.id);
+      if (!messageExists) {
+        // Ensure message has proper format
+        const formattedMessage = {
+          id: message.id,
+          senderId: message.senderId,
+          receiverId: message.receiverId,
+          text: message.text,
+          timestamp: message.timestamp,
+          time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          read: false // Offline messages are unread
+        };
+
+        conversation.push(formattedMessage);
+        console.log("Cyberpunk Agent | Added offline message to conversation:", formattedMessage);
+
+        // Save to localStorage for both sender and receiver devices
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(message.senderId);
+        if (message.senderId !== message.receiverId) {
+          await window.CyberpunkAgent.instance.saveMessagesForDevice(message.receiverId);
+        }
+        console.log("Cyberpunk Agent | Saved offline message to localStorage");
+
+        // Ensure contacts are added automatically
+        await window.CyberpunkAgent.instance.handleAutomaticContactAddition(message.senderId, message.receiverId);
+
+        // Update UI immediately
+        window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+        window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+        // Show notification
+        const senderDevice = window.CyberpunkAgent.instance.devices.get(message.senderId);
+        const senderName = senderDevice?.deviceName || senderDevice?.ownerName || 'Unknown';
+
+        ui.notifications.info(`📱 Mensagem offline recebida de ${senderName}`);
+
+        console.log("Cyberpunk Agent | Offline message fully processed and UI updated");
+      } else {
+        console.log("Cyberpunk Agent | Offline message already exists in conversation, skipping");
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling offline message delivery:", error);
   }
 }
 
