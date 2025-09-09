@@ -114,19 +114,65 @@ class AgentApplication extends FormApplication {
         contacts: contactsWithData
       });
     } else if (this.currentView === 'conversation' && this.currentContact && this.currentContact.id) {
-      // Add conversation-specific data
-      const messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, this.currentContact.id) || [];
+      // Ensure contact data is fresh and complete
+      const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(this.currentContact.id);
+      if (contactDevice) {
+        // Update current contact with fresh data
+        this.currentContact = {
+          id: this.currentContact.id,
+          name: contactDevice.deviceName || contactDevice.ownerName || this.currentContact.name || `Device ${this.currentContact.id}`,
+          img: contactDevice.img || this.currentContact.img || 'icons/svg/mystery-man.svg',
+          deviceName: contactDevice.deviceName,
+          ownerName: contactDevice.ownerName,
+          isVirtual: contactDevice.isVirtual || false
+        };
+      }
 
-      // Format messages for the Handlebars template
-      const formattedMessages = messages.map(message => ({
-        ...message,
-        text: message.text || message.message, // Use 'text' property, fallback to 'message' for compatibility
-        isOwn: message.senderId === this.device.id,
-        time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
+      // Get messages for the conversation with enhanced error handling
+      let messages = [];
+      try {
+        messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, this.currentContact.id) || [];
+
+        // If no messages found, try alternative conversation keys (for backwards compatibility)
+        if (messages.length === 0) {
+          console.log("AgentApplication | No messages found with device conversation key, checking alternative keys...");
+
+          // Try actor-based conversation key as fallback
+          const actorConversationKey = window.CyberpunkAgent?.instance?._getConversationKey(this.device.ownerActorId, this.currentContact.ownerActorId);
+          if (actorConversationKey) {
+            const actorMessages = window.CyberpunkAgent?.instance?.messages?.get(actorConversationKey) || [];
+            if (actorMessages.length > 0) {
+              console.log(`AgentApplication | Found ${actorMessages.length} messages using actor conversation key`);
+              messages = actorMessages;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("AgentApplication | Error getting messages for conversation:", error);
+        messages = [];
+      }
+
+      // Format messages for the Handlebars template with deduplication
+      const messageIds = new Set();
+      const formattedMessages = messages
+        .filter(message => {
+          // Deduplicate messages by ID
+          if (messageIds.has(message.id)) {
+            return false;
+          }
+          messageIds.add(message.id);
+          return true;
         })
-      }));
+        .map(message => ({
+          ...message,
+          text: message.text || message.message, // Use 'text' property, fallback to 'message' for compatibility
+          isOwn: message.senderId === this.device.id,
+          time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
 
       templateData.messages = formattedMessages;
       templateData.contact = this.currentContact;
@@ -134,7 +180,9 @@ class AgentApplication extends FormApplication {
       console.log("AgentApplication | Template data for conversation:", {
         messagesCount: formattedMessages.length,
         contact: this.currentContact.name,
-        messages: formattedMessages
+        contactData: this.currentContact,
+        deviceId: this.device.id,
+        contactId: this.currentContact.id
       });
     } else if (this.currentView === 'add-contact') {
       // Add add-contact-specific data
@@ -160,16 +208,20 @@ class AgentApplication extends FormApplication {
    * Render the application with the current view
    */
   render(force = false, options = {}) {
-    // Prevent infinite loops during rendering
-    if (this._isRendering) {
-      console.log("AgentApplication | Already rendering, skipping render call");
+    // Prevent infinite loops during rendering, but allow force renders for navigation
+    if (this._isRendering && !force) {
+      console.log("AgentApplication | Already rendering, skipping render call (use force=true to override)");
       return this;
     }
 
     this._isRendering = true;
 
+    console.log(`AgentApplication | Rendering with view: ${this.currentView}, template: ${this.options.template}`);
+
     try {
       const result = super.render(force, options);
+
+      console.log(`AgentApplication | Render completed for view: ${this.currentView}`);
 
       // After rendering, update the content based on current view
       this._updateViewContent();
@@ -226,6 +278,12 @@ class AgentApplication extends FormApplication {
    */
   _handleUIControllerUpdate(componentId) {
     console.log(`AgentApplication | Handling UI Controller update for: ${componentId}`);
+
+    // Skip updates during navigation to prevent conflicts
+    if (this._navigationInProgress) {
+      console.log("AgentApplication | Skipping UI Controller update during navigation");
+      return;
+    }
 
     // Check if the application is actually rendered and visible
     if (!this.rendered || !this.element || !this.element.is(':visible')) {
@@ -331,14 +389,31 @@ class AgentApplication extends FormApplication {
       }
     }
 
+    // Reset data loading flag when changing views
+    if (this.currentView !== view) {
+      this._dataLoaded = false;
+    }
+
     this.currentView = view;
     this.currentContact = contact;
 
     // Update the template based on view
     this._updateTemplate();
 
-    // Re-render with new data
+    // Temporarily disable UI Controller updates during navigation to prevent conflicts
+    this._navigationInProgress = true;
+
+    // Re-render with force to ensure navigation completes
     this.render(true);
+
+    // Re-enable UI Controller after a short delay and force final render
+    setTimeout(() => {
+      this._navigationInProgress = false;
+
+      // Force one final render to ensure the view actually displays
+      console.log(`AgentApplication | Final render after navigation to ${view}`);
+      this.render(true);
+    }, 100);
   }
 
   /**
@@ -361,6 +436,7 @@ class AgentApplication extends FormApplication {
         templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
     }
 
+    console.log(`AgentApplication | Updating template for view '${this.currentView}' to: ${templatePath}`);
     this.options.template = templatePath;
   }
 
@@ -396,28 +472,40 @@ class AgentApplication extends FormApplication {
       return;
     }
 
-    // Additional sync check to ensure messages are up to date
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      console.log("AgentApplication | Performing additional sync check for conversation view");
-      try {
-        // Quick sync to ensure we have the latest messages
-        await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id);
-        console.log("AgentApplication | Additional sync completed for conversation view");
-      } catch (error) {
-        console.error("AgentApplication | Error in additional sync:", error);
-      }
+    // Load fresh data only once to prevent loops
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance && !this._dataLoaded) {
+      console.log("AgentApplication | Loading fresh data for conversation view (one-time)");
+      this._dataLoaded = true;
+
+      // Load messages to ensure conversation is current
+      await window.CyberpunkAgent.instance.loadMessages();
+
+      console.log("AgentApplication | Data loading completed for conversation view");
     }
 
-    // Mark conversation as read when opening (not during re-renders)
-    // This ensures that when a user opens a conversation, all messages are marked as read
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      console.log("AgentApplication | Marking conversation as read for contact:", this.currentContact.id);
+    // Refresh contact data from devices map
+    const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(this.currentContact.id);
+    if (contactDevice) {
+      this.currentContact = {
+        id: this.currentContact.id,
+        name: contactDevice.deviceName || contactDevice.ownerName || this.currentContact.name,
+        img: contactDevice.img || this.currentContact.img || 'icons/svg/mystery-man.svg',
+        deviceName: contactDevice.deviceName,
+        ownerName: contactDevice.ownerName
+      };
+      console.log("AgentApplication | Refreshed contact data:", this.currentContact);
+    }
+
+    // Mark conversation as read when opening (only if not already processing)
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance && !this._markingAsRead) {
+      this._markingAsRead = true;
       window.CyberpunkAgent.instance.markDeviceConversationAsRead(this.device.id, this.currentContact.id);
-    }
 
-    // Get messages for the conversation
-    const messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, this.currentContact.id) || [];
-    console.log("AgentApplication | Messages for conversation:", messages.length, messages);
+      // Reset flag after a delay
+      setTimeout(() => {
+        this._markingAsRead = false;
+      }, 1000);
+    }
 
     // Setup real-time listener for conversation
     this._setupConversationRealtimeListener();
@@ -489,9 +577,27 @@ class AgentApplication extends FormApplication {
       if (type === 'messageUpdate' || type === 'contactUpdate' || type === 'contactMuteToggle') {
         console.log("AgentApplication | Chat7 received update:", type);
 
+        // Skip updates during navigation to prevent conflicts
+        if (this._navigationInProgress) {
+          console.log("AgentApplication | Skipping Chat7 update during navigation");
+          return;
+        }
+
         // Check if the application is actually rendered and visible
         if (!this.rendered || !this.element || !this.element.is(':visible')) {
           console.log("AgentApplication | Application not rendered or visible, skipping update");
+          return;
+        }
+
+        // Only update if we're in Chat7 view
+        if (this.currentView !== 'chat7') {
+          console.log("AgentApplication | Not in Chat7 view, skipping update");
+          return;
+        }
+
+        // Prevent infinite loops
+        if (this._isUpdating) {
+          console.log("AgentApplication | Already updating, skipping Chat7 update");
           return;
         }
 
@@ -509,8 +615,6 @@ class AgentApplication extends FormApplication {
         else if (type === 'contactMuteToggle') {
           console.log("AgentApplication | Contact mute toggle detected, forcing re-render");
           this.render(true);
-        } else {
-          this._renderChat7View();
         }
       }
     };
@@ -619,12 +723,29 @@ class AgentApplication extends FormApplication {
    * Activate conversation listeners
    */
   _activateConversationListeners(html) {
-    html.find('.cp-back-button').click(this._onBackClick.bind(this));
-    html.find('.cp-send-message').click(this._onSendMessage.bind(this));
-    html.find('.cp-message-input').keypress(this._onMessageInputKeypress.bind(this));
+    console.log("AgentApplication | Activating conversation listeners");
+
+    // Back button
+    const backButton = html.find('.cp-back-button');
+    console.log("AgentApplication | Found back button:", backButton.length);
+    backButton.click(this._onBackClick.bind(this));
+
+    // Send message button
+    const sendButton = html.find('.cp-send-message');
+    console.log("AgentApplication | Found send button:", sendButton.length);
+    sendButton.click(this._onSendMessage.bind(this));
+
+    // Message input
+    const messageInput = html.find('.cp-message-input');
+    console.log("AgentApplication | Found message input:", messageInput.length);
+    messageInput.keypress(this._onMessageInputKeypress.bind(this));
 
     // Message context menu
-    html.find('.cp-message[data-action="message-context-menu"]').contextmenu(this._onMessageContextMenu.bind(this));
+    const messageElements = html.find('.cp-message[data-action="message-context-menu"]');
+    console.log("AgentApplication | Found message elements:", messageElements.length);
+    messageElements.contextmenu(this._onMessageContextMenu.bind(this));
+
+    console.log("AgentApplication | Conversation listeners activated successfully");
   }
 
   /**
@@ -735,34 +856,67 @@ class AgentApplication extends FormApplication {
    */
   async _onContactChatClick(event) {
     event.preventDefault();
+    event.stopPropagation();
+
     const contactId = event.currentTarget.dataset.contactId;
-    console.log("Contact chat clicked for contact:", contactId);
+    console.log("AgentApplication | Contact chat clicked for contact:", contactId);
+    console.log("AgentApplication | Current view before navigation:", this.currentView);
+    console.log("AgentApplication | Current contact before navigation:", this.currentContact);
+
+    // Ensure device data is fresh before opening conversation
+    if (window.CyberpunkAgent?.instance) {
+      window.CyberpunkAgent.instance.loadDeviceData();
+    }
 
     // Get contact device data directly from the devices map
     const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactId);
 
     if (!contactDevice) {
       console.error(`Cyberpunk Agent | Contact device ${contactId} not found in devices map`);
+      console.error(`Available devices:`, Array.from(window.CyberpunkAgent?.instance?.devices?.keys() || []));
       ui.notifications.error("Contato não encontrado!");
       return;
     }
 
-    // Create contact object with the required fields
+    // Create enhanced contact object with all required fields
     const contact = {
       id: contactId,
-      name: contactDevice.deviceName || `Device ${contactId}`,
-      img: contactDevice.img || 'icons/svg/mystery-man.svg'
+      name: contactDevice.deviceName || contactDevice.ownerName || `Device ${contactId}`,
+      img: contactDevice.img || 'icons/svg/mystery-man.svg',
+      deviceName: contactDevice.deviceName,
+      ownerName: contactDevice.ownerName,
+      isVirtual: contactDevice.isVirtual || false
     };
 
-    console.log("Cyberpunk Agent | Contact data for conversation:", contact);
+    console.log("Cyberpunk Agent | Enhanced contact data for conversation:", contact);
+
+    // Ensure messages are loaded for this conversation
+    if (window.CyberpunkAgent?.instance) {
+      try {
+        await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id);
+        console.log("Cyberpunk Agent | Messages synced before opening conversation");
+      } catch (error) {
+        console.warn("Cyberpunk Agent | Error syncing messages before conversation:", error);
+      }
+    }
 
     // Play opening sound effect
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.playSoundEffect('opening-window');
     }
 
-    // Navigate to conversation view (this will trigger server sync)
-    await this.navigateTo('conversation', contact);
+    // Navigate to conversation view with enhanced contact data
+    console.log("AgentApplication | About to navigate to conversation with contact:", contact);
+
+    try {
+      await this.navigateTo('conversation', contact);
+      console.log("AgentApplication | Navigation to conversation completed successfully");
+      console.log("AgentApplication | Current view after navigation:", this.currentView);
+      console.log("AgentApplication | Current contact after navigation:", this.currentContact);
+    } catch (error) {
+      console.error("AgentApplication | Error during navigation to conversation:", error);
+      ui.notifications.error("Erro ao abrir conversa: " + error.message);
+    }
   }
 
   /**
@@ -1307,17 +1461,20 @@ class AgentApplication extends FormApplication {
     // Send message through CyberpunkAgent
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       try {
-        await window.CyberpunkAgent.instance.sendDeviceMessage(this.device.id, this.currentContact.id, text);
-        console.log("Cyberpunk Agent | Device message sent successfully");
+        const success = await window.CyberpunkAgent.instance.sendDeviceMessage(this.device.id, this.currentContact.id, text);
 
-        // Simple and direct UI update after sending message
-        console.log("AgentApplication | Triggering UI update after sending message");
+        if (success) {
+          console.log("Cyberpunk Agent | Device message sent successfully");
 
-        // Use a simple approach: just mark the conversation component as dirty
-        if (window.CyberpunkAgentUIController) {
-          const conversationComponentId = `agent-conversation-${this.device.id}-${this.currentContact.id}`;
-          window.CyberpunkAgentUIController.markDirty(conversationComponentId);
-          console.log("AgentApplication | Marked conversation component as dirty after sending message");
+          // Force immediate conversation refresh after sending
+          setTimeout(() => {
+            console.log("AgentApplication | Force refreshing conversation after message sent");
+            this.render(true);
+          }, 100);
+
+        } else {
+          console.error("Cyberpunk Agent | Failed to send device message");
+          ui.notifications.error("Falha ao enviar mensagem");
         }
       } catch (error) {
         console.error("Cyberpunk Agent | Error sending message:", error);
@@ -1596,4 +1753,5 @@ console.log("Cyberpunk Agent | AgentApplication defined:", typeof AgentApplicati
 console.log("Cyberpunk Agent | AgentHomeApplication defined:", typeof AgentHomeApplication);
 console.log("Cyberpunk Agent | Chat7Application defined:", typeof Chat7Application);
 console.log("Cyberpunk Agent | ChatConversationApplication defined:", typeof ChatConversationApplication);
+console.log("Cyberpunk Agent | Classes made globally available");
 console.log("Cyberpunk Agent | Classes made globally available"); 

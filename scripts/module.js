@@ -1136,6 +1136,143 @@ window.cyberpunkAgentDebugActorDevices = function () {
     return true;
 };
 
+// Debug function for Chat7 interface issues
+window.cyberpunkAgentDebugChat7 = function (deviceId) {
+    console.log("💬 === CYBERPUNK AGENT - DEBUGGING CHAT7 INTERFACE ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // If no deviceId provided, try to find one
+    if (!deviceId) {
+        const allDevices = Array.from(agent.devices.keys());
+        if (allDevices.length === 0) {
+            console.log("❌ No devices available for testing");
+            return false;
+        }
+        deviceId = allDevices[0];
+        console.log(`🔍 Using first available device: ${deviceId}`);
+    }
+
+    // Check if device exists
+    const device = agent.devices.get(deviceId);
+    if (!device) {
+        console.log(`❌ Device ${deviceId} not found`);
+        return false;
+    }
+
+    console.log(`📱 Debugging device: ${device.deviceName || deviceId}`);
+    console.log(`   - Owner: ${device.ownerName}`);
+    console.log(`   - Avatar: ${device.img}`);
+    console.log(`   - Virtual: ${device.isVirtual || false}`);
+
+    // Check contacts
+    const contacts = device.contacts || [];
+    console.log(`📋 Device contacts: ${contacts.length}`);
+
+    if (contacts.length === 0) {
+        console.log("⚠️ No contacts found - this might be why Chat7 is empty");
+        return true;
+    }
+
+    // Check each contact
+    contacts.forEach((contactId, index) => {
+        console.log(`\n👤 Contact ${index + 1}: ${contactId}`);
+
+        // Check if contact device exists
+        const contactDevice = agent.devices.get(contactId);
+        if (!contactDevice) {
+            console.log(`   ❌ Contact device not found in devices map!`);
+            console.log(`   🔍 Available devices:`, Array.from(agent.devices.keys()).slice(0, 5));
+            return;
+        }
+
+        console.log(`   ✅ Contact device found:`);
+        console.log(`      - Name: ${contactDevice.deviceName || 'Missing name!'}`);
+        console.log(`      - Avatar: ${contactDevice.img || 'Missing avatar!'}`);
+        console.log(`      - Owner: ${contactDevice.ownerName || 'Missing owner!'}`);
+
+        // Check conversation
+        const conversationKey = agent._getDeviceConversationKey(deviceId, contactId);
+        const messages = agent.messages.get(conversationKey) || [];
+
+        console.log(`   💬 Conversation (${conversationKey}):`);
+        console.log(`      - Messages: ${messages.length}`);
+
+        if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            console.log(`      - Last message: "${lastMessage.text}"`);
+            console.log(`      - Sender: ${lastMessage.senderId}`);
+            console.log(`      - Receiver: ${lastMessage.receiverId}`);
+        } else {
+            console.log(`      ❌ No messages found!`);
+            console.log(`      🔍 Available conversations:`, Array.from(agent.messages.keys()).slice(0, 5));
+        }
+
+        // Check unread count
+        const unreadCount = agent.getUnreadCountForDevices(deviceId, contactId);
+        console.log(`      - Unread: ${unreadCount}`);
+    });
+
+    console.log("\n💬 === END CHAT7 DEBUG ===");
+    return true;
+};
+
+// Debug function for Chat7 navigation issues
+window.cyberpunkAgentDebugNavigation = function () {
+    console.log("🧭 === CYBERPUNK AGENT - DEBUGGING NAVIGATION ===");
+
+    // Find open AgentApplication windows
+    const openWindows = Object.values(ui.windows);
+    const agentWindows = openWindows.filter(w => w.constructor.name === 'AgentApplication');
+
+    if (agentWindows.length === 0) {
+        console.log("❌ No AgentApplication windows open");
+        console.log("💡 Open an Agent interface first, then run this debug");
+        return false;
+    }
+
+    agentWindows.forEach((window, index) => {
+        console.log(`\n📱 AgentApplication ${index + 1}:`);
+        console.log(`   - Current view: ${window.currentView}`);
+        console.log(`   - Device ID: ${window.device?.id}`);
+        console.log(`   - Device name: ${window.device?.deviceName}`);
+        console.log(`   - Current contact: ${window.currentContact?.id}`);
+        console.log(`   - Contact name: ${window.currentContact?.name}`);
+        console.log(`   - Template: ${window.options?.template}`);
+        console.log(`   - Rendered: ${window.rendered}`);
+        console.log(`   - Element visible: ${window.element?.is(':visible')}`);
+
+        // Check device contacts
+        if (window.device?.id && window.CyberpunkAgent?.instance) {
+            const device = window.CyberpunkAgent.instance.devices.get(window.device.id);
+            const contacts = device?.contacts || [];
+            console.log(`   - Device contacts: ${contacts.length}`);
+
+            if (contacts.length > 0) {
+                console.log(`   - Contact IDs: ${contacts.join(', ')}`);
+
+                // Test navigation to first contact
+                const firstContactId = contacts[0];
+                const contactDevice = window.CyberpunkAgent.instance.devices.get(firstContactId);
+
+                console.log(`   - First contact device found: ${!!contactDevice}`);
+                if (contactDevice) {
+                    console.log(`   - Contact name: ${contactDevice.deviceName || contactDevice.ownerName}`);
+                    console.log(`   - Contact avatar: ${contactDevice.img}`);
+                }
+            }
+        }
+    });
+
+    console.log("\n🧭 === END NAVIGATION DEBUG ===");
+    return true;
+};
+
 console.log("🔧 Cyberpunk Agent functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
@@ -1143,6 +1280,8 @@ console.log("  - cyberpunkAgentFixTokenControls() - Força atualização dos con
 console.log("  - cyberpunkAgentTestContactLogic() - Testa lógica de contatos automática");
 console.log("  - cyberpunkAgentTestNPCMessaging() - Testa mensagens NPC → PC");
 console.log("  - cyberpunkAgentDebugActorDevices() - Debug actor-device mapping");
+console.log("  - cyberpunkAgentDebugChat7(deviceId) - Debug Chat7 interface issues");
+console.log("  - cyberpunkAgentDebugNavigation() - Debug navigation issues");
 
 /**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
