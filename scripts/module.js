@@ -1273,6 +1273,72 @@ window.cyberpunkAgentDebugNavigation = function () {
     return true;
 };
 
+// Test function for player messaging permissions
+window.cyberpunkAgentTestPlayerMessaging = async function () {
+    console.log("👥 === CYBERPUNK AGENT - TESTING PLAYER MESSAGING ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // Get available devices
+    const devices = Array.from(agent.devices.values());
+    if (devices.length < 2) {
+        console.log("❌ Need at least 2 devices for testing player messaging");
+        return false;
+    }
+
+    const device1 = devices[0];
+    const device2 = devices[1];
+
+    console.log(`🔍 Testing player messaging:`);
+    console.log(`  - From: ${device1.deviceName} (${device1.id})`);
+    console.log(`  - To: ${device2.deviceName} (${device2.id})`);
+    console.log(`  - User is GM: ${game.user.isGM}`);
+    console.log(`  - SocketLib available: ${agent._isSocketLibAvailable()}`);
+
+    const testMessage = `Player messaging test ${Date.now()}`;
+
+    try {
+        console.log(`📤 Sending test message: "${testMessage}"`);
+        const success = await agent.sendDeviceMessage(device1.id, device2.id, testMessage);
+
+        if (success) {
+            console.log("✅ Player message sent successfully");
+
+            // Check if message was stored locally
+            const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
+            const conversation = agent.messages.get(conversationKey);
+
+            if (conversation && conversation.length > 0) {
+                const lastMessage = conversation[conversation.length - 1];
+                console.log("✅ Message stored locally:", lastMessage.text);
+
+                // Check SocketLib delivery
+                if (agent._isSocketLibAvailable()) {
+                    console.log("✅ SocketLib should deliver to other clients in real-time");
+                } else {
+                    console.log("⚠️ SocketLib not available - message local only");
+                }
+            } else {
+                console.log("❌ Message not found in local storage");
+            }
+
+        } else {
+            console.log("❌ Player message sending failed");
+        }
+
+    } catch (error) {
+        console.error("❌ Error testing player messaging:", error);
+    }
+
+    console.log("👥 === PLAYER MESSAGING TEST COMPLETED ===");
+    return true;
+};
+
 console.log("🔧 Cyberpunk Agent functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
@@ -1282,6 +1348,7 @@ console.log("  - cyberpunkAgentTestNPCMessaging() - Testa mensagens NPC → PC")
 console.log("  - cyberpunkAgentDebugActorDevices() - Debug actor-device mapping");
 console.log("  - cyberpunkAgentDebugChat7(deviceId) - Debug Chat7 interface issues");
 console.log("  - cyberpunkAgentDebugNavigation() - Debug navigation issues");
+console.log("  - cyberpunkAgentTestPlayerMessaging() - Test player messaging permissions");
 
 /**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
@@ -4042,48 +4109,66 @@ class CyberpunkAgent {
  */
 
     /**
-     * Save a message to the Foundry server
+     * Save a message to the Foundry server (GM only) or handle player messaging
      * @param {string} senderDeviceId - ID of the sending device
      * @param {string} receiverDeviceId - ID of the receiving device
      * @param {Object} message - Message object to save
      */
     async saveMessageToServer(senderDeviceId, receiverDeviceId, message) {
         try {
-            console.log(`Cyberpunk Agent | Saving message to server: ${senderDeviceId} → ${receiverDeviceId}`);
+            console.log(`Cyberpunk Agent | Handling message storage: ${senderDeviceId} → ${receiverDeviceId}`);
 
-            // Get current messages from server
-            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            // Check if current user is GM
+            if (game.user.isGM) {
+                // GM can save to server settings
+                console.log("Cyberpunk Agent | GM saving message to server settings");
 
-            // Create conversation key
-            const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
+                const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+                const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
 
-            // Initialize device storage if it doesn't exist
-            if (!serverMessages[senderDeviceId]) {
-                serverMessages[senderDeviceId] = {};
+                // Initialize storage
+                if (!serverMessages[senderDeviceId]) serverMessages[senderDeviceId] = {};
+                if (!serverMessages[receiverDeviceId]) serverMessages[receiverDeviceId] = {};
+                if (!serverMessages[senderDeviceId][conversationKey]) serverMessages[senderDeviceId][conversationKey] = [];
+                if (!serverMessages[receiverDeviceId][conversationKey]) serverMessages[receiverDeviceId][conversationKey] = [];
+
+                // Add message to both conversations
+                serverMessages[senderDeviceId][conversationKey].push(message);
+                serverMessages[receiverDeviceId][conversationKey].push(message);
+
+                // Save to server
+                await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+                console.log(`Cyberpunk Agent | Message saved to server successfully`);
+                return true;
+
+            } else {
+                // Players use localStorage only + SocketLib for real-time
+                console.log("Cyberpunk Agent | Player message - using localStorage + SocketLib");
+
+                // Save to local storage immediately
+                const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
+                if (!this.messages.has(conversationKey)) {
+                    this.messages.set(conversationKey, []);
+                }
+
+                // Add to local conversation
+                const conversation = this.messages.get(conversationKey);
+                const messageExists = conversation.some(msg => msg.id === message.id);
+                if (!messageExists) {
+                    conversation.push(message);
+                }
+
+                // Save to localStorage
+                await this.saveMessagesForDevice(senderDeviceId);
+                if (senderDeviceId !== receiverDeviceId) {
+                    await this.saveMessagesForDevice(receiverDeviceId);
+                }
+
+                console.log(`Cyberpunk Agent | Message saved to localStorage successfully`);
+                return true;
             }
-            if (!serverMessages[receiverDeviceId]) {
-                serverMessages[receiverDeviceId] = {};
-            }
-
-            // Initialize conversation if it doesn't exist
-            if (!serverMessages[senderDeviceId][conversationKey]) {
-                serverMessages[senderDeviceId][conversationKey] = [];
-            }
-            if (!serverMessages[receiverDeviceId][conversationKey]) {
-                serverMessages[receiverDeviceId][conversationKey] = [];
-            }
-
-            // Add message to both sender and receiver conversations
-            serverMessages[senderDeviceId][conversationKey].push(message);
-            serverMessages[receiverDeviceId][conversationKey].push(message);
-
-            // Save to server
-            await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
-
-            console.log(`Cyberpunk Agent | Message saved to server successfully`);
-            return true;
         } catch (error) {
-            console.error(`Cyberpunk Agent | Error saving message to server:`, error);
+            console.error(`Cyberpunk Agent | Error saving message:`, error);
             return false;
         }
     }
@@ -4654,15 +4739,10 @@ class CyberpunkAgent {
             window.CyberpunkAgentPerformanceManager.queueSave(conversationKey, conversation);
         }
 
-        // Check if SocketLib is available
-        if (!this._isSocketLibAvailable()) {
-            this._handleSocketLibUnavailable();
-            // Don't return false here since SocketLib might still be working
-            // The availability check was too strict
-        } else {
-            // Send message via SocketLib
+        // Always try to send via SocketLib for real-time delivery (critical for player messages)
+        if (this._isSocketLibAvailable() && this.socketLibIntegration) {
             try {
-                console.log("Cyberpunk Agent | Sending device message via SocketLib");
+                console.log("Cyberpunk Agent | Sending device message via SocketLib for real-time delivery");
                 const success = await this.socketLibIntegration.sendMessage(senderDeviceId, receiverDeviceId, text.trim(), messageId);
                 if (success) {
                     console.log("Cyberpunk Agent | Device message sent successfully via SocketLib");
@@ -4674,6 +4754,14 @@ class CyberpunkAgent {
                 }
             } catch (error) {
                 console.warn("Cyberpunk Agent | SocketLib device message sending error, but message was saved locally:", error);
+            }
+        } else {
+            console.warn("Cyberpunk Agent | SocketLib not available - message saved locally only");
+
+            // For players, this is still acceptable as messages are saved to localStorage
+            // GM will need to sync manually or messages will be available when GM checks
+            if (!game.user.isGM) {
+                ui.notifications.warn("Mensagem salva localmente - sincronização com GM pode ser necessária");
             }
         }
 
