@@ -29,9 +29,9 @@ This document compares our `module.json` with a functional example to ensure com
 // After (Correct)
 "authors": [
   {
-    "name": "Daniel Marinho Goncalves",
-    "url": "https://github.com/dmberlin",
-    "discord": "dmberlin#0000"
+    "name": "Daniel Marinho",
+    "url": "https://github.com/dmberlin/cyberpunk-agent",
+    "discord": "dmberlin#1345"
   }
 ]
 ```

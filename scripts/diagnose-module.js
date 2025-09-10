@@ -8,7 +8,7 @@ const path = require('path');
 
 class ModuleDiagnostic {
   constructor() {
-    this.foundryPath = 'C:\\Users\\danie\\AppData\\Local\\FoundryVTT\\V11\\Data\\modules\\cyberpunk-agent';
+    this.foundryPath = 'CONFIGURE_YOUR_FOUNDRY_PATH_HERE';
     this.moduleJsonPath = path.join(this.foundryPath, 'module.json');
   }
 

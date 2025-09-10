@@ -266,4 +266,4 @@ runAllFilterTests()
 
 **Versão**: 1.0.0  
 **Data**: Dezembro 2024  
-**Autor**: Daniel Marinho Goncalves 
+**Autor**: Daniel Marinho 
