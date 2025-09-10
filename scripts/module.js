@@ -1672,22 +1672,10 @@ window.cyberpunkAgentTestOfflinePlayerSync = async function () {
     return true;
 };
 
-console.log("🔧 Cyberpunk Agent functions loaded:");
+console.log("🔧 Cyberpunk Agent GM functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
 console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
-console.log("  - cyberpunkAgentFixTokenControls() - Força atualização dos controles");
-console.log("  - cyberpunkAgentTestContactLogic() - Testa lógica de contatos automática");
-console.log("  - cyberpunkAgentTestNPCMessaging() - Testa mensagens NPC → PC");
-console.log("  - cyberpunkAgentDebugActorDevices() - Debug actor-device mapping");
-console.log("  - cyberpunkAgentDebugChat7(deviceId) - Debug Chat7 interface issues");
-console.log("  - cyberpunkAgentDebugNavigation() - Debug navigation issues");
-console.log("  - cyberpunkAgentTestPlayerMessaging() - Test player messaging permissions");
-console.log("  - cyberpunkAgentTestOfflineQueue() - Test offline message queue (GM only)");
-console.log("  - cyberpunkAgentDebugOfflineMessages(deviceId) - Debug offline message delivery");
-console.log("  - cyberpunkAgentDebugGMMessaging() - Debug GM messaging to players (GM only)");
-console.log("  - cyberpunkAgentSyncWithServer() - Manual sync with server (players)");
-console.log("  - cyberpunkAgentTestGMConnection() - Test GM-Player SocketLib connection");
-console.log("  - cyberpunkAgentTestOfflinePlayerSync() - Test offline player sync scenario");
+console.log("  - cyberpunkAgentFixTokenControls() - Corrige controles de token se necessário");
 
 /**
  * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data

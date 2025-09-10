@@ -13,7 +13,6 @@ const functionsToKeep = [
 
 // List of debug functions to remove
 const debugFunctions = [
-  'cyberpunkAgentFixTokenControls',
   'cyberpunkAgentTestContactLogic',
   'cyberpunkAgentTestNPCMessaging',
   'cyberpunkAgentDebugActorDevices',
@@ -30,7 +29,10 @@ const debugFunctions = [
   'testPlayerContactNetworkAccess',
   'testMessagePersistence',
   'testRealtimeCommunication',
-  'testSocketLibSetup'
+  'testSocketLibSetup',
+  'quickValidateEnhancements',
+  'testBasicMessaging',
+  'testEnhancedFeatures'
 ];
 
 // Remove debug functions from window object
