@@ -180,12 +180,12 @@ async function handleContactUpdate(data) {
     console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for interface update");
   }
 
-  // Show notification to user
+  // Log contact update to console only
   const message = data.userName === game.user.name
     ? "Sua lista de contatos foi atualizada!"
     : `Lista de contatos atualizada por ${data.userName}!`;
 
-  ui.notifications.info(message);
+  console.log("Cyberpunk Agent |", message);
 
   console.log("Cyberpunk Agent | Contact update processed via SocketLib successfully");
 }

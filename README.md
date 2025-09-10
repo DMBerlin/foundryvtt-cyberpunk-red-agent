@@ -21,6 +21,7 @@ Um módulo do FoundryVTT que adiciona um sistema de mensagens estilo cyberpunk p
 - **Sistema de Mute Isolado**: Mute contatos específicos para cada dispositivo independentemente
 - **Histórico Isolado**: Cada dispositivo mantém seu próprio histórico de conversas
 - **Sistema de Requisições GM**: Jogadores podem solicitar ações GM via SocketLib para salvar dados do mundo
+- **Ordenação Dinâmica de Contatos**: Contatos são organizados por conversa mais recente, similar ao WhatsApp/Telegram
 
 ## Requisitos
 
@@ -84,6 +85,12 @@ O Cyberpunk Agent v2.0.0 funciona baseado no estado de equipamento dos itens "Ag
 - Menu de seleção mostra todos os dispositivos disponíveis com nomes dos proprietários
 
 ### Gerenciando Contatos
+
+**Ordenação Automática de Contatos:**
+- **Ordem Dinâmica**: Contatos são automaticamente organizados por conversa mais recente
+- **Comportamento WhatsApp/Telegram**: Contato com quem você conversou por último aparece no topo
+- **Atualização em Tempo Real**: A ordem se atualiza instantaneamente quando mensagens são enviadas/recebidas
+- **Contatos sem Mensagens**: Aparecem na parte inferior da lista
 
 **Adicionando Contatos via Chat7:**
 1. Abra o Agent e navegue para o Chat7

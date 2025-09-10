@@ -97,14 +97,34 @@ class AgentApplication extends FormApplication {
         const unreadCount = window.CyberpunkAgent?.instance?.getUnreadCountForDevices(this.device.id, contactDeviceId) || 0;
         const isMuted = window.CyberpunkAgent?.instance?.isContactMutedForDevice(this.device.id, contactDeviceId) || false;
 
+        // Get the latest message timestamp for this conversation
+        let latestMessageTimestamp = 0;
+        try {
+          const messages = window.CyberpunkAgent?.instance?.getMessagesForDeviceConversation(this.device.id, contactDeviceId) || [];
+          if (messages.length > 0) {
+            // Find the most recent message
+            const latestMessage = messages.reduce((latest, current) =>
+              current.timestamp > latest.timestamp ? current : latest
+            );
+            latestMessageTimestamp = latestMessage.timestamp;
+          }
+        } catch (error) {
+          console.warn(`Cyberpunk Agent | Error getting latest message timestamp for contact ${contactDeviceId}:`, error);
+        }
+
         return {
           id: contactDeviceId,
           name: contactDevice.deviceName || `Device ${contactDeviceId}`,
           img: contactDevice.img || 'icons/svg/mystery-man.svg',
           unreadCount: unreadCount > 0 ? unreadCount : null,
-          isMuted: isMuted
+          isMuted: isMuted,
+          latestMessageTimestamp: latestMessageTimestamp
         };
       }).filter(contact => contact !== null); // Remove null contacts
+
+      // Sort contacts by latest message timestamp (most recent first)
+      // Contacts with no messages will have timestamp 0 and appear at the bottom
+      contactsWithData.sort((a, b) => b.latestMessageTimestamp - a.latestMessageTimestamp);
 
       templateData.contacts = contactsWithData;
       templateData.isGM = game.user.isGM;

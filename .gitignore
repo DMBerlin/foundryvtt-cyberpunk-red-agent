@@ -22,10 +22,13 @@ logs/
 # Arquivos de configuração local
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 dev-config.json
+dev-copy-local.bat
 
 # IDEs e editores
 .vscode/
