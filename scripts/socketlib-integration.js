@@ -730,7 +730,7 @@ async function handleSendMessage(data) {
         }
 
         if (isReceiver) {
-          console.log("Cyberpunk Agent | Handling notifications for received message - user is the actual receiver");
+          console.log("Cyberpunk Agent | User is receiver - triggering notifications");
 
           // Use smart notification manager if available
           if (window.CyberpunkAgentNotificationManager) {
@@ -748,7 +748,8 @@ async function handleSendMessage(data) {
             window.CyberpunkAgent.instance.handleNewMessageNotifications(data.senderId, data.receiverId);
           }
         } else {
-          console.log("Cyberpunk Agent | User is not the actual receiver device owner, skipping notifications");
+          console.log("Cyberpunk Agent | User is not the receiver device owner, skipping notifications");
+          console.log("Cyberpunk Agent | Receiver user:", receiverUser?.name, "Current user:", game.user.name);
         }
       }
 

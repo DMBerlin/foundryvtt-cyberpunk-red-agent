@@ -273,7 +273,14 @@ class SmartNotificationManager {
             const senderName = senderDevice?.ownerName || senderDevice?.deviceName || 'Unknown';
 
             this.showNotificationBanner(senderName, message.text);
-            await this.playNotificationSound();
+
+            // Use the main CyberpunkAgent notification sound system
+            if (window.CyberpunkAgent?.instance) {
+                window.CyberpunkAgent.instance.playNotificationSound(message.senderId, message.receiverId);
+            } else {
+                await this.playNotificationSound();
+            }
+
             this.updateUnreadBadge(receiverDeviceId);
             this.recordNotification(conversationKey);
 
