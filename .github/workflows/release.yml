@@ -1,0 +1,112 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+    - name: Update module.json version
+      run: |
+        sed -i 's/"version": "[^"]*"/"version": "${{ steps.get_version.outputs.VERSION }}"/' module.json
+        
+    - name: Update module.json URLs
+      run: |
+        REPO_URL="https://github.com/${{ github.repository }}"
+        sed -i "s|\"url\": \"[^\"]*\"|\"url\": \"${REPO_URL}\"|g" module.json
+        sed -i "s|\"manifest\": \"[^\"]*\"|\"manifest\": \"${REPO_URL}/releases/latest/download/module.json\"|g" module.json
+        sed -i "s|\"download\": \"[^\"]*\"|\"download\": \"${REPO_URL}/releases/download/v${{ steps.get_version.outputs.VERSION }}/cyberpunk-agent.zip\"|g" module.json
+        
+    - name: Create module package
+      run: |
+        # Create a clean directory for the module
+        mkdir -p cyberpunk-agent
+        
+        # Copy all necessary files, excluding development files
+        rsync -av --exclude='node_modules' \
+                  --exclude='.git' \
+                  --exclude='.github' \
+                  --exclude='__tests__' \
+                  --exclude='dev-copy.bat' \
+                  --exclude='package.json' \
+                  --exclude='package-lock.json' \
+                  --exclude='yarn.lock' \
+                  --exclude='.env*' \
+                  --exclude='*.log' \
+                  --exclude='DEVELOPMENT.md' \
+                  --exclude='TODO.md' \
+                  ./ cyberpunk-agent/
+        
+        # Create the zip file
+        cd cyberpunk-agent
+        zip -r ../cyberpunk-agent.zip .
+        cd ..
+        
+    - name: Generate Release Notes
+      id: release_notes
+      run: |
+        # Extract release notes from CHANGELOG.md
+        VERSION="${{ steps.get_version.outputs.VERSION }}"
+        
+        # Get the changelog section for this version
+        awk "/## \[$VERSION\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release_notes.md
+        
+        # If no specific version found, use Unreleased section
+        if [ ! -s release_notes.md ]; then
+          awk "/## \[Unreleased\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release_notes.md
+        fi
+        
+        # If still empty, create generic release notes
+        if [ ! -s release_notes.md ]; then
+          echo "Release v$VERSION" > release_notes.md
+          echo "" >> release_notes.md
+          echo "See CHANGELOG.md for detailed changes." >> release_notes.md
+        fi
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release v${{ steps.get_version.outputs.VERSION }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        
+    - name: Upload module.json
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./module.json
+        asset_name: module.json
+        asset_content_type: application/json
+        
+    - name: Upload module package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./cyberpunk-agent.zip
+        asset_name: cyberpunk-agent.zip
+        asset_content_type: application/zip
