@@ -30,12 +30,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dmberlin/cyberpunk-agent.git"
+    "url": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent.git"
   },
   "bugs": {
-    "url": "https://github.com/dmberlin/cyberpunk-agent/issues"
+    "url": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent/issues"
   },
-  "homepage": "https://github.com/dmberlin/cyberpunk-agent#readme",
+  "homepage": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent#readme",
   "devDependencies": {},
   "dependencies": {},
   "engines": {
