@@ -40,8 +40,5 @@
   "dependencies": {},
   "engines": {
     "node": ">=16.0.0"
-  },
-  "url": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent",
-  "manifest": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent/releases/latest/download/module.json",
-  "download": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent/releases/latest/download/module.zip"
+  }
 }

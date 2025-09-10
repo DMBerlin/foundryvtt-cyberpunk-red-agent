@@ -160,8 +160,10 @@ function main() {
           exec(`git push origin v${newVersion}`);
 
           console.log('🎉 Release pushed to origin!');
-          console.log(`🔗 GitHub Actions will create the release at: https://github.com/dmberlin/cyberpunk-agent/releases`);
-          console.log(`📦 Users can install using: https://github.com/dmberlin/cyberpunk-agent/releases/latest/download/module.json`);
+          // Get repository URL from package.json
+          const repoUrl = packageData.repository?.url?.replace('.git', '') || 'https://github.com/dmberlin/cyberpunk-agent';
+          console.log(`🔗 GitHub Actions will create the release at: ${repoUrl}/releases`);
+          console.log(`📦 Users can install using: ${repoUrl}/releases/latest/download/module.json`);
         } catch (error) {
           console.error('❌ Failed to push to origin:', error.message);
           console.log('💡 You can manually push with:');
