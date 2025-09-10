@@ -1385,9 +1385,9 @@ async function handleSyncMessagesFromServer(data) {
           // Update UI
           window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
 
-          // Only show notification if not silent and significant number of messages
-          if (!silent && syncedCount > 0) {
-            ui.notifications.info(`📱 Sincronizadas ${syncedCount} mensagens do servidor`);
+          // Log sync completion to console only
+          if (syncedCount > 0) {
+            console.log(`Cyberpunk Agent | Sincronizadas ${syncedCount} mensagens do servidor`);
           }
         } else {
           console.log(`Cyberpunk Agent | No new messages to sync for device ${deviceId}`);

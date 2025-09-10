@@ -3691,14 +3691,12 @@ class CyberpunkAgent {
                 const success = await this.socketLibIntegration.requestGMDeviceDataSave(deviceData);
                 if (success) {
                     console.log("Cyberpunk Agent | Device data save request sent to GM successfully");
-                    ui.notifications.info("Device data save request sent to GM");
                 } else {
                     console.warn("Cyberpunk Agent | Failed to send device data save request to GM");
-                    ui.notifications.warn("Failed to send device data save request to GM");
                 }
             } else {
                 console.warn("Cyberpunk Agent | SocketLib not available, cannot request GM save");
-                ui.notifications.warn("Cannot save device data - GM action required");
+                console.warn("Cyberpunk Agent | Cannot save device data - GM action required");
             }
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving device data:", error);
@@ -5095,7 +5093,7 @@ class CyberpunkAgent {
             }
 
             if (userDevices.length > 0) {
-                ui.notifications.info("📱 Sincronizando mensagens com o servidor...");
+                console.log("Cyberpunk Agent | Sincronizando mensagens com o servidor...");
             }
 
         } catch (error) {
@@ -5637,14 +5635,12 @@ class CyberpunkAgent {
                 const success = await this.socketLibIntegration.requestGMPhoneNumberSave(phoneData);
                 if (success) {
                     console.log("Cyberpunk Agent | Phone number save request sent to GM successfully");
-                    ui.notifications.info("Phone number data save request sent to GM");
                 } else {
                     console.warn("Cyberpunk Agent | Failed to send phone number save request to GM");
-                    ui.notifications.warn("Failed to send phone number save request to GM");
                 }
             } else {
                 console.warn("Cyberpunk Agent | SocketLib not available, cannot request GM save");
-                ui.notifications.warn("Cannot save phone number data - GM action required");
+                console.warn("Cyberpunk Agent | Cannot save phone number data - GM action required");
             }
         } catch (error) {
             console.error("Cyberpunk Agent | Error saving phone number data:", error);
