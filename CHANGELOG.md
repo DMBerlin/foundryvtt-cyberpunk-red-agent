@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-09-10
+
 ### Added
 - **Device Management Settings**: Comprehensive device management system in Game Settings for GMs:
   - **GM Data Management Menu**: New settings menu accessible only to GMs with device registry management tools
