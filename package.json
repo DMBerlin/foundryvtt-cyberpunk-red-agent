@@ -1,8 +1,18 @@
 {
+  "title": "Cyberpunk Agent",
   "name": "cyberpunk-agent",
   "version": "2.0.7",
   "description": "A FoundryVTT module that adds features to the Cyberpunk RED system",
   "main": "scripts/module.js",
+  "authors": [
+    {
+      "name": "Daniel Marinho",
+      "url": "https://gitlab.com/dmberlin",
+      "email": "contact@danielmarinho.dev",
+      "discord": "dmberlin#1345",
+      "flags": {}
+    }
+  ],
   "scripts": {
     "build": "echo 'Build process not implemented yet'",
     "package": "powershell -Command \"Compress-Archive -Path .\\* -DestinationPath .\\cyberpunk-agent.zip -Force\"",
@@ -26,8 +36,6 @@
     "rpg",
     "tabletop"
   ],
-  "author": "Daniel Marinho Goncalves",
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/DMBerlin/foundryvtt-cyberpunk-red-agent.git"
@@ -40,5 +48,11 @@
   "dependencies": {},
   "engines": {
     "node": ">=16.0.0"
-  }
+  },
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "license": "MIT",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md"
 }
