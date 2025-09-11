@@ -6008,6 +6008,10 @@ class CyberpunkAgent {
             console.log(`${deviceId} | ${ownerName} | ${formattedPhone}`);
         }
 
+        // ENHANCED: Ensure all devices have proper owner names and avatars after sync
+        console.log("🔄 Ensuring devices have proper owner names and avatars...");
+        await this.migrateDeviceNamesAndAvatars();
+
         console.log(`\n=== Agent Sync Complete ===`);
     }
 

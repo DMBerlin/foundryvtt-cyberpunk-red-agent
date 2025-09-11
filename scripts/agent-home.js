@@ -112,10 +112,22 @@ class AgentApplication extends FormApplication {
           console.warn(`Cyberpunk Agent | Error getting latest message timestamp for contact ${contactDeviceId}:`, error);
         }
 
+        // Use proper owner name and avatar for contact display
+        const contactOwnerName = window.CyberpunkAgent?.instance?.getDeviceOwnerName(contactDeviceId) || contactDevice.deviceName || `Device ${contactDeviceId}`;
+
+        // Get actor avatar if available, fallback to device avatar
+        let contactAvatar = contactDevice.img || 'icons/svg/mystery-man.svg';
+        if (contactDevice.ownerActorId) {
+          const actor = game.actors.get(contactDevice.ownerActorId);
+          if (actor && actor.img) {
+            contactAvatar = actor.img;
+          }
+        }
+
         return {
           id: contactDeviceId,
-          name: contactDevice.deviceName || `Device ${contactDeviceId}`,
-          img: contactDevice.img || 'icons/svg/mystery-man.svg',
+          name: contactOwnerName,
+          img: contactAvatar,
           unreadCount: unreadCount > 0 ? unreadCount : null,
           isMuted: isMuted,
           latestMessageTimestamp: latestMessageTimestamp
@@ -137,11 +149,23 @@ class AgentApplication extends FormApplication {
       // Ensure contact data is fresh and complete
       const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(this.currentContact.id);
       if (contactDevice) {
+        // Get proper owner name and avatar for chat conversation header
+        const contactOwnerName = window.CyberpunkAgent?.instance?.getDeviceOwnerName(this.currentContact.id) || contactDevice.deviceName || this.currentContact.name || `Device ${this.currentContact.id}`;
+
+        // Get actor avatar if available, fallback to device avatar
+        let contactAvatar = contactDevice.img || this.currentContact.img || 'icons/svg/mystery-man.svg';
+        if (contactDevice.ownerActorId) {
+          const actor = game.actors.get(contactDevice.ownerActorId);
+          if (actor && actor.img) {
+            contactAvatar = actor.img;
+          }
+        }
+
         // Update current contact with fresh data
         this.currentContact = {
           id: this.currentContact.id,
-          name: contactDevice.deviceName || contactDevice.ownerName || this.currentContact.name || `Device ${this.currentContact.id}`,
-          img: contactDevice.img || this.currentContact.img || 'icons/svg/mystery-man.svg',
+          name: contactOwnerName,
+          img: contactAvatar,
           deviceName: contactDevice.deviceName,
           ownerName: contactDevice.ownerName,
           isVirtual: contactDevice.isVirtual || false
@@ -1621,11 +1645,22 @@ class AgentApplication extends FormApplication {
         return;
       }
 
-      // Show search result
+      // Show search result with proper owner name and avatar
+      const ownerName = window.CyberpunkAgent?.instance?.getDeviceOwnerName(contactDeviceId) || contactDevice.deviceName || `Device ${contactDeviceId}`;
+
+      // Get actor avatar if available, fallback to device avatar
+      let deviceAvatar = contactDevice.img || 'icons/svg/mystery-man.svg';
+      if (contactDevice.ownerActorId) {
+        const actor = game.actors.get(contactDevice.ownerActorId);
+        if (actor && actor.img) {
+          deviceAvatar = actor.img;
+        }
+      }
+
       this.addContactState.searchResult = {
         deviceId: contactDeviceId,
-        name: contactDevice.deviceName || `Device ${contactDeviceId}`,
-        img: contactDevice.img || 'icons/svg/mystery-man.svg',
+        name: ownerName,
+        img: deviceAvatar,
         phoneNumber: normalizedPhone,
         displayPhoneNumber: window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(normalizedPhone) || normalizedPhone
       };

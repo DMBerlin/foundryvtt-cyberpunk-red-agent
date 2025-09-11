@@ -177,10 +177,22 @@ class ContactSearchModal extends Application {
         return;
       }
 
-      // Show search result
+      // Show search result with proper owner name and avatar
+      const ownerName = window.CyberpunkAgent?.instance?.getDeviceOwnerName(contactDeviceId) || contactDevice.deviceName || `Device ${contactDeviceId}`;
+
+      // Get actor avatar if available, fallback to device avatar
+      let deviceAvatar = contactDevice.img || 'icons/svg/mystery-man.svg';
+      if (contactDevice.ownerActorId) {
+        const actor = game.actors.get(contactDevice.ownerActorId);
+        if (actor && actor.img) {
+          deviceAvatar = actor.img;
+        }
+      }
+
       this.searchResult = {
         deviceId: contactDeviceId,
-        name: contactDevice.deviceName || `Device ${contactDeviceId}`,
+        name: ownerName,
+        img: deviceAvatar,
         phoneNumber: normalizedPhone,
         displayPhoneNumber: window.CyberpunkAgent?.instance?.formatPhoneNumberForDisplay(normalizedPhone) || normalizedPhone
       };
