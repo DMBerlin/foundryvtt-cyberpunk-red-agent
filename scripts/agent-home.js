@@ -923,12 +923,12 @@ class AgentApplication extends FormApplication {
     try {
       console.log("Cyberpunk Agent | Performing device sync from home context menu");
 
-      // Show loading notification
-      ui.notifications.info("Sincronizando dispositivo com servidor...");
+      // Log sync start (console only)
+      console.log("Cyberpunk Agent | Sincronizando dispositivo com servidor...");
 
       // Perform comprehensive sync
       if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        const success = await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id, true);
+        const success = await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id, false); // showProgress = false
 
         if (success) {
           // Refresh the UI to show updated data
@@ -938,9 +938,9 @@ class AgentApplication extends FormApplication {
           // Update any open interfaces
           window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
 
-          ui.notifications.info("Sincronização concluída com sucesso!");
+          console.log("Cyberpunk Agent | Sincronização concluída com sucesso!");
         } else {
-          ui.notifications.warn("Sincronização concluída com avisos. Verifique o console.");
+          console.warn("Cyberpunk Agent | Sincronização concluída com avisos.");
         }
       } else {
         ui.notifications.error("Sistema não disponível para sincronização");
@@ -1157,14 +1157,10 @@ class AgentApplication extends FormApplication {
     // Check if this message belongs to the current user (isOwn)
     const isOwnMessage = messageElement.classList.contains('own');
 
-    // GM can access context menu on all messages, players only on their own messages
-    if (!game.user.isGM && !isOwnMessage) {
-      console.log("Cyberpunk Agent | Context menu blocked: User does not own this message and is not GM");
-      ui.notifications.warn("Você só pode acessar o menu de contexto das suas próprias mensagens.");
-      return;
-    }
+    // Enhanced: Allow players to access context menu on incoming messages too (with restrictions)
+    console.log(`Cyberpunk Agent | Message context menu: isOwnMessage=${isOwnMessage}, isGM=${game.user.isGM}`);
 
-    this._showMessageContextMenu(event, messageId, messageText, messageTime);
+    this._showMessageContextMenu(event, messageId, messageText, messageTime, isOwnMessage);
   }
 
   /**
@@ -1217,23 +1213,46 @@ class AgentApplication extends FormApplication {
   }
 
   /**
-   * Show context menu for message
+   * Show context menu for message with enhanced permissions
+   * @param {Event} event - The context menu event
+   * @param {string} messageId - ID of the message
+   * @param {string} messageText - Text content of the message
+   * @param {string} messageTime - Time of the message
+   * @param {boolean} isOwnMessage - Whether the message belongs to current user
    */
-  _showMessageContextMenu(event, messageId, messageText, messageTime) {
+  _showMessageContextMenu(event, messageId, messageText, messageTime, isOwnMessage) {
     // Remove any existing context menu
     $('.cp-context-menu').remove();
 
+    // Build context menu options based on permissions
+    let menuItems = [];
+
+    // Copy and Info are available to everyone
+    menuItems.push(`
+      <button class="cp-context-menu-item" data-action="copy-message" data-message-id="${messageId}">
+        <i class="fas fa-copy"></i>Copiar Texto
+      </button>
+    `);
+
+    menuItems.push(`
+      <button class="cp-context-menu-item" data-action="message-info" data-message-id="${messageId}">
+        <i class="fas fa-info-circle"></i>Informações da Mensagem
+      </button>
+    `);
+
+    // Delete is only available for GMs or for user's own messages
+    if (game.user.isGM || isOwnMessage) {
+      const deleteLabel = game.user.isGM && !isOwnMessage ? 'Deletar Mensagem (GM)' : 'Deletar Mensagem';
+      menuItems.unshift(`
+        <button class="cp-context-menu-item" data-action="delete-message" data-message-id="${messageId}">
+          <i class="fas fa-trash"></i>${deleteLabel}
+        </button>
+      `);
+    }
+
     const contextMenu = $(`
       <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
-        <button class="cp-context-menu-item" data-action="delete-message" data-message-id="${messageId}">
-          <i class="fas fa-trash"></i>Deletar Mensagem
-        </button>
-        <button class="cp-context-menu-item" data-action="copy-message" data-message-id="${messageId}">
-          <i class="fas fa-copy"></i>Copiar Texto
-        </button>
-        <button class="cp-context-menu-item" data-action="message-info" data-message-id="${messageId}">
-          <i class="fas fa-info-circle"></i>Informações da Mensagem
-        </button>
+        ${menuItems.join('')}
       </div>
     `);
 

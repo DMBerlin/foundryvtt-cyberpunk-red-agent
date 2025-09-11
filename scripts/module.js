@@ -2387,7 +2387,7 @@ class CyberpunkAgent {
             }
 
             if (totalSynced > 0) {
-                ui.notifications.info(`Cyberpunk Agent: ${totalSynced} dispositivos sincronizados com servidor`);
+                console.log(`Cyberpunk Agent | ${totalSynced} dispositivos sincronizados com servidor`);
                 console.log(`Cyberpunk Agent | Initial sync completed: ${totalSynced}/${userDevices.length} devices synced`);
             }
 
@@ -4714,7 +4714,7 @@ class CyberpunkAgent {
             console.log(`Cyberpunk Agent | Starting comprehensive message sync with server for device: ${deviceId}`);
 
             if (showProgress) {
-                ui.notifications.info("Sincronizando mensagens com servidor...");
+                console.log("Cyberpunk Agent | Sincronizando mensagens com servidor...");
             }
 
             // Step 1: Get current server state
@@ -4766,9 +4766,9 @@ class CyberpunkAgent {
 
             if (showProgress) {
                 if (newMessages > 0) {
-                    ui.notifications.info(syncMessage);
+                    console.log(`Cyberpunk Agent | ${syncMessage}`);
                 } else {
-                    ui.notifications.info("Mensagens sincronizadas - nenhuma nova mensagem");
+                    console.log("Cyberpunk Agent | Mensagens sincronizadas - nenhuma nova mensagem");
                 }
             }
 

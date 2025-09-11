@@ -2501,33 +2501,18 @@
   opacity: 1 !important;
 }
 
-/* Disable context menu for other users' messages */
+/* Enhanced: Allow context menu for incoming messages too */
 .cp-message.other[data-action="message-context-menu"] {
-  cursor: default !important;
+  cursor: context-menu !important;
+  transition: all 0.2s ease !important;
 }
 
 .cp-message.other[data-action="message-context-menu"]:hover {
-  transform: none !important;
-  box-shadow: inherit !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Visual indicator for interactive messages */
-.cp-message.own[data-action="message-context-menu"]::before {
-  content: '⋮' !important;
-  position: absolute !important;
-  top: 5px !important;
-  right: 5px !important;
-  font-size: 12px !important;
-  color: rgba(63, 166, 173, 0.6) !important;
-  opacity: 0 !important;
-  transition: opacity 0.2s ease !important;
-  pointer-events: none !important;
-  z-index: 10 !important;
-}
-
-.cp-message.own[data-action="message-context-menu"]:hover::before {
-  opacity: 1 !important;
-}
+/* Visual indicator for interactive messages removed per user request */
 
 /* Input field styling */
 .cp-message-input {
