@@ -2342,8 +2342,93 @@ class CyberpunkAgent {
         // Setup item update hooks for equipment changes
         this.setupItemUpdateHooks();
 
+        // ENHANCED: Perform comprehensive sync with server on module load
+        console.log("Cyberpunk Agent | Starting comprehensive sync on module load...");
+        await this.performInitialMessageSync();
+
+        // Setup periodic sync to keep messages up-to-date
+        this.setupPeriodicSync();
+
         this._agentSystemSetupComplete = true;
-        console.log("Cyberpunk Agent | Agent system setup complete");
+        console.log("Cyberpunk Agent | Enhanced agent system setup complete");
+    }
+
+    /**
+     * Perform comprehensive message sync on module initialization
+     * This ensures users get all their messages when loading the module, regardless of browser
+     */
+    async performInitialMessageSync() {
+        try {
+            console.log("Cyberpunk Agent | Performing initial comprehensive message sync...");
+
+            // Get all user's devices
+            const userDevices = [];
+            for (const [actorId, deviceIds] of this.deviceMappings.entries()) {
+                const actor = game.actors.get(actorId);
+                if (actor && actor.ownership && actor.ownership[game.user.id] >= 1) {
+                    userDevices.push(...deviceIds);
+                }
+            }
+
+            if (userDevices.length === 0) {
+                console.log("Cyberpunk Agent | No user devices found for sync");
+                return;
+            }
+
+            console.log(`Cyberpunk Agent | Syncing ${userDevices.length} user devices on startup`);
+            let totalSynced = 0;
+
+            // Sync each device with progress indication
+            for (const deviceId of userDevices) {
+                const success = await this.syncMessagesWithServer(deviceId, false);
+                if (success) {
+                    totalSynced++;
+                }
+            }
+
+            if (totalSynced > 0) {
+                ui.notifications.info(`Cyberpunk Agent: ${totalSynced} dispositivos sincronizados com servidor`);
+                console.log(`Cyberpunk Agent | Initial sync completed: ${totalSynced}/${userDevices.length} devices synced`);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error in initial message sync:", error);
+        }
+    }
+
+    /**
+     * Setup periodic sync to keep messages synchronized
+     * This ensures messages stay up-to-date even during long sessions
+     */
+    setupPeriodicSync() {
+        // Sync every 10 minutes
+        const syncInterval = 10 * 60 * 1000; // 10 minutes
+
+        setInterval(async () => {
+            try {
+                console.log("Cyberpunk Agent | Running periodic message sync...");
+
+                // Get all user's devices
+                const userDevices = [];
+                for (const [actorId, deviceIds] of this.deviceMappings.entries()) {
+                    const actor = game.actors.get(actorId);
+                    if (actor && actor.ownership && actor.ownership[game.user.id] >= 1) {
+                        userDevices.push(...deviceIds);
+                    }
+                }
+
+                // Sync each device silently
+                for (const deviceId of userDevices) {
+                    await this.syncMessagesWithServer(deviceId, false);
+                }
+
+                console.log(`Cyberpunk Agent | Periodic sync completed for ${userDevices.length} devices`);
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in periodic sync:", error);
+            }
+        }, syncInterval);
+
+        console.log(`Cyberpunk Agent | Periodic sync enabled (every ${syncInterval / 60000} minutes)`);
     }
 
     /**
@@ -3330,14 +3415,17 @@ class CyberpunkAgent {
         }
 
         try {
-            // Sync messages with server for this device
+            // Enhanced sync messages with server for this device (with user feedback)
             console.log("Cyberpunk Agent | Syncing messages with server for device:", device.id);
-            await this.syncMessagesWithServer(device.id);
+            await this.syncMessagesWithServer(device.id, true);
 
             console.log("Cyberpunk Agent | Creating AgentApplication instance...");
             const AgentClass = AgentApplication || window.AgentApplication;
             const agentApp = new AgentClass(device);
             console.log("Cyberpunk Agent | AgentApplication instance created successfully");
+
+            // Add sync button to the agent interface
+            this.addSyncButtonToAgent(agentApp, device);
 
             // Play opening sound effect
             this.playSoundEffect('opening-window');
@@ -3347,6 +3435,69 @@ class CyberpunkAgent {
         } catch (error) {
             console.error("Cyberpunk Agent | Error creating AgentApplication:", error);
             ui.notifications.error("Erro ao criar a interface do Agent: " + error.message);
+        }
+    }
+
+    /**
+     * Add sync button to agent interface for manual synchronization
+     * @param {AgentApplication} agentApp - The agent application instance
+     * @param {Object} device - The device object
+     */
+    addSyncButtonToAgent(agentApp, device) {
+        try {
+            // Wait for the application to render then add the sync button
+            setTimeout(() => {
+                const agentWindow = agentApp.element;
+                if (!agentWindow || !agentWindow.length) return;
+
+                // Check if sync button already exists
+                if (agentWindow.find('.sync-messages-btn').length > 0) return;
+
+                // Create sync button
+                const syncButton = $(`
+                    <button class="sync-messages-btn" title="Sincronizar mensagens com servidor" style="
+                        position: absolute;
+                        top: 8px;
+                        right: 35px;
+                        width: 24px;
+                        height: 24px;
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 1px solid #ff6600;
+                        border-radius: 3px;
+                        color: #ff6600;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 12px;
+                        z-index: 1000;
+                    ">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                `);
+
+                // Add click handler
+                syncButton.on('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    try {
+                        syncButton.find('i').addClass('fa-spin');
+                        await this.syncMessagesWithServer(device.id, true);
+                        syncButton.find('i').removeClass('fa-spin');
+                    } catch (error) {
+                        console.error("Cyberpunk Agent | Error in manual sync:", error);
+                        syncButton.find('i').removeClass('fa-spin');
+                        ui.notifications.error("Erro na sincronização manual");
+                    }
+                });
+
+                // Add to agent window
+                agentWindow.find('.window-header').append(syncButton);
+                console.log("Cyberpunk Agent | Sync button added to agent interface");
+            }, 500);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error adding sync button:", error);
         }
     }
 
@@ -4477,17 +4628,30 @@ class CyberpunkAgent {
  */
 
     /**
-     * Enhanced Message Broker Architecture
-     * All messages go through GM for centralized server storage
+     * Enhanced Message Broker Architecture - Server-First with localStorage Cache
+     * All messages are immediately persisted to server settings, localStorage is cache
      * @param {string} senderDeviceId - ID of the sending device
      * @param {string} receiverDeviceId - ID of the receiving device
      * @param {Object} message - Message object to save
      */
     async saveMessageToServer(senderDeviceId, receiverDeviceId, message) {
         try {
-            console.log(`Cyberpunk Agent | Enhanced message broker: ${senderDeviceId} → ${receiverDeviceId}`);
+            console.log(`Cyberpunk Agent | Enhanced message broker (Server-First): ${senderDeviceId} → ${receiverDeviceId}`);
 
-            // Always save to local storage first (immediate feedback)
+            // CRITICAL: Save to server FIRST to ensure persistence across browsers
+            let serverSaveSuccess = false;
+
+            if (game.user.isGM) {
+                // GM directly saves to server
+                console.log("Cyberpunk Agent | GM saving message to server settings (PRIMARY)");
+                serverSaveSuccess = await this.saveMessageToServerAsGM(senderDeviceId, receiverDeviceId, message);
+            } else {
+                // Players request GM to save message to server
+                console.log("Cyberpunk Agent | Player requesting GM to save message to server (PRIMARY)");
+                serverSaveSuccess = await this.requestGMMessageSave(senderDeviceId, receiverDeviceId, message);
+            }
+
+            // Only proceed with local storage if server save succeeded or we want to cache anyway
             const conversationKey = this._getDeviceConversationKey(senderDeviceId, receiverDeviceId);
             if (!this.messages.has(conversationKey)) {
                 this.messages.set(conversationKey, []);
@@ -4499,25 +4663,22 @@ class CyberpunkAgent {
                 conversation.push(message);
             }
 
-            // Save to localStorage immediately
+            // Save to localStorage as cache (immediate UI feedback)
             await this.saveMessagesForDevice(senderDeviceId);
             if (senderDeviceId !== receiverDeviceId) {
                 await this.saveMessagesForDevice(receiverDeviceId);
             }
 
-            // Now handle server storage through GM broker
-            if (game.user.isGM) {
-                // GM directly saves to server
-                console.log("Cyberpunk Agent | GM saving message to server settings");
-                return await this.saveMessageToServerAsGM(senderDeviceId, receiverDeviceId, message);
-            } else {
-                // Players request GM to save message to server
-                console.log("Cyberpunk Agent | Player requesting GM to save message to server");
-                return await this.requestGMMessageSave(senderDeviceId, receiverDeviceId, message);
+            // If server save failed, warn user but continue with local cache
+            if (!serverSaveSuccess) {
+                console.warn("Cyberpunk Agent | Server save failed, message cached locally only");
+                ui.notifications.warn("Mensagem salva localmente. Pode não sincronizar entre navegadores.");
             }
 
+            return serverSaveSuccess;
+
         } catch (error) {
-            console.error(`Cyberpunk Agent | Error in message broker:`, error);
+            console.error(`Cyberpunk Agent | Error in enhanced message broker:`, error);
             return false;
         }
     }
@@ -4606,30 +4767,79 @@ class CyberpunkAgent {
     }
 
     /**
-     * Sync messages with server - called when device connects
+     * Enhanced Comprehensive Sync with server - ensures cross-browser message persistence
      * @param {string} deviceId - ID of the device to sync
+     * @param {boolean} showProgress - Whether to show sync progress to user
      */
-    async syncMessagesWithServer(deviceId) {
+    async syncMessagesWithServer(deviceId, showProgress = false) {
         try {
-            console.log(`Cyberpunk Agent | Starting message sync with server for device: ${deviceId}`);
+            console.log(`Cyberpunk Agent | Starting comprehensive message sync with server for device: ${deviceId}`);
 
-            // Load messages from server
-            const success = await this.loadMessagesFromServer(deviceId);
-            if (!success) {
-                console.warn(`Cyberpunk Agent | Failed to load messages from server for device: ${deviceId}`);
-                return false;
+            if (showProgress) {
+                ui.notifications.info("Sincronizando mensagens com servidor...");
             }
 
-            // Check for new messages and add contacts automatically
+            // Step 1: Get current server state
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            let syncedConversations = 0;
+            let newMessages = 0;
+
+            // Step 2: Find all conversations involving this device from server
+            const deviceConversations = {};
+            for (const [conversationKey, messages] of Object.entries(serverMessages)) {
+                if (conversationKey.includes(deviceId)) {
+                    deviceConversations[conversationKey] = messages;
+                    syncedConversations++;
+                }
+            }
+
+            console.log(`Cyberpunk Agent | Found ${syncedConversations} server conversations for device ${deviceId}`);
+
+            // Step 3: Merge server messages with local messages (server wins)
+            for (const [conversationKey, serverConversation] of Object.entries(deviceConversations)) {
+                const localConversation = this.messages.get(conversationKey) || [];
+                const localMessageIds = new Set(localConversation.map(msg => msg.id));
+
+                // Add server messages that don't exist locally
+                const mergedConversation = [...localConversation];
+                for (const serverMessage of serverConversation) {
+                    if (!localMessageIds.has(serverMessage.id)) {
+                        mergedConversation.push(serverMessage);
+                        newMessages++;
+                    }
+                }
+
+                // Sort by timestamp to maintain order
+                mergedConversation.sort((a, b) => a.timestamp - b.timestamp);
+                this.messages.set(conversationKey, mergedConversation);
+            }
+
+            // Step 4: Save merged messages to localStorage cache
+            await this.saveMessagesForDevice(deviceId);
+
+            // Step 5: Process new messages and add contacts automatically
             await this.processNewMessagesAndContacts(deviceId);
 
-            // Update interfaces
+            // Step 6: Update interfaces
             this._updateChatInterfacesImmediately();
 
-            console.log(`Cyberpunk Agent | Message sync completed for device: ${deviceId}`);
+            const syncMessage = `Sincronização concluída: ${newMessages} novas mensagens em ${syncedConversations} conversas`;
+            console.log(`Cyberpunk Agent | ${syncMessage}`);
+
+            if (showProgress) {
+                if (newMessages > 0) {
+                    ui.notifications.info(syncMessage);
+                } else {
+                    ui.notifications.info("Mensagens sincronizadas - nenhuma nova mensagem");
+                }
+            }
+
             return true;
         } catch (error) {
-            console.error(`Cyberpunk Agent | Error syncing messages with server:`, error);
+            console.error(`Cyberpunk Agent | Error in comprehensive message sync:`, error);
+            if (showProgress) {
+                ui.notifications.error("Erro na sincronização de mensagens");
+            }
             return false;
         }
     }
