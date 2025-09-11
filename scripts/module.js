@@ -3424,8 +3424,7 @@ class CyberpunkAgent {
             const agentApp = new AgentClass(device);
             console.log("Cyberpunk Agent | AgentApplication instance created successfully");
 
-            // Add sync button to the agent interface
-            this.addSyncButtonToAgent(agentApp, device);
+            // Note: Sync button moved to home screen context menu for better UX
 
             // Play opening sound effect
             this.playSoundEffect('opening-window');
@@ -3438,68 +3437,7 @@ class CyberpunkAgent {
         }
     }
 
-    /**
-     * Add sync button to agent interface for manual synchronization
-     * @param {AgentApplication} agentApp - The agent application instance
-     * @param {Object} device - The device object
-     */
-    addSyncButtonToAgent(agentApp, device) {
-        try {
-            // Wait for the application to render then add the sync button
-            setTimeout(() => {
-                const agentWindow = agentApp.element;
-                if (!agentWindow || !agentWindow.length) return;
-
-                // Check if sync button already exists
-                if (agentWindow.find('.sync-messages-btn').length > 0) return;
-
-                // Create sync button
-                const syncButton = $(`
-                    <button class="sync-messages-btn" title="Sincronizar mensagens com servidor" style="
-                        position: absolute;
-                        top: 8px;
-                        right: 35px;
-                        width: 24px;
-                        height: 24px;
-                        background: rgba(0, 0, 0, 0.5);
-                        border: 1px solid #ff6600;
-                        border-radius: 3px;
-                        color: #ff6600;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 12px;
-                        z-index: 1000;
-                    ">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                `);
-
-                // Add click handler
-                syncButton.on('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    try {
-                        syncButton.find('i').addClass('fa-spin');
-                        await this.syncMessagesWithServer(device.id, true);
-                        syncButton.find('i').removeClass('fa-spin');
-                    } catch (error) {
-                        console.error("Cyberpunk Agent | Error in manual sync:", error);
-                        syncButton.find('i').removeClass('fa-spin');
-                        ui.notifications.error("Erro na sincronização manual");
-                    }
-                });
-
-                // Add to agent window
-                agentWindow.find('.window-header').append(syncButton);
-                console.log("Cyberpunk Agent | Sync button added to agent interface");
-            }, 500);
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error adding sync button:", error);
-        }
-    }
+    // Sync button functionality moved to home screen context menu
 
     /**
      * Synchronize messages with server to get any new messages from other clients

@@ -739,6 +739,9 @@ class AgentApplication extends FormApplication {
   _activateHomeListeners(html) {
     html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
     html.find('.cp-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
+
+    // Add context menu for home screen
+    html.find('[data-action="home-context-menu"]').on('contextmenu', this._onHomeContextMenu.bind(this));
   }
 
   /**
@@ -864,6 +867,144 @@ class AgentApplication extends FormApplication {
     } catch (error) {
       console.error("Cyberpunk Agent | Error copying phone number:", error);
       ui.notifications.error("Erro ao copiar número de telefone!");
+    }
+  }
+
+  /**
+   * Handle home screen context menu
+   */
+  _onHomeContextMenu(event) {
+    event.preventDefault();
+    console.log("Home context menu requested");
+
+    // Remove any existing context menu
+    $('.cp-context-menu').remove();
+
+    const contextMenu = $(`
+      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+        <button class="cp-context-menu-item" data-action="sync-device">
+          <i class="fas fa-sync-alt"></i>Sincronizar com Servidor
+        </button>
+        <button class="cp-context-menu-item" data-action="device-info">
+          <i class="fas fa-info-circle"></i>Informações do Dispositivo
+        </button>
+      </div>
+    `);
+
+    // Add event listeners with menu removal
+    contextMenu.find('[data-action="sync-device"]').click(async () => {
+      $('.cp-context-menu').remove();
+      await this._performDeviceSync();
+    });
+
+    contextMenu.find('[data-action="device-info"]').click(() => {
+      $('.cp-context-menu').remove();
+      this._showDeviceInfo();
+    });
+
+    // Append to body and handle click outside
+    $('body').append(contextMenu);
+
+    // Remove context menu when clicking outside
+    $(document).one('click', () => {
+      $('.cp-context-menu').remove();
+    });
+
+    // Prevent the context menu from being removed immediately
+    contextMenu.on('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  /**
+   * Perform device sync with server and refresh UI
+   */
+  async _performDeviceSync() {
+    try {
+      console.log("Cyberpunk Agent | Performing device sync from home context menu");
+
+      // Show loading notification
+      ui.notifications.info("Sincronizando dispositivo com servidor...");
+
+      // Perform comprehensive sync
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        const success = await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id, true);
+
+        if (success) {
+          // Refresh the UI to show updated data
+          console.log("Cyberpunk Agent | Sync successful, refreshing UI");
+          this.render(true);
+
+          // Update any open interfaces
+          window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+          ui.notifications.info("Sincronização concluída com sucesso!");
+        } else {
+          ui.notifications.warn("Sincronização concluída com avisos. Verifique o console.");
+        }
+      } else {
+        ui.notifications.error("Sistema não disponível para sincronização");
+      }
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error in device sync:", error);
+      ui.notifications.error("Erro na sincronização: " + error.message);
+    }
+  }
+
+  /**
+   * Show device information dialog
+   */
+  _showDeviceInfo() {
+    try {
+      console.log("Cyberpunk Agent | Showing device info");
+
+      // Get device information
+      const deviceInfo = {
+        id: this.device.id,
+        name: this.device.deviceName || 'Agent',
+        owner: this.device.ownerName || 'Unknown',
+        phoneNumber: this.device.phoneNumber || 'N/A',
+        contacts: this.device.contacts ? this.device.contacts.length : 0,
+        isVirtual: this.device.isVirtual || false
+      };
+
+      // Get message count
+      let messageCount = 0;
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        const allMessages = window.CyberpunkAgent.instance.messages;
+        for (const [conversationKey, messages] of allMessages) {
+          if (conversationKey.includes(this.device.id)) {
+            messageCount += messages.length;
+          }
+        }
+      }
+
+      const infoDialog = new Dialog({
+        title: "Informações do Dispositivo",
+        content: `
+          <div style="font-family: 'Rajdhani', sans-serif; line-height: 1.6;">
+            <h3 style="color: #ff6600; margin-bottom: 15px;">📱 ${deviceInfo.name}</h3>
+            <p><strong>ID:</strong> ${deviceInfo.id}</p>
+            <p><strong>Proprietário:</strong> ${deviceInfo.owner}</p>
+            <p><strong>Telefone:</strong> ${deviceInfo.phoneNumber}</p>
+            <p><strong>Contatos:</strong> ${deviceInfo.contacts}</p>
+            <p><strong>Mensagens:</strong> ${messageCount}</p>
+            <p><strong>Tipo:</strong> ${deviceInfo.isVirtual ? 'Virtual' : 'Físico'}</p>
+          </div>
+        `,
+        buttons: {
+          close: {
+            label: "Fechar",
+            callback: () => console.log("Device info dialog closed")
+          }
+        },
+        default: "close"
+      });
+
+      infoDialog.render(true);
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error showing device info:", error);
+      ui.notifications.error("Erro ao exibir informações do dispositivo");
     }
   }
 
