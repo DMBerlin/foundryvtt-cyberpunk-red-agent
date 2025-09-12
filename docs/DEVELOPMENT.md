@@ -1,318 +1,182 @@
-# Development Guide - Cyberpunk Agent
+# Development Setup - Cyberpunk Agent
 
-This document contains information for developers who want to contribute or extend the module.
+This guide helps you set up a development environment for testing the Cyberpunk Agent module locally in FoundryVTT.
 
-## Project Structure
+## Quick Start
 
-```
-cyberpunk-agent/
-├── module.json          # Module manifest (required)
-├── README.md            # Main documentation
-├── LICENSE              # Project license
-├── CHANGELOG.md         # Change history
-├── package.json         # Node.js configuration
-├── .gitignore           # Git ignored files
-├── scripts/             # JavaScript code
-│   └── module.js        # Main module file
-├── styles/              # CSS files
-│   └── module.css       # Module styles
-├── lang/                # Localization files
-│   ├── en.json          # English
-│   └── pt-BR.json       # Brazilian Portuguese
-└── assets/              # Static resources
-    └── README.md        # Assets documentation
+### Method 1: .env.development File (Recommended)
+
+1. Copy the example environment file:
+```bash
+npm run setup:env
 ```
 
-## Requirements
+2. Edit `.env.development` with your FoundryVTT modules path:
+```bash
+# Windows example
+FOUNDRY_MODULES_PATH=C:\Users\YourUser\AppData\Local\FoundryVTT\Data\modules
 
-- **FoundryVTT**: Version 11+
-- **System**: Cyberpunk RED 0.88+
-- **Node.js**: 16.0.0+ (for development)
+# macOS example  
+FOUNDRY_MODULES_PATH=/Users/YourUser/Library/Application Support/FoundryVTT/Data/modules
 
-## Testing During Development
+# Linux example
+FOUNDRY_MODULES_PATH=/home/YourUser/.local/share/FoundryVTT/Data/modules
+```
 
-### Method 1: Direct Development (Recommended)
+3. Run the copy script:
+```bash
+npm run dev:copy
+```
 
-This is the most efficient method for active development:
+### Method 2: System Environment Variable
 
-1. **Setup Development Environment**:
-   ```bash
-   # Create a symbolic link to your FoundryVTT modules folder
-   # Windows (Run as Administrator):
-   mklink /D "C:\Users\[YourUser]\AppData\Local\FoundryVTT\Data\modules\cyberpunk-agent" "C:\path\to\your\cyberpunk-agent"
-   
-   # macOS/Linux:
-   ln -s /path/to/your/cyberpunk-agent /path/to/FoundryVTT/Data/modules/cyberpunk-agent
-   ```
+1. Set the `FOUNDRY_MODULES_PATH` environment variable:
 
-2. **Enable Developer Mode**:
-   - In FoundryVTT, go to Settings → Configure Settings → System
-   - Enable "Developer Mode"
+**Windows (PowerShell):**
+```powershell
+$env:FOUNDRY_MODULES_PATH = "C:\Users\YourUser\AppData\Local\FoundryVTT\Data\modules"
+```
 
-3. **Real-time Testing**:
-   - Make changes to your code
-   - Press `F5` or `Ctrl+R` to refresh the browser
-   - Check the browser console (F12) for logs and errors
-   - The module will reload automatically
+**Windows (Command Prompt):**
+```cmd
+set FOUNDRY_MODULES_PATH=C:\Users\YourUser\AppData\Local\FoundryVTT\Data\modules
+```
 
-### Method 2: Manual Copy (Alternative)
+**macOS/Linux:**
+```bash
+export FOUNDRY_MODULES_PATH="$HOME/Library/Application Support/FoundryVTT/Data/modules"
+```
 
-If symbolic links don't work for you:
+2. Run the copy script:
+```bash
+npm run dev:copy
+```
 
-1. **Copy to FoundryVTT**:
-   ```bash
-   # Copy your module to FoundryVTT modules folder
-   cp -r ./cyberpunk-agent /path/to/FoundryVTT/Data/modules/
-   ```
+### Method 3: Local Configuration File
 
-2. **Development Workflow**:
-   - Make changes in your development folder
-   - Copy updated files to FoundryVTT folder
-   - Refresh browser to test
+1. Create a local config file:
+```bash
+npm run dev:copy -- --setup
+```
 
-### Method 3: Using npm scripts (Advanced)
-
-Add these scripts to your `package.json`:
-
+2. Edit `dev-config.json` with your FoundryVTT modules path:
 ```json
 {
-  "scripts": {
-    "dev:copy": "xcopy .\\* \"C:\\Users\\%USERNAME%\\AppData\\Local\\FoundryVTT\\Data\\modules\\cyberpunk-agent\\\" /E /Y",
-    "dev:watch": "nodemon --watch scripts --watch styles --watch lang --exec \"npm run dev:copy\"",
-    "test": "npm run dev:copy && echo 'Files copied to FoundryVTT. Please refresh your browser.'"
-  }
+  "foundryModulesPath": "C:\\Users\\YourUser\\AppData\\Local\\FoundryVTT\\Data\\modules"
 }
 ```
 
-Then use:
+3. Run the copy script:
 ```bash
-npm run dev:copy    # Copy files once
-npm run dev:watch   # Auto-copy on file changes (requires nodemon)
+npm run dev:copy
 ```
 
-## Debugging Tips
+### Method 3: Windows Batch File
 
-### 1. Console Logging
-```javascript
-// In your module.js
-console.log("Cyberpunk Agent | Debug message");
-console.warn("Cyberpunk Agent | Warning message");
-console.error("Cyberpunk Agent | Error message");
+1. Double-click `dev-copy.bat` or run:
+```cmd
+dev-copy.bat
 ```
 
-### 2. Browser Developer Tools
-- **F12** → Console: See logs and errors
-- **F12** → Network: Check if files are loading
-- **F12** → Sources: Set breakpoints in your code
+This will automatically try to find your FoundryVTT installation.
 
-### 3. FoundryVTT Debug Mode
-```javascript
-// Enable detailed logging
-CONFIG.debug.hooks = true;
-CONFIG.debug.packages = true;
-```
+## Common FoundryVTT Module Paths
 
-### 4. Module-specific Debugging
-```javascript
-// Add this to your module.js for detailed debugging
-const DEBUG = true;
+### Windows
+- `%LOCALAPPDATA%\FoundryVTT\Data\modules`
+- `%APPDATA%\FoundryVTT\Data\modules`
+- `C:\Users\[Username]\AppData\Local\FoundryVTT\Data\modules`
 
-function debugLog(message, data = null) {
-    if (DEBUG) {
-        console.log(`Cyberpunk Agent | ${message}`, data);
-    }
-}
-```
+### macOS
+- `~/Library/Application Support/FoundryVTT/Data/modules`
 
-## Testing Checklist
+### Linux
+- `~/.local/share/FoundryVTT/Data/modules`
 
-### Before Testing:
-- [ ] FoundryVTT is running
-- [ ] Developer mode is enabled
-- [ ] Module is enabled in Add-on Modules
-- [ ] Cyberpunk RED system is active
-- [ ] Browser console is open (F12)
+## Available Scripts
 
-### During Testing:
-- [ ] Check console for errors
-- [ ] Verify module initialization logs
-- [ ] Test all new features
-- [ ] Check CSS styling
-- [ ] Test with different user roles (GM, Player)
-- [ ] Verify localization works
+| Command | Description |
+|---------|-------------|
+| `npm run setup:env` | Copy .env.example to .env.development |
+| `npm run dev:copy` | Copy module files to FoundryVTT (Node.js script) |
+| `npm run dev:copy-alt` | Copy using PowerShell (Windows only) |
+| `npm run dev:watch` | Watch for changes and auto-copy |
+| `npm run dev` | Copy files and show success message |
+| `npm test` | Copy files and run tests |
 
-### After Testing:
-- [ ] Fix any errors found
-- [ ] Update documentation if needed
-- [ ] Commit your changes
-- [ ] Test again after fixes
+## Development Workflow
 
-## Common Issues and Solutions
+1. **Initial Setup**: Set up your FoundryVTT path using one of the methods above
+2. **Make Changes**: Edit your module files
+3. **Copy to FoundryVTT**: Run `npm run dev:copy`
+4. **Test**: Refresh your FoundryVTT browser tab to see changes
+5. **Auto-Watch** (Optional): Use `npm run dev:watch` for automatic copying
 
-### Module Not Loading:
-1. Check `module.json` syntax
-2. Verify file paths in `module.json`
-3. Check browser console for errors
-4. Ensure FoundryVTT version compatibility
+## Auto-Watch Mode
 
-### CSS Not Applying:
-1. Check file path in `module.json`
-2. Verify CSS syntax
-3. Check browser console for 404 errors
-4. Clear browser cache
-
-### JavaScript Errors:
-1. Check browser console
-2. Verify JavaScript syntax
-3. Check for missing dependencies
-4. Ensure hooks are properly registered
-
-## Performance Testing
-
-### Memory Usage:
-```javascript
-// Monitor memory usage
-console.log("Memory usage:", performance.memory);
-```
-
-### Load Time:
-```javascript
-// Measure module load time
-const startTime = performance.now();
-// Your initialization code
-const loadTime = performance.now() - startTime;
-console.log(`Module loaded in ${loadTime}ms`);
-```
-
-## Automated Testing (Future Enhancement)
-
-Consider adding automated tests:
-
-```javascript
-// Example test structure
-class ModuleTests {
-    static runTests() {
-        console.log("Running module tests...");
-        
-        // Test module initialization
-        this.testInitialization();
-        
-        // Test feature functionality
-        this.testFeatures();
-        
-        console.log("Tests completed!");
-    }
-    
-    static testInitialization() {
-        // Test initialization logic
-    }
-    
-    static testFeatures() {
-        // Test specific features
-    }
-}
-```
-
-## Local Development
-
-### 1. Initial Setup
+For continuous development, use the watch mode:
 
 ```bash
-# Clone the repository
-git clone https://github.com/dmberlin/cyberpunk-agent.git
-cd cyberpunk-agent
-
-# Install dependencies (if any)
-npm install
+npm run dev:watch
 ```
 
-### 2. Development
+This will automatically copy files to FoundryVTT whenever you make changes to:
+- `scripts/` directory
+- `__tests__/` directory  
+- `lang/` directory
+- `module.json`
 
-1. Copy the module folder to `[FoundryVTT]/modules/cyberpunk-agent/`
-2. Enable the module in FoundryVTT
-3. Use the browser console (F12) to see debug logs
-4. Make your changes
-5. Reload FoundryVTT to test
+## Troubleshooting
 
-### 3. Packaging
+### "Could not find FoundryVTT modules path"
 
-```bash
-# Create ZIP file for distribution
-npm run package
+1. **Verify Path**: Make sure FoundryVTT is installed and the modules directory exists
+2. **Check Environment Variable**: Ensure `FOUNDRY_MODULES_PATH` is set correctly
+3. **Manual Setup**: Run `npm run dev:copy -- --setup` to create a config file
+4. **Custom Path**: Edit `dev-config.json` with your specific path
 
-# Clean temporary files
-npm run clean
-```
+### "Permission Denied" Errors
 
-## FoundryVTT Hooks
+1. **Close FoundryVTT**: Make sure FoundryVTT is not running
+2. **Admin Rights**: On Windows, try running as Administrator
+3. **File Locks**: Check if any files are locked by other processes
 
-The module uses the following hooks:
+### Files Not Updating in FoundryVTT
 
-- `init`: Module initialization
-- `ready`: When FoundryVTT is ready
-- `cyberpunkred.ready`: When the Cyberpunk RED system is ready
-- `userJoined`: When a user joins the session
-- `disableModule`: When the module is disabled
+1. **Hard Refresh**: Use Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)
+2. **Clear Cache**: Clear browser cache
+3. **Restart FoundryVTT**: Close and reopen FoundryVTT
+4. **Check Module**: Ensure the module is enabled in FoundryVTT
 
-## Cyberpunk RED Integration
+## Security Notes
 
-To integrate with the Cyberpunk RED system, use:
+- `dev-config.json` is git-ignored and safe for local paths
+- Environment variables are not committed to the repository
+- The batch file uses common paths and doesn't expose personal directories
+- All local configuration files are excluded from version control
 
-```javascript
-// Check if the system is active
-if (game.system.id === 'cyberpunkred') {
-    // Your code here
-}
+## Testing Your Changes
 
-// Cyberpunk RED specific hook
-Hooks.on('cyberpunkred.ready', () => {
-    // Code executed when the system is ready
-});
-```
+After copying files to FoundryVTT:
 
-## Localization
+1. **Enable Module**: Go to "Manage Modules" and ensure "Cyberpunk Agent" is enabled
+2. **Refresh Browser**: Press F5 or Ctrl+F5 to reload
+3. **Check Console**: Open browser DevTools (F12) to see any errors
+4. **Test Features**: Try the contact sorting feature by sending messages between contacts
 
-To add support for new languages:
+## File Structure
 
-1. Create a file `lang/[language-code].json`
-2. Add the language in `module.json`
-3. Use `game.i18n.localize()` to translate strings
+The copy script includes these files/directories:
+- `scripts/` - Module JavaScript files
+- `styles/` - CSS stylesheets  
+- `templates/` - HTML templates
+- `lang/` - Language files
+- `assets/` - Images and sounds
+- `module.json` - Module manifest
 
-## CSS Styles
-
-- Use the `.cyberpunk-agent` class as a prefix to avoid conflicts
-- Maintain compatibility with FoundryVTT themes
-- Use CSS variables when possible
-
-## Best Practices
-
-1. **Logs**: Use `console.log()` with module prefix
-2. **Errors**: Handle errors appropriately
-3. **Performance**: Avoid infinite loops and memory leaks
-4. **Compatibility**: Test on different versions
-5. **Documentation**: Comment your code
-
-## Testing
-
-To test the module:
-
-1. Enable developer mode in FoundryVTT
-2. Use the browser console for debugging
-3. Test on different browsers
-4. Check compatibility with other modules
-
-## Distribution
-
-1. Update the version in `module.json`
-2. Update `CHANGELOG.md`
-3. Create a release on GitHub
-4. Update URLs in `module.json`
-
-## Support
-
-For questions or issues:
-
-1. Check the documentation
-2. Consult console logs
-3. Open an issue on GitHub
-4. Contact the maintainer 
+And excludes:
+- `node_modules/` - Dependencies
+- `__tests__/` - Test files
+- `package*.json` - NPM files
+- `*.md` - Documentation
+- Development configuration files

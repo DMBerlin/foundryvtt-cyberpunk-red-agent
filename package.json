@@ -14,17 +14,9 @@
     }
   ],
   "scripts": {
-    "build": "echo 'Build process not implemented yet'",
     "package": "powershell -Command \"Compress-Archive -Path .\\* -DestinationPath .\\cyberpunk-agent.zip -Force\"",
     "clean": "if exist cyberpunk-agent.zip del cyberpunk-agent.zip",
-    "setup": "node scripts/setup-dev.js",
-    "setup:env": "cp .env.example .env.development && echo 'Created .env.development - please edit FOUNDRY_MODULES_PATH'",
-    "diagnose": "node scripts/diagnose-module.js",
-    "dev:copy": "node scripts/dev-copy.js",
-    "dev:copy-alt": "powershell -Command \"& { if ($env:FOUNDRY_MODULES_PATH) { robocopy . $env:FOUNDRY_MODULES_PATH\\cyberpunk-agent /MIR /XD node_modules .git __tests__ /XF package*.json .gitignore *.md /NFL /NDL /NJH /NJS } else { Write-Host 'Set FOUNDRY_MODULES_PATH environment variable' } }\"",
-    "dev:watch": "nodemon --watch scripts --watch __tests__ --watch lang --watch module.json --exec \"npm run dev:copy\"",
-    "test": "npm run dev:copy && echo 'Files copied to FoundryVTT. Please refresh your browser.'",
-    "dev": "npm run dev:copy && echo 'Development files copied. Refresh FoundryVTT to test changes.'",
+    "build": "node scripts/dev-copy.js",
     "release": "node scripts/release.js",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major"
