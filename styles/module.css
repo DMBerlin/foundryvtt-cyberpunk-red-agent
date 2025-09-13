@@ -2044,8 +2044,24 @@
   z-index: 1000;
   opacity: 0;
   transition: opacity 0.3s ease;
-  border-radius: 20px;
+  border-radius: 25px;
   overflow: hidden;
+}
+
+/* Ensure edit modal respects phone container styling */
+.cp-agent-phone .cp-edit-modal,
+.cp-chat7-phone .cp-edit-modal,
+.cp-chat-conversation-phone .cp-edit-modal {
+  border-radius: 25px;
+  overflow: hidden;
+}
+
+.cp-agent-phone .cp-edit-modal-container,
+.cp-chat7-phone .cp-edit-modal-container,
+.cp-chat-conversation-phone .cp-edit-modal-container {
+  border-radius: 20px;
+  box-shadow: var(--cp-shadow-strong);
+  animation: glow 3s ease-in-out infinite;
 }
 
 .cp-edit-modal-show {
@@ -2062,9 +2078,9 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.9);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .cp-edit-modal-container {
@@ -2072,155 +2088,191 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 85%;
-  max-width: 350px;
-  background: var(--cp-gradient-card);
-  border: 2px solid var(--cp-border);
-  border-radius: 15px;
-  box-shadow:
-    0 0 25px var(--cp-glow-strong),
-    0 0 50px rgba(255, 0, 51, 0.3),
-    inset 0 0 20px rgba(255, 0, 51, 0.05);
+  width: 90%;
+  max-width: 400px;
+  background: var(--cp-gradient-dark);
+  border: 3px solid var(--cp-border);
+  border-radius: 20px;
+  box-shadow: var(--cp-shadow-strong);
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
-  max-height: 90%;
+  max-height: 85%;
+  animation: glow 3s ease-in-out infinite;
 }
 
 .cp-edit-modal-header {
   background: var(--cp-gradient-primary);
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--cp-border);
+  padding: 15px 20px;
+  border-bottom: 2px solid var(--cp-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+.cp-edit-modal-header::before {
+  content: 'NEURO_EDIT_PROTOCOL_v2.1';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6em;
+  color: var(--cp-primary);
+  text-shadow: 0 0 5px var(--cp-glow-weak);
+  letter-spacing: 1px;
 }
 
 .cp-edit-modal-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-family: 'Orbitron', monospace;
   font-weight: bold;
-  font-size: 1em;
+  font-size: 1.1em;
   color: var(--cp-text);
   text-shadow: 0 0 10px var(--cp-glow-weak);
+  margin-top: 15px;
 }
 
 .cp-edit-modal-title i {
-  color: var(--cp-primary);
+  color: var(--cp-text);
+  font-size: 1.2em;
 }
 
 .cp-edit-modal-protocol {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 0.65em;
+  font-size: 0.7em;
   color: var(--cp-text-muted);
   opacity: 0.8;
+  margin-top: 15px;
 }
 
 .cp-edit-modal-body {
-  padding: 15px;
+  padding: 20px;
+  background: var(--cp-gradient-dark);
 }
 
 .cp-edit-input-label {
   font-family: 'Orbitron', monospace;
-  font-size: 0.9em;
+  font-size: 1em;
   color: var(--cp-text);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   text-shadow: 0 0 5px var(--cp-glow-weak);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .cp-edit-input-wrapper {
   position: relative;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .cp-edit-textarea {
   width: 100%;
-  min-height: 60px;
-  max-height: 150px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--cp-border);
-  border-radius: 8px;
+  min-height: 80px;
+  max-height: 180px;
+  background: var(--cp-dark-gray);
+  border: 2px solid var(--cp-border-weak);
+  border-radius: 12px;
   color: var(--cp-text);
   font-family: 'Rajdhani', sans-serif;
-  font-size: 0.95em;
-  padding: 10px;
+  font-size: 1em;
+  padding: 15px;
   resize: none;
   outline: none;
   box-sizing: border-box;
   line-height: 1.4;
   overflow-y: auto;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  letter-spacing: 0.3px;
 }
 
 .cp-edit-textarea:focus {
-  border-color: var(--cp-primary);
-  box-shadow:
-    0 0 10px var(--cp-glow-weak),
-    inset 0 0 10px rgba(255, 0, 51, 0.1);
+  border-color: var(--cp-border);
+  box-shadow: var(--cp-shadow);
+  background: var(--cp-gray);
 }
 
 .cp-edit-textarea::placeholder {
   color: var(--cp-text-muted);
+  font-family: 'Rajdhani', sans-serif;
 }
 
 .cp-edit-char-counter {
   position: absolute;
-  bottom: 5px;
-  right: 10px;
+  bottom: 8px;
+  right: 15px;
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.8em;
   color: var(--cp-text-muted);
   pointer-events: none;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--cp-border-weak);
 }
 
 .cp-edit-char-warning {
-  color: #ffaa00 !important;
+  color: var(--cp-warning) !important;
+  border-color: var(--cp-warning) !important;
 }
 
 .cp-edit-char-limit {
   color: var(--cp-error) !important;
   font-weight: bold;
+  border-color: var(--cp-error) !important;
+  background: rgba(255, 0, 51, 0.1) !important;
 }
 
 .cp-edit-hint {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 0.7em;
+  font-size: 0.75em;
   color: var(--cp-text-muted);
   opacity: 0.8;
   text-align: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid var(--cp-border-weak);
 }
 
 .cp-edit-modal-footer {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 12px 15px;
-  border-top: 1px solid var(--cp-border);
+  background: var(--cp-gradient-dark);
+  padding: 15px 20px;
+  border-top: 2px solid var(--cp-border);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
 }
 
 .cp-edit-btn {
-  background: transparent;
+  background: var(--cp-gradient-primary);
   border: 2px solid var(--cp-border);
   color: var(--cp-text);
   font-family: 'Orbitron', monospace;
   font-weight: bold;
-  font-size: 0.8em;
-  padding: 8px 15px;
-  border-radius: 6px;
+  font-size: 0.9em;
+  padding: 10px 18px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 110px;
+  gap: 8px;
+  min-width: 120px;
   justify-content: center;
+  box-shadow: var(--cp-shadow);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.cp-edit-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 15px var(--cp-glow-weak);
+.cp-edit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--cp-shadow-strong);
+  background: linear-gradient(135deg, #ff0066 0%, #ff0033 100%);
 }
 
 .cp-edit-btn:disabled {
@@ -2228,28 +2280,122 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background: var(--cp-gray);
+  border-color: var(--cp-border-weak);
 }
 
 .cp-edit-btn-cancel {
-  border-color: var(--cp-text-muted);
+  background: var(--cp-dark-gray);
+  border-color: var(--cp-border-weak);
   color: var(--cp-text-muted);
 }
 
 .cp-edit-btn-cancel:hover:not(:disabled) {
-  border-color: var(--cp-error);
-  color: var(--cp-error);
-  box-shadow: 0 0 15px rgba(255, 0, 51, 0.3);
+  background: var(--cp-gray);
+  border-color: var(--cp-border);
+  color: var(--cp-text);
+  box-shadow: 0 0 15px var(--cp-glow-weak);
 }
 
 .cp-edit-btn-save {
-  border-color: var(--cp-primary);
-  color: var(--cp-primary);
-  background: rgba(255, 0, 51, 0.1);
+  background: var(--cp-gradient-primary);
+  border-color: var(--cp-border);
+  color: var(--cp-text);
 }
 
 .cp-edit-btn-save:hover:not(:disabled) {
-  background: rgba(255, 0, 51, 0.2);
-  box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+  background: linear-gradient(135deg, #ff0066 0%, #ff0033 100%);
+  box-shadow: var(--cp-shadow-strong);
+}
+
+/* Enhanced edit modal cyberpunk effects */
+.cp-edit-modal-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cp-border), transparent);
+  animation: scanline 4s linear infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.cp-edit-modal-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(255, 0, 51, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 0, 51, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cp-edit-modal-container:hover {
+  animation: glow 1s ease-in-out infinite, glitch 0.3s ease-in-out;
+}
+
+/* Edit modal scrollbar styling */
+.cp-edit-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cp-edit-textarea::-webkit-scrollbar-track {
+  background: rgba(255, 0, 51, 0.1);
+  border-radius: 3px;
+}
+
+.cp-edit-textarea::-webkit-scrollbar-thumb {
+  background: var(--cp-gradient-primary);
+  border-radius: 3px;
+  border: 1px solid var(--cp-border-weak);
+  box-shadow: 0 0 5px var(--cp-glow-weak);
+}
+
+.cp-edit-textarea::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ff0066 0%, #ff0033 100%);
+  box-shadow: 0 0 8px var(--cp-glow-weak);
+}
+
+/* Responsive edit modal styling for phone containers */
+@media (max-width: 768px) {
+
+  .cp-agent-phone .cp-edit-modal-container,
+  .cp-chat7-phone .cp-edit-modal-container,
+  .cp-chat-conversation-phone .cp-edit-modal-container {
+    width: 95%;
+    max-width: none;
+    margin: 0 10px;
+  }
+
+  .cp-edit-modal-header {
+    padding: 12px 15px;
+  }
+
+  .cp-edit-modal-body {
+    padding: 15px;
+  }
+
+  .cp-edit-modal-footer {
+    padding: 12px 15px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cp-edit-btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .cp-edit-textarea {
+    min-height: 60px;
+    max-height: 120px;
+  }
 }
 
 /* ===== GM DEVICE SELECTION INTERFACE ===== */
@@ -2339,6 +2485,67 @@
   justify-content: space-between;
   align-items: center;
   gap: 15px;
+  flex-wrap: wrap;
+}
+
+.cp-sort-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.cp-sort-select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--cp-border);
+  border-radius: 6px;
+  color: var(--cp-text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9em;
+  padding: 6px 10px;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.cp-sort-select:focus {
+  border-color: var(--cp-primary);
+  box-shadow: 0 0 8px var(--cp-glow-weak);
+}
+
+.cp-sort-select option {
+  background: var(--cp-darker);
+  color: var(--cp-text);
+}
+
+.cp-unread-toggle {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--cp-border-weak);
+  border-radius: 6px;
+  color: var(--cp-text-muted);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.8em;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-unread-toggle:hover {
+  border-color: var(--cp-primary);
+  color: var(--cp-text);
+}
+
+.cp-unread-toggle.active {
+  background: rgba(255, 0, 51, 0.2);
+  border-color: var(--cp-primary);
+  color: var(--cp-primary);
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+
+.cp-unread-toggle i {
+  font-size: 0.9em;
 }
 
 .cp-filter-wrapper {

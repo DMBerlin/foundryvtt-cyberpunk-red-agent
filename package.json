@@ -1,7 +1,7 @@
 {
   "title": "Cyberpunk Agent",
   "name": "cyberpunk-agent",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "A FoundryVTT module that adds features to the Cyberpunk RED system",
   "main": "scripts/module.js",
   "authors": [

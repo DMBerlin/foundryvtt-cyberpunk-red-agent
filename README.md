@@ -1,4 +1,4 @@
-# Cyberpunk Agent v2.2.0
+# Cyberpunk Agent v2.2.1
 
 **Transform your Cyberpunk RED sessions with authentic in-character messaging**
 
@@ -102,19 +102,6 @@ An **in-world phone system** where players communicate using their character's A
 - **Device selection**: Enhanced interface with filtering and pinning
 - **Message moderation**: Edit/delete any message
 - **System sync**: Master synchronization tools in Game Settings
-
----
-
-## 🧪 **Console Commands**
-
-```javascript
-// Test messaging system
-await testMessageEditing();
-testGMDeviceSelection();
-
-// System maintenance (GM only)
-await window.CyberpunkAgent.instance.synchronizeAllDevices();
-```
 
 ---
 
