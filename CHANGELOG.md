@@ -4,6 +4,72 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-09-13
+
+### Added
+- **Multi-line Message Support**: Enhanced messaging system with line break functionality
+  - **Shift+Enter Support**: Press Shift+Enter to add line breaks without sending message
+  - **Auto-resizing Input**: Textarea automatically expands (1-5 lines) with smooth animations
+  - **Line Break Preservation**: Line breaks preserved in storage, transmission, and display
+  - **Visual Hint**: Protocol text includes "SHIFT+ENTER: LINE BREAK" instruction
+  - **Enhanced CSS**: Added `white-space: pre-wrap` for proper line break rendering
+
+- **Message Editing System**: Comprehensive message editing with cyberpunk-styled interface
+  - **Context Menu Integration**: Added "Editar Mensagem" option to message context menus
+  - **Permission System**: Players can edit own messages, GMs can edit any message
+  - **Cyberpunk Modal**: Phone-native editing modal with authentic CP2077 styling
+  - **Advanced Editor**: Auto-resizing textarea with character counter and keyboard shortcuts
+  - **Real-time Sync**: Edits propagate to server storage and all connected clients
+  - **Edit Indicators**: Messages show "(editada)" label when modified
+  - **Audit Trail**: Original text preserved for transparency
+  - **Keyboard Shortcuts**: Ctrl+Enter to save, Shift+Enter for line breaks, Escape to cancel
+
+- **Enhanced Message Deletion**: Complete deletion propagation system
+  - **Server Persistence**: Player deletions now affect server storage and all clients
+  - **GM Message Broker**: Enhanced GM processing of player deletion requests
+  - **Real-time Broadcast**: All connected players see deletions immediately
+  - **Error Handling**: Clear notifications when GM offline or SocketLib unavailable
+  - **Consistency**: Same deletion behavior for GM and players across all storage layers
+
+- **Master Device & Message Synchronization**: Enhanced sync system with actor data updates
+  - **Actor Data Sync**: Updates device names and avatars from character sheets during sync
+  - **Complete Message Sync**: Clears all players' local storage and syncs from GM server storage
+  - **Three-Phase Process**: Actor data → Device registry → Message synchronization
+  - **Enhanced Notifications**: Comprehensive sync results with detailed statistics
+  - **Authoritative Source**: GM world settings become single source of truth
+  - **Standalone Actor Sync**: Option to sync only actor data without full message sync
+
+### Enhanced
+- **Message Balloon Readability**: Added minimum width (120px) for better short message display
+  - **Short Messages**: "ok", "yes", etc. now have readable balloons with visible timestamps
+  - **Edit Labels**: "(editada)" indicators never get cut off
+  - **Consistent Proportions**: All messages maintain proper visual balance
+
+- **Phone-Native Modal Experience**: Edit modal contained within agent interface
+  - **Authentic Feel**: Modal appears within phone screen, not as game overlay
+  - **Optimized Dimensions**: 85% width (max 350px) for phone-friendly experience
+  - **Compact Design**: Reduced padding and font sizes for mobile feel
+  - **Better Integration**: Feels like native phone app feature
+
+### Technical Improvements
+- **Server Storage Architecture**: Enhanced message persistence across sessions
+  - **Hybrid Storage**: Server storage (authoritative) + localStorage (cache)
+  - **Cross-session Persistence**: Deleted/edited messages stay changed after reconnect
+  - **GM Authority**: Server-side operations ensure data consistency
+  - **Error Resilience**: Graceful handling of offline scenarios
+
+- **SocketLib Integration**: New handlers for editing and enhanced deletion
+  - **Message Edit Handlers**: `editMessageOnServer`, `messageEditedOnServer`
+  - **Enhanced Deletion**: Improved broadcast system with confirmation
+  - **Real-time Updates**: All operations synchronized across clients
+  - **Backward Compatibility**: Legacy handlers maintained
+
+### Fixed
+- **Message Deletion Persistence**: Deleted messages no longer reappear when players reconnect
+- **Actor Data Synchronization**: Device names and avatars stay current with character sheets
+- **Modal Positioning**: Edit modal properly contained within agent interface
+- **Message Display**: Short messages now properly display time and edit indicators
+
 ## [2.0.9] - 2025-09-11
 
 ## [2.0.8] - 2025-09-11
