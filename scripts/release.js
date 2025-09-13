@@ -66,6 +66,25 @@ function updateChangelog(newVersion) {
   console.log(`Updated CHANGELOG.md with version ${newVersion}`);
 }
 
+function updateReadmeVersion(newVersion) {
+  const README_PATH = path.join(ROOT_DIR, 'README.md');
+
+  if (!fs.existsSync(README_PATH)) {
+    console.log('README.md not found, skipping README update');
+    return;
+  }
+
+  let readme = fs.readFileSync(README_PATH, 'utf8');
+
+  // Update version in the header (# Cyberpunk Agent vX.X.X)
+  readme = readme.replace(
+    /^# Cyberpunk Agent v\d+\.\d+\.\d+/m,
+    `# Cyberpunk Agent v${newVersion}`
+  );
+
+  fs.writeFileSync(README_PATH, readme);
+}
+
 function validateGitState() {
   try {
     // Check if we're in a git repository
@@ -127,6 +146,10 @@ function main() {
   writeJSON(PACKAGE_JSON_PATH, packageData);
   console.log('✅ Updated package.json');
 
+  // Update README.md version
+  updateReadmeVersion(newVersion);
+  console.log('✅ Updated README.md');
+
   // Update changelog
   updateChangelog(newVersion);
 
@@ -134,7 +157,7 @@ function main() {
   console.log('📝 Creating git commit and tag...');
 
   try {
-    exec('git add module.json package.json CHANGELOG.md');
+    exec('git add module.json package.json CHANGELOG.md README.md');
     exec(`git commit -m "Release v${newVersion}"`);
     exec(`git tag -a v${newVersion} -m "Release v${newVersion}"`);
 
