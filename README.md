@@ -105,19 +105,6 @@ An **in-world phone system** where players communicate using their character's A
 
 ---
 
-## 🧪 **Console Commands**
-
-```javascript
-// Test messaging system
-await testMessageEditing();
-testGMDeviceSelection();
-
-// System maintenance (GM only)
-await window.CyberpunkAgent.instance.synchronizeAllDevices();
-```
-
----
-
 ## 📞 **Support**
 
 - **Issues**: [GitHub Issues](https://github.com/dmberlin/cyberpunk-agent/issues)
