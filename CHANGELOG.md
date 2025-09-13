@@ -6,7 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ## [2.1.2] - 2025-09-13
 
-## [2.1.1] - 2025-09-13
+### Added
+- **Enhanced GM Device Selection Interface**: Completely redesigned device selection with advanced features
+  - **Device Pinning System**: Pin frequently used devices for quick access at the top of the list
+  - **Advanced Filtering**: Intelligent text search that ignores accents and special characters
+  - **Visual Device Cards**: Rich cards with avatars, status indicators, and device information
+  - **Organized Sections**: Pinned devices section and regular devices section with counters
+  - **Resizable Interface**: FoundryVTT-style resize handle for customizable window size
+  - **Enhanced Search**: Normalized text search (José → jose, João → joao)
+  - **Improved Layout**: Larger avatars (50px), better spacing, and 800px width
+  - **Device Information**: Shows device ID, contact count, unread messages, and GM badges
+  - **Persistent Pins**: Pinned devices saved in world settings and persist across sessions
+
+### Enhanced
+- **Device Selection Experience**: Transformed from simple dropdown to professional interface
+  - **Visual Design**: Cyberpunk-styled cards with hover effects and neon borders
+  - **Quick Access**: Double-click devices or use dedicated "OPERAR" buttons
+  - **Smart Organization**: Pinned devices always appear first, then alphabetical sorting
+  - **Character Images**: Fixed character avatars now display correctly in device list
+  - **Responsive Design**: Interface adapts to different screen sizes and resizing
+
+### Technical Improvements
+- **Pin Storage System**: New world setting for GM pinned devices with persistence
+  - **Pin Management**: `toggleDevicePin()`, `isDevicePinned()`, `loadPinnedDevices()`, `savePinnedDevices()`
+  - **Device Data Enhancement**: `getAllRegisteredDevices()` now includes current actor images
+  - **Real-time Updates**: Pin status updates immediately with visual feedback
+- **Enhanced Device Sorting**: Intelligent sorting algorithm prioritizing pinned devices
+- **Improved Image Handling**: Better fallback chain for device avatars (actor.img → device.img → default)
+
+### Fixed
+- **Character Images**: Device selection now properly displays character avatars
+- **Interface Width**: Dialog window now properly resizes to accommodate content
+- **Search Functionality**: Text filter now handles accents and special characters correctly
 
 ## [2.1.0] - 2025-09-13
 
@@ -73,22 +104,6 @@ All notable changes to this project will be documented in this file.
 - **Actor Data Synchronization**: Device names and avatars stay current with character sheets
 - **Modal Positioning**: Edit modal properly contained within agent interface
 - **Message Display**: Short messages now properly display time and edit indicators
-
-## [2.0.9] - 2025-09-11
-
-## [2.0.8] - 2025-09-11
-
-## [2.0.7] - 2025-09-11
-
-## [2.0.6] - 2025-09-10
-
-## [2.0.5] - 2025-09-10
-
-## [2.0.4] - 2025-09-10
-
-## [2.0.3] - 2025-09-10
-
-## [2.0.2] - 2025-09-10
 
 ## [2.0.1] - 2025-09-10
 
@@ -197,7 +212,7 @@ All notable changes to this project will be documented in this file.
 - `docs/CONTEXT-MENU-OWNERSHIP.md`: New documentation for context menu ownership feature
 - `CHANGELOG.md`: Added unreleased section with new features
 
-## [2.1.0] - 2025-01-30
+## [2.0.0] - 2025-01-30
 
 ### Added
 - **GM Agent Interface Improvements**: Significantly improved the phone icon on token controls for GM functionality:
@@ -397,6 +412,7 @@ All notable changes to this project will be documented in this file.
 - **Data Integrity**: Prevents cross-contamination of settings between different actors
 
 ## [1.0.51] - 2025-01-30
+
 ### Fixed
 - **Contact Display Issue**: Fixed a critical bug where contacts were not appearing in the character's agent UI after being added via the Contact Manager. The issue was caused by a data structure mismatch in the `getContactsForActor` method, which was expecting contact IDs but receiving contact objects. Contacts are now properly displayed immediately after addition.
 
@@ -606,8 +622,6 @@ All notable changes to this project will be documented in this file.
 - Removed `_attemptSocketLibReconnection()` and `_forceSocketLibConnection()` methods
 - Added `_checkSocketLibStatus()` for simplified status checking
 - Updated global test functions to use new simplified methods
-
-## [1.0.39] - 2024-12-29
 
 ## [1.0.38] - 2024-12-29
 
