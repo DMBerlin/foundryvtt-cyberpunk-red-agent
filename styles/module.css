@@ -896,6 +896,7 @@
   padding: 12px 15px 25px 15px;
   position: relative;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
 }
 
 .cp-message.own .cp-message-content {
@@ -2033,6 +2034,224 @@
   overflow: hidden !important;
 }
 
+/* ===== MESSAGE EDIT MODAL ===== */
+.cp-edit-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.cp-edit-modal-show {
+  opacity: 1;
+}
+
+.cp-edit-modal-closing {
+  opacity: 0;
+}
+
+.cp-edit-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.cp-edit-modal-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  max-width: 350px;
+  background: var(--cp-gradient-card);
+  border: 2px solid var(--cp-border);
+  border-radius: 15px;
+  box-shadow:
+    0 0 25px var(--cp-glow-strong),
+    0 0 50px rgba(255, 0, 51, 0.3),
+    inset 0 0 20px rgba(255, 0, 51, 0.05);
+  font-family: 'Rajdhani', sans-serif;
+  overflow: hidden;
+  max-height: 90%;
+}
+
+.cp-edit-modal-header {
+  background: var(--cp-gradient-primary);
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--cp-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cp-edit-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 1em;
+  color: var(--cp-text);
+  text-shadow: 0 0 10px var(--cp-glow-weak);
+}
+
+.cp-edit-modal-title i {
+  color: var(--cp-primary);
+}
+
+.cp-edit-modal-protocol {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65em;
+  color: var(--cp-text-muted);
+  opacity: 0.8;
+}
+
+.cp-edit-modal-body {
+  padding: 15px;
+}
+
+.cp-edit-input-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.9em;
+  color: var(--cp-text);
+  margin-bottom: 10px;
+  text-shadow: 0 0 5px var(--cp-glow-weak);
+}
+
+.cp-edit-input-wrapper {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.cp-edit-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 150px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--cp-border);
+  border-radius: 8px;
+  color: var(--cp-text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95em;
+  padding: 10px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  line-height: 1.4;
+  overflow-y: auto;
+  transition: all 0.2s ease;
+}
+
+.cp-edit-textarea:focus {
+  border-color: var(--cp-primary);
+  box-shadow:
+    0 0 10px var(--cp-glow-weak),
+    inset 0 0 10px rgba(255, 0, 51, 0.1);
+}
+
+.cp-edit-textarea::placeholder {
+  color: var(--cp-text-muted);
+}
+
+.cp-edit-char-counter {
+  position: absolute;
+  bottom: 5px;
+  right: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8em;
+  color: var(--cp-text-muted);
+  pointer-events: none;
+}
+
+.cp-edit-char-warning {
+  color: #ffaa00 !important;
+}
+
+.cp-edit-char-limit {
+  color: var(--cp-error) !important;
+  font-weight: bold;
+}
+
+.cp-edit-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7em;
+  color: var(--cp-text-muted);
+  opacity: 0.8;
+  text-align: center;
+}
+
+.cp-edit-modal-footer {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 15px;
+  border-top: 1px solid var(--cp-border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.cp-edit-btn {
+  background: transparent;
+  border: 2px solid var(--cp-border);
+  color: var(--cp-text);
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 0.8em;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 110px;
+  justify-content: center;
+}
+
+.cp-edit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 15px var(--cp-glow-weak);
+}
+
+.cp-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cp-edit-btn-cancel {
+  border-color: var(--cp-text-muted);
+  color: var(--cp-text-muted);
+}
+
+.cp-edit-btn-cancel:hover:not(:disabled) {
+  border-color: var(--cp-error);
+  color: var(--cp-error);
+  box-shadow: 0 0 15px rgba(255, 0, 51, 0.3);
+}
+
+.cp-edit-btn-save {
+  border-color: var(--cp-primary);
+  color: var(--cp-primary);
+  background: rgba(255, 0, 51, 0.1);
+}
+
+.cp-edit-btn-save:hover:not(:disabled) {
+  background: rgba(255, 0, 51, 0.2);
+  box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+}
+
 /* ===== ENHANCED CYBERPUNK EFFECTS ===== */
 
 @keyframes scanline {
@@ -2472,6 +2691,16 @@
   font-size: 0.65em !important;
   opacity: 0.6 !important;
   letter-spacing: 0.5px !important;
+}
+
+/* Edited message indicator */
+.cp-message-edited {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  color: var(--cp-text-muted);
+  opacity: 0.7;
+  margin-left: 5px;
+  font-style: italic;
 }
 
 /* Message context menu styling - only for own messages */

@@ -7110,6 +7110,169 @@ class CyberpunkAgent {
     }
 
     /**
+     * Edit a message in a device conversation
+     * This affects both local cache and server storage to ensure persistence
+     */
+    async editDeviceMessage(deviceId, contactDeviceId, messageId, newText, originalText) {
+        try {
+            console.log("Cyberpunk Agent | Starting device message edit process");
+            console.log("Cyberpunk Agent | Device:", deviceId, "Contact Device:", contactDeviceId, "Message ID:", messageId);
+
+            const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
+            console.log("Cyberpunk Agent | Device conversation key:", conversationKey);
+
+            // CRITICAL: Update server storage first to ensure persistence
+            let serverEditSuccess = false;
+
+            if (game.user.isGM) {
+                // GM directly edits on server
+                console.log("Cyberpunk Agent | GM editing message on server storage");
+                serverEditSuccess = await this.editMessageOnServerAsGM(conversationKey, messageId, newText, originalText);
+            } else {
+                // Players request GM to edit message on server
+                console.log("Cyberpunk Agent | Player requesting GM to edit message on server");
+                serverEditSuccess = await this.requestGMMessageEdit(conversationKey, messageId, newText, originalText);
+            }
+
+            // Update local memory
+            const messages = this.messages.get(conversationKey) || [];
+            console.log("Cyberpunk Agent | Original device messages count:", messages.length);
+
+            // Find and update the message
+            const messageToEdit = messages.find(message => message.id === messageId);
+            if (messageToEdit) {
+                const oldText = messageToEdit.text;
+                messageToEdit.text = newText;
+                messageToEdit.edited = true;
+                messageToEdit.editedAt = Date.now();
+                messageToEdit.originalText = originalText;
+                console.log(`Cyberpunk Agent | Updated message locally: "${oldText}" → "${newText}"`);
+            } else {
+                console.warn(`Cyberpunk Agent | Message ${messageId} not found in local conversation`);
+            }
+
+            // Save messages for the specific device (local cache)
+            console.log("Cyberpunk Agent | Saving device messages to localStorage...");
+            await this.saveMessagesForDevice(deviceId);
+
+            // Notify all clients about the device message edit
+            console.log("Cyberpunk Agent | Notifying clients about device message edit...");
+            await this._notifyDeviceMessageEdit(deviceId, contactDeviceId, messageId, newText, originalText);
+
+            if (!serverEditSuccess) {
+                console.warn("Cyberpunk Agent | Server edit failed, message edited locally only");
+                ui.notifications.warn("Mensagem editada localmente. Alteração pode não sincronizar.");
+            }
+
+            console.log(`Cyberpunk Agent | Successfully edited message ${messageId} in device conversation ${conversationKey}`);
+            return serverEditSuccess; // Return server success status
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error editing device message:", error);
+            return false;
+        }
+    }
+
+    /**
+     * GM edits message directly on server storage
+     */
+    async editMessageOnServerAsGM(conversationKey, messageId, newText, originalText) {
+        try {
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+
+            if (serverMessages[conversationKey]) {
+                // Find and update the message
+                const messageToEdit = serverMessages[conversationKey].find(msg => msg.id === messageId);
+                if (messageToEdit) {
+                    messageToEdit.text = newText;
+                    messageToEdit.edited = true;
+                    messageToEdit.editedAt = Date.now();
+                    messageToEdit.originalText = originalText;
+
+                    // Save updated messages back to server
+                    await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+                    console.log(`Cyberpunk Agent | GM edited message on server: "${originalText}" → "${newText}"`);
+
+                    return true;
+                } else {
+                    console.log("Cyberpunk Agent | Message not found in server storage for editing");
+                    return false;
+                }
+            } else {
+                console.log("Cyberpunk Agent | No conversation found in server storage for editing");
+                return false;
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error editing message on server as GM:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Player requests GM to edit message on server
+     */
+    async requestGMMessageEdit(conversationKey, messageId, newText, originalText) {
+        try {
+            if (this.socketLibIntegration) {
+                const editRequest = {
+                    conversationKey,
+                    messageId,
+                    newText,
+                    originalText,
+                    requestingUserId: game.user.id,
+                    requestingUserName: game.user.name,
+                    timestamp: Date.now()
+                };
+
+                console.log("Cyberpunk Agent | Sending message edit request to GM");
+                const success = await this.socketLibIntegration.sendMessageToGM('editMessageOnServer', editRequest);
+
+                if (!success) {
+                    console.warn("Cyberpunk Agent | Failed to send edit request to GM");
+                }
+
+                return success;
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available for GM message edit request");
+                return false;
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error requesting GM message edit:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Notify all clients about device message edit
+     */
+    async _notifyDeviceMessageEdit(deviceId, contactDeviceId, messageId, newText, originalText) {
+        try {
+            console.log("Cyberpunk Agent | Notifying device message edit via SocketLib");
+
+            if (!this._isSocketLibAvailable()) {
+                console.warn("Cyberpunk Agent | SocketLib not available for device message edit notification");
+                return;
+            }
+
+            const notificationData = {
+                data: {
+                    deviceId: deviceId,
+                    contactDeviceId: contactDeviceId,
+                    messageId: messageId,
+                    newText: newText,
+                    originalText: originalText,
+                    editedBy: game.user.name,
+                    timestamp: Date.now()
+                }
+            };
+
+            await this.socketLibIntegration.sendDeviceMessageEdit(notificationData);
+            console.log("Cyberpunk Agent | Device message edit notification sent to all clients");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error notifying device message edit:", error);
+        }
+    }
+
+    /**
      * Notify all clients about device message deletion
      */
     async _notifyDeviceMessageDeletion(deviceId, contactDeviceId, messageIds) {
@@ -11391,4 +11554,102 @@ window.testAutoFadeAlerts = () => {
     console.log("📝 Both messages should fade away after 5 seconds with smooth animation");
 
     return true;
+};
+
+// Test function for message editing functionality
+window.testMessageEditing = async function () {
+    console.log("✏️ === TESTING MESSAGE EDITING FUNCTIONALITY ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+
+    // Get available devices
+    const devices = Array.from(agent.devices.values());
+    if (devices.length < 2) {
+        console.log("❌ Need at least 2 devices for testing message editing");
+        return false;
+    }
+
+    const device1 = devices[0];
+    const device2 = devices[1];
+
+    console.log(`📱 Testing message editing:`);
+    console.log(`  - Device 1: ${device1.deviceName} (${device1.id})`);
+    console.log(`  - Device 2: ${device2.deviceName} (${device2.id})`);
+    console.log(`  - User is GM: ${game.user.isGM}`);
+
+    try {
+        // Step 1: Send a test message
+        const originalMessage = `Original message ${Date.now()}`;
+        console.log(`📤 Step 1: Sending test message: "${originalMessage}"`);
+
+        const sendSuccess = await agent.sendDeviceMessage(device1.id, device2.id, originalMessage);
+        if (!sendSuccess) {
+            console.log("❌ Failed to send test message");
+            return false;
+        }
+
+        // Wait a moment for the message to be processed
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Step 2: Get the conversation and find the message
+        const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
+        const messages = agent.messages.get(conversationKey) || [];
+        const testMsg = messages.find(msg => msg.text === originalMessage);
+
+        if (!testMsg) {
+            console.log("❌ Test message not found in conversation");
+            return false;
+        }
+
+        console.log(`✅ Test message created with ID: ${testMsg.id}`);
+
+        // Step 3: Test editing the message
+        const editedMessage = `EDITED: ${originalMessage} - Modified at ${new Date().toLocaleTimeString()}`;
+        console.log(`✏️ Step 2: Testing message edit to: "${editedMessage}"`);
+
+        const editSuccess = await agent.editDeviceMessage(device1.id, device2.id, testMsg.id, editedMessage, originalMessage);
+
+        console.log(`📊 Edit result: ${editSuccess ? 'SUCCESS' : 'FAILED'}`);
+
+        // Wait for edit to propagate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Step 4: Check if message was edited in local storage
+        const updatedMessages = agent.messages.get(conversationKey) || [];
+        const editedMsg = updatedMessages.find(msg => msg.id === testMsg.id);
+
+        if (editedMsg) {
+            console.log(`📊 Local edit check: ${editedMsg.text === editedMessage ? 'SUCCESS' : 'FAILED'}`);
+            console.log(`📊 Edit flag: ${editedMsg.edited ? 'SUCCESS - Marked as edited' : 'FAILED - Not marked as edited'}`);
+            console.log(`📊 Original text preserved: ${editedMsg.originalText === originalMessage ? 'SUCCESS' : 'FAILED'}`);
+        } else {
+            console.log("❌ Edited message not found in conversation");
+        }
+
+        // Step 5: Check server storage (if GM)
+        if (game.user.isGM) {
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            const serverConversation = serverMessages[conversationKey] || [];
+            const serverMsg = serverConversation.find(msg => msg.id === testMsg.id);
+
+            if (serverMsg) {
+                console.log(`📊 Server edit check: ${serverMsg.text === editedMessage ? 'SUCCESS' : 'FAILED'}`);
+                console.log(`📊 Server edit flag: ${serverMsg.edited ? 'SUCCESS' : 'FAILED'}`);
+            } else {
+                console.log("❌ Message not found in server storage");
+            }
+        }
+
+        console.log("✅ Message editing test completed");
+        return true;
+
+    } catch (error) {
+        console.error("❌ Error in message editing test:", error);
+        return false;
+    }
 }; 

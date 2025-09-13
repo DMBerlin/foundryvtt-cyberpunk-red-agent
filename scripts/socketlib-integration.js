@@ -62,6 +62,7 @@ function initializeSocketLib() {
     socket.register("deviceMessageUpdate", handleDeviceMessageUpdate);
     socket.register("messageDeletion", handleMessageDeletion);
     socket.register("deviceMessageDeletion", handleDeviceMessageDeletion);
+    socket.register("deviceMessageEdit", handleDeviceMessageEdit);
     socket.register("conversationClear", handleConversationClear);
     socket.register("sendMessage", handleSendMessage);
     socket.register("saveMessages", handleSaveMessages);
@@ -86,9 +87,11 @@ function initializeSocketLib() {
     // Enhanced message broker handlers
     socket.register("saveMessageToServer", handleSaveMessageToServer);
     socket.register("deleteMessagesFromServer", handleDeleteMessagesFromServer);
+    socket.register("editMessageOnServer", handleEditMessageOnServer);
     socket.register("requestServerMessageSync", handleRequestServerMessageSync);
     socket.register("syncMessagesFromServer", handleSyncMessagesFromServer);
     socket.register("messagesDeletedFromServer", handleMessagesDeletedFromServer);
+    socket.register("messageEditedOnServer", handleMessageEditedOnServer);
     socket.register("performMasterMessageSync", handlePerformMasterMessageSync);
     socket.register("masterSyncCompleted", handleMasterSyncCompleted);
 
@@ -435,6 +438,79 @@ async function handleDeviceMessageDeletion(data) {
     console.log(`Cyberpunk Agent | Deleted ${messageIds.length} messages from device conversation`);
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling device message deletion:", error);
+  }
+}
+
+/**
+ * Handle device message edit from other clients
+ */
+async function handleDeviceMessageEdit(data) {
+  console.log("Cyberpunk Agent | Received device message edit via SocketLib:", data);
+
+  // Prevent processing our own edits
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own device message edit notification");
+    return;
+  }
+
+  // Check if this is a recent edit to avoid duplicates
+  const now = Date.now();
+  const timeDiff = now - data.timestamp;
+  if (timeDiff > 30000) { // Ignore edits older than 30 seconds
+    console.log("Cyberpunk Agent | Ignoring old device message edit notification (age:", timeDiff, "ms)");
+    return;
+  }
+
+  console.log("Cyberpunk Agent | Processing device message edit from:", data.userName);
+
+  try {
+    const { deviceId, contactDeviceId, messageId, newText, originalText, editedBy } = data.data;
+
+    // Handle the edit through CyberpunkAgent
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const conversationKey = window.CyberpunkAgent.instance._getDeviceConversationKey(deviceId, contactDeviceId);
+
+      // Update message in local memory
+      if (window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+        const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+        const messageToEdit = conversation.find(msg => msg.id === messageId);
+
+        if (messageToEdit) {
+          messageToEdit.text = newText;
+          messageToEdit.edited = true;
+          messageToEdit.editedAt = Date.now();
+          messageToEdit.originalText = originalText;
+
+          console.log(`Cyberpunk Agent | Updated message locally via SocketLib: "${originalText}" → "${newText}"`);
+
+          // Save to localStorage for both devices
+          await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+          if (deviceId !== contactDeviceId) {
+            await window.CyberpunkAgent.instance.saveMessagesForDevice(contactDeviceId);
+          }
+
+          // Update UI
+          window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+        } else {
+          console.warn(`Cyberpunk Agent | Message ${messageId} not found in conversation for edit`);
+        }
+      }
+    } else {
+      console.warn("Cyberpunk Agent | CyberpunkAgent instance not available for device message edit");
+    }
+
+    // Show notification to user
+    const device = window.CyberpunkAgent?.instance?.devices?.get(deviceId);
+    const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactDeviceId);
+    const deviceName = device ? device.deviceName : "Device " + deviceId;
+    const contactName = contactDevice ? contactDevice.deviceName : "Device " + contactDeviceId;
+
+    ui.notifications.info(`✏️ Mensagem editada por ${editedBy} na conversa entre ${deviceName} e ${contactName}`);
+
+    console.log(`Cyberpunk Agent | Device message edited successfully`);
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling device message edit:", error);
   }
 }
 
@@ -1319,6 +1395,60 @@ async function handleDeleteMessagesFromServer(data) {
 }
 
 /**
+ * Handle message edit request from players (GM Message Broker)
+ */
+async function handleEditMessageOnServer(data) {
+  console.log("Cyberpunk Agent | GM received message edit request:", data);
+
+  // Only GM can handle this
+  if (!game.user.isGM) {
+    console.warn("Cyberpunk Agent | Non-GM received message edit request, ignoring");
+    return;
+  }
+
+  try {
+    const { conversationKey, messageId, newText, originalText, requestingUserId, requestingUserName } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Edit message on server storage
+      const success = await window.CyberpunkAgent.instance.editMessageOnServerAsGM(conversationKey, messageId, newText, originalText);
+
+      if (success) {
+        console.log(`Cyberpunk Agent | GM edited message on server for ${requestingUserName}`);
+
+        // Broadcast the edit to all clients for immediate UI updates
+        const editData = {
+          conversationKey,
+          messageId,
+          newText,
+          originalText,
+          editedBy: game.user.id,
+          editedByName: game.user.name,
+          requestedBy: requestingUserName,
+          timestamp: Date.now()
+        };
+
+        // Send to all active users
+        const activeUsers = Array.from(game.users.values()).filter(user => user.active && user.id !== game.user.id);
+        for (const user of activeUsers) {
+          await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+            user.id,
+            'messageEditedOnServer',
+            editData
+          );
+        }
+
+        console.log(`Cyberpunk Agent | Broadcasted message edit to ${activeUsers.length} clients`);
+      } else {
+        console.error(`Cyberpunk Agent | Failed to edit message on server for ${requestingUserName}`);
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling message edit request:", error);
+  }
+}
+
+/**
  * Handle server message sync request from clients (enhanced broker)
  */
 async function handleRequestServerMessageSync(data) {
@@ -1490,6 +1620,54 @@ async function handleMessagesDeletedFromServer(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling messages deleted from server:", error);
+  }
+}
+
+/**
+ * Handle message edited on server notification
+ */
+async function handleMessageEditedOnServer(data) {
+  console.log("Cyberpunk Agent | Received message edit notification from server:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { conversationKey, messageId, newText, originalText, editedByName, requestedBy } = data;
+
+      // Update message in local memory
+      if (window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+        const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+        const messageToEdit = conversation.find(msg => msg.id === messageId);
+
+        if (messageToEdit) {
+          messageToEdit.text = newText;
+          messageToEdit.edited = true;
+          messageToEdit.editedAt = Date.now();
+          messageToEdit.originalText = originalText;
+
+          console.log(`Cyberpunk Agent | Updated message locally: "${originalText}" → "${newText}"`);
+        } else {
+          console.warn(`Cyberpunk Agent | Message ${messageId} not found in local conversation`);
+        }
+      }
+
+      // Extract device IDs from conversation key and update localStorage
+      const deviceIds = conversationKey.split('-').filter(part => part.startsWith('device'));
+      for (const deviceId of deviceIds) {
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+      }
+
+      // Update UI immediately
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+      console.log(`Cyberpunk Agent | Message edited by ${editedByName} (requested by ${requestedBy})`);
+
+      // Show notification about the edit
+      if (requestedBy && requestedBy !== game.user.name) {
+        ui.notifications.info(`✏️ Mensagem editada por ${requestedBy}`);
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling message edited from server:", error);
   }
 }
 
@@ -2093,6 +2271,42 @@ class SocketLibIntegration {
         socketlibAvailable: !!socketlib,
         socketAvailable: !!socket
       });
+      return false;
+    }
+  }
+
+  /**
+   * Send device message edit to all clients
+   */
+  async sendDeviceMessageEdit(data) {
+    if (!this.isAvailable || !socket) {
+      console.warn("Cyberpunk Agent | SocketLib not available, using fallback");
+      return false;
+    }
+
+    try {
+      const editData = {
+        timestamp: Date.now(),
+        userId: game.user.id,
+        userName: game.user.name,
+        sessionId: game.data.id,
+        ...data
+      };
+
+      console.log("Cyberpunk Agent | Attempting to send device message edit via SocketLib:", editData);
+
+      // SocketLib doesn't have a persistent connection state
+      // If we have the socket object, we can attempt to send
+      if (!socketlib || !socket) {
+        console.warn("Cyberpunk Agent | SocketLib objects not available");
+        return false;
+      }
+
+      await socket.executeForEveryone('deviceMessageEdit', editData);
+      console.log("Cyberpunk Agent | Device message edit sent via SocketLib successfully");
+      return true;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error sending device message edit via SocketLib:", error);
       return false;
     }
   }

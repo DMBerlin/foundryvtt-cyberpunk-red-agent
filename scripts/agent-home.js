@@ -1245,6 +1245,16 @@ class AgentApplication extends FormApplication {
       </button>
     `);
 
+    // Edit is available for GMs on any message, or for user's own messages
+    if (game.user.isGM || isOwnMessage) {
+      const editLabel = game.user.isGM && !isOwnMessage ? 'Editar Mensagem (GM)' : 'Editar Mensagem';
+      menuItems.unshift(`
+        <button class="cp-context-menu-item" data-action="edit-message" data-message-id="${messageId}">
+          <i class="fas fa-edit"></i>${editLabel}
+        </button>
+      `);
+    }
+
     // Delete is only available for GMs or for user's own messages
     if (game.user.isGM || isOwnMessage) {
       const deleteLabel = game.user.isGM && !isOwnMessage ? 'Deletar Mensagem (GM)' : 'Deletar Mensagem';
@@ -1262,6 +1272,10 @@ class AgentApplication extends FormApplication {
     `);
 
     // Add event listeners with menu removal
+    contextMenu.find('[data-action="edit-message"]').click(() => {
+      this._editMessage(messageId, messageText);
+      $('.cp-context-menu').remove();
+    });
     contextMenu.find('[data-action="delete-message"]').click(() => {
       this._deleteMessage(messageId);
       $('.cp-context-menu').remove();
@@ -1606,6 +1620,203 @@ class AgentApplication extends FormApplication {
     } catch (error) {
       console.error("Cyberpunk Agent | Error copying message text:", error);
       ui.notifications.error("Erro ao copiar texto!");
+    }
+  }
+
+  /**
+   * Edit a specific message
+   */
+  async _editMessage(messageId, currentText) {
+    console.log("Cyberpunk Agent | Editing message:", messageId);
+
+    try {
+      // Get the current contact from the conversation
+      const contactId = this.currentContact?.id;
+      if (!contactId) {
+        console.error("Cyberpunk Agent | No contact found for message editing");
+        ui.notifications.error("Erro: Contato não encontrado!");
+        return;
+      }
+
+      // Show the cyberpunk editing modal
+      this._showMessageEditModal(messageId, currentText, contactId);
+
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error editing message:", error);
+      ui.notifications.error("Erro ao editar mensagem: " + error.message);
+    }
+  }
+
+  /**
+   * Show cyberpunk-styled message editing modal
+   */
+  _showMessageEditModal(messageId, currentText, contactId) {
+    // Remove any existing edit modal
+    $('.cp-edit-modal').remove();
+
+    // Create the cyberpunk-styled modal
+    const modal = $(`
+      <div class="cp-edit-modal">
+        <div class="cp-edit-modal-backdrop"></div>
+        <div class="cp-edit-modal-container">
+          <div class="cp-edit-modal-header">
+            <div class="cp-edit-modal-title">
+              <i class="fas fa-edit"></i>
+              <span>EDITAR MENSAGEM</span>
+            </div>
+            <div class="cp-edit-modal-protocol">NEURO_EDIT_PROTOCOL_v2.1</div>
+          </div>
+          
+          <div class="cp-edit-modal-body">
+            <div class="cp-edit-input-label">CONTEÚDO DA MENSAGEM:</div>
+            <div class="cp-edit-input-wrapper">
+              <textarea class="cp-edit-textarea" placeholder="Digite sua mensagem..." maxlength="500">${currentText}</textarea>
+              <div class="cp-edit-char-counter">
+                <span class="cp-edit-char-count">${currentText.length}</span>/500
+              </div>
+            </div>
+            <div class="cp-edit-hint">SHIFT+ENTER para quebra de linha • CTRL+ENTER para salvar • ESC para cancelar</div>
+          </div>
+          
+          <div class="cp-edit-modal-footer">
+            <button class="cp-edit-btn cp-edit-btn-cancel">
+              <i class="fas fa-times"></i>
+              CANCELAR
+            </button>
+            <button class="cp-edit-btn cp-edit-btn-save">
+              <i class="fas fa-save"></i>
+              SALVAR ALTERAÇÕES
+            </button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // Add to the agent container (not body) for proper styling
+    this.element.append(modal);
+
+    // Get references to elements
+    const textarea = modal.find('.cp-edit-textarea');
+    const charCount = modal.find('.cp-edit-char-count');
+    const saveBtn = modal.find('.cp-edit-btn-save');
+    const cancelBtn = modal.find('.cp-edit-btn-cancel');
+
+    // Auto-resize textarea and update character count
+    const updateTextarea = () => {
+      // Auto-resize
+      textarea[0].style.height = 'auto';
+      const lineHeight = parseInt(window.getComputedStyle(textarea[0]).lineHeight);
+      const maxHeight = lineHeight * 5;
+      const newHeight = Math.min(textarea[0].scrollHeight, maxHeight);
+      textarea[0].style.height = newHeight + 'px';
+      textarea[0].style.overflowY = textarea[0].scrollHeight > maxHeight ? 'auto' : 'hidden';
+
+      // Update character count
+      const currentLength = textarea.val().length;
+      charCount.text(currentLength);
+      charCount.toggleClass('cp-edit-char-warning', currentLength > 450);
+      charCount.toggleClass('cp-edit-char-limit', currentLength >= 500);
+    };
+
+    // Initial textarea setup
+    updateTextarea();
+    textarea.focus();
+    textarea[0].setSelectionRange(textarea.val().length, textarea.val().length);
+
+    // Event listeners
+    textarea.on('input', updateTextarea);
+
+    // Handle keyboard shortcuts
+    textarea.on('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey && event.ctrlKey) {
+        event.preventDefault();
+        saveBtn.click();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelBtn.click();
+      }
+    });
+
+    // Cancel button
+    cancelBtn.click(() => {
+      modal.addClass('cp-edit-modal-closing');
+      setTimeout(() => modal.remove(), 300);
+    });
+
+    // Backdrop click to cancel
+    modal.find('.cp-edit-modal-backdrop').click(() => {
+      cancelBtn.click();
+    });
+
+    // Save button
+    saveBtn.click(async () => {
+      const newText = textarea.val().trim();
+
+      if (!newText) {
+        ui.notifications.error("Mensagem não pode estar vazia!");
+        return;
+      }
+
+      if (newText === currentText) {
+        ui.notifications.info("Nenhuma alteração foi feita.");
+        cancelBtn.click();
+        return;
+      }
+
+      // Disable buttons during save
+      saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> SALVANDO...');
+      cancelBtn.prop('disabled', true);
+
+      try {
+        // Call the message editing method
+        const success = await this._saveMessageEdit(messageId, contactId, newText, currentText);
+
+        if (success) {
+          ui.notifications.info("Mensagem editada com sucesso!");
+          modal.addClass('cp-edit-modal-closing');
+          setTimeout(() => modal.remove(), 300);
+
+          // Refresh the conversation view
+          this._forceRenderConversationView();
+        } else {
+          ui.notifications.error("Erro ao editar mensagem!");
+          // Re-enable buttons
+          saveBtn.prop('disabled', false).html('<i class="fas fa-save"></i> SALVAR ALTERAÇÕES');
+          cancelBtn.prop('disabled', false);
+        }
+      } catch (error) {
+        console.error("Cyberpunk Agent | Error saving message edit:", error);
+        ui.notifications.error("Erro ao salvar alterações: " + error.message);
+        // Re-enable buttons
+        saveBtn.prop('disabled', false).html('<i class="fas fa-save"></i> SALVAR ALTERAÇÕES');
+        cancelBtn.prop('disabled', false);
+      }
+    });
+
+    // Show modal with animation
+    setTimeout(() => modal.addClass('cp-edit-modal-show'), 10);
+  }
+
+  /**
+   * Save message edit changes
+   */
+  async _saveMessageEdit(messageId, contactId, newText, originalText) {
+    console.log("Cyberpunk Agent | Saving message edit:", messageId, newText);
+
+    try {
+      // Call the CyberpunkAgent instance to handle the edit
+      const success = await window.CyberpunkAgent?.instance?.editDeviceMessage(
+        this.device.id,
+        contactId,
+        messageId,
+        newText,
+        originalText
+      );
+
+      return success;
+    } catch (error) {
+      console.error("Cyberpunk Agent | Error in _saveMessageEdit:", error);
+      throw error;
     }
   }
 
