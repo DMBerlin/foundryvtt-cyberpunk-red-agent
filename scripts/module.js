@@ -2080,6 +2080,7 @@ class CyberpunkAgent {
         // Device-based system properties
         this.devices = new Map(); // Map: deviceId -> deviceData
         this.deviceMappings = new Map(); // Map: actorId -> [deviceIds]
+        this.pinnedDevices = new Set(); // Set: pinned device IDs for GM quick access
 
         // Phone number system
         this.phoneNumberDictionary = new Map(); // Map: phoneNumber -> deviceId
@@ -2164,6 +2165,16 @@ class CyberpunkAgent {
             config: false,
             type: Object,
             default: {}
+        });
+
+        // Register GM pinned devices setting
+        game.settings.register('cyberpunk-agent', 'gm-pinned-devices', {
+            name: 'GM Pinned Devices',
+            hint: 'List of devices pinned by GM for quick access',
+            scope: 'world',
+            config: false,
+            type: Array,
+            default: []
         });
 
         // Register a custom settings menu for GM Data Management
@@ -3757,6 +3768,11 @@ class CyberpunkAgent {
 
             // Load phone number data
             this.loadPhoneNumberData();
+
+            // Load pinned devices (GM only)
+            if (game.user.isGM) {
+                this.loadPinnedDevices();
+            }
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading device data:", error);
         }
@@ -6581,12 +6597,23 @@ class CyberpunkAgent {
             const phoneNumber = this.devicePhoneNumbers.get(deviceId);
             const formattedPhone = phoneNumber ? this.formatPhoneNumberForDisplay(phoneNumber) : 'No phone';
 
+            // Get the most current actor image
+            let deviceImg = device.img || 'icons/svg/mystery-man.svg';
+            if (device.ownerActorId) {
+                const actor = game.actors.get(device.ownerActorId);
+                if (actor && actor.img) {
+                    deviceImg = actor.img;
+                }
+            }
+
             allDevices.push({
                 deviceId: deviceId,
                 ownerName: ownerName,
                 phoneNumber: formattedPhone,
                 deviceName: device.deviceName || 'Agent',
-                ownerActorId: device.ownerActorId
+                ownerActorId: device.ownerActorId,
+                img: deviceImg,
+                contacts: device.contacts || []
             });
         }
 
@@ -6607,48 +6634,278 @@ class CyberpunkAgent {
             return;
         }
 
-        // Create options for the select dropdown
-        const options = allDevices.map((device, index) => ({
-            label: `${device.ownerName}: ${device.phoneNumber}`,
-            value: device.deviceId
-        }));
+        // Sort devices: pinned first, then by owner name
+        const sortedDevices = allDevices.sort((a, b) => {
+            const aIsPinned = this.isDevicePinned(a.deviceId);
+            const bIsPinned = this.isDevicePinned(b.deviceId);
 
-        // Create the dialog content
+            // Pinned devices come first
+            if (aIsPinned && !bIsPinned) return -1;
+            if (!aIsPinned && bIsPinned) return 1;
+
+            // Within same pin status, sort by owner name
+            return (a.ownerName || 'Unknown').localeCompare(b.ownerName || 'Unknown');
+        });
+
+        // Separate pinned and regular devices for section headers
+        const pinnedDevices = sortedDevices.filter(device => this.isDevicePinned(device.deviceId));
+        const regularDevices = sortedDevices.filter(device => !this.isDevicePinned(device.deviceId));
+
+        // Create device HTML with section headers
+        let deviceListHtml = '';
+
+        // Add pinned devices section
+        if (pinnedDevices.length > 0) {
+            deviceListHtml += `
+                <div class="cp-device-section-header">
+                    <i class="fas fa-thumbtack"></i>
+                    <span>DISPOSITIVOS FIXADOS (${pinnedDevices.length})</span>
+                </div>
+            `;
+            deviceListHtml += pinnedDevices.map(device => this._createDeviceItemHtml(device)).join('');
+        }
+
+        // Add regular devices section
+        if (regularDevices.length > 0) {
+            deviceListHtml += `
+                <div class="cp-device-section-header ${pinnedDevices.length > 0 ? 'with-spacing' : ''}">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>OUTROS DISPOSITIVOS (${regularDevices.length})</span>
+                </div>
+            `;
+            deviceListHtml += regularDevices.map(device => this._createDeviceItemHtml(device)).join('');
+        }
+
+
+        // Create the enhanced dialog content
         const content = `
-            <div style="margin-bottom: 1em;">
-                <p><strong>Select a device to operate as:</strong></p>
-                <p style="font-size: 0.9em; color: #666; margin-bottom: 1em;">
-                    As GM, you can operate any registered device in the system.
-                </p>
-            </div>
-            <div style="margin-bottom: 1em;">
-                <select id="agent-device-select" style="width: 100%; margin-bottom: 1em;">
-                    ${options.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
-                </select>
+            <div class="cp-device-selection-container">
+                <div class="cp-device-selection-header">
+                    <h3><i class="fas fa-mobile-alt"></i> SELEÇÃO DE DISPOSITIVO</h3>
+                    <p>Como GM, você pode operar qualquer dispositivo registrado no sistema.</p>
+                </div>
+                
+                <div class="cp-device-filter-section">
+                    <div class="cp-filter-wrapper">
+                        <input type="text" id="cp-device-filter" placeholder="Filtrar por nome ou telefone..." />
+                        <i class="fas fa-search cp-filter-icon"></i>
+                    </div>
+                    <div class="cp-device-count">
+                        <span id="cp-visible-count">${allDevices.length}</span> de ${allDevices.length} dispositivos
+                    </div>
+                </div>
+                
+                <div class="cp-device-list" id="cp-device-list">
+                    ${deviceListHtml}
+                    <div class="cp-no-devices-found" id="cp-no-devices-found" style="display: none;">
+                        <div class="cp-no-devices-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h4>Nenhum dispositivo encontrado</h4>
+                        <p>Tente ajustar os filtros para encontrar dispositivos.</p>
+                    </div>
+                </div>
+                
+                <div class="cp-device-selection-footer">
+                    <div class="cp-selection-stats">
+                        Total: ${allDevices.length} dispositivos registrados
+                    </div>
+                </div>
             </div>
         `;
 
-        // Create and show the dialog
-        new Dialog({
-            title: "Select Device to Operate",
+        // Create and show the enhanced dialog
+        const dialog = new Dialog({
+            title: "Cyberpunk Agent - Seleção de Dispositivo",
             content: content,
             buttons: {
-                select: {
-                    label: "Operate Device",
-                    callback: (html) => {
-                        const selectedDeviceId = html.find('#agent-device-select').val();
-                        if (selectedDeviceId) {
-                            console.log(`Cyberpunk Agent | GM selected device: ${selectedDeviceId}`);
-                            this.openSpecificAgent(selectedDeviceId);
-                        }
-                    }
-                },
                 cancel: {
-                    label: "Cancel"
+                    icon: '<i class="fas fa-times"></i>',
+                    label: "Cancelar"
                 }
             },
-            default: "select"
-        }).render(true);
+            default: "cancel",
+            render: (html) => {
+                // Add cyberpunk styling to the dialog
+                html.closest('.dialog').addClass('cp-device-selection-dialog');
+
+                // Simplified filter functionality
+                const filterInput = html.find('#cp-device-filter');
+                const deviceItems = html.find('.cp-device-item');
+                const visibleCount = html.find('#cp-visible-count');
+
+                // Helper function to normalize text for search (remove special chars, lowercase)
+                const normalizeSearchText = (text) => {
+                    return text.toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+                        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+                        .trim();
+                };
+
+                const updateFilter = () => {
+                    const filterText = normalizeSearchText(filterInput.val());
+                    let visibleDevices = 0;
+
+                    deviceItems.each(function () {
+                        const item = $(this);
+                        const searchText = item.data('search-text') || '';
+                        const normalizedSearchText = normalizeSearchText(searchText);
+
+                        // Enhanced text matching
+                        const matchesText = !filterText || normalizedSearchText.includes(filterText);
+
+                        item.toggle(matchesText);
+                        if (matchesText) visibleDevices++;
+                    });
+
+                    visibleCount.text(visibleDevices);
+
+                    // Show/hide no devices found message
+                    const noDevicesFound = html.find('#cp-no-devices-found');
+                    noDevicesFound.toggle(visibleDevices === 0);
+                };
+
+                // Filter input events
+                filterInput.on('input', updateFilter);
+
+                filterInput.on('keydown', (event) => {
+                    if (event.key === 'Escape') {
+                        filterInput.val('');
+                        updateFilter();
+                    }
+                });
+
+                // Pin/unpin functionality
+                html.find('.cp-device-pin-btn').click(async (event) => {
+                    event.stopPropagation();
+                    const deviceId = $(event.currentTarget).data('device-id');
+                    const pinBtn = $(event.currentTarget);
+                    const deviceItem = pinBtn.closest('.cp-device-item');
+
+                    if (deviceId) {
+                        const success = await this.toggleDevicePin(deviceId);
+                        if (success) {
+                            const isPinned = this.isDevicePinned(deviceId);
+
+                            // Update pin button
+                            pinBtn.find('i').toggleClass('pinned', isPinned);
+                            pinBtn.attr('title', isPinned ? 'Desfixar dispositivo' : 'Fixar dispositivo');
+
+                            // Update device item
+                            deviceItem.toggleClass('pinned', isPinned);
+
+                            // Update pin badge
+                            const nameDiv = deviceItem.find('.cp-device-name');
+                            const existingBadge = nameDiv.find('.cp-pin-badge');
+                            if (isPinned && existingBadge.length === 0) {
+                                nameDiv.append('<span class="cp-pin-badge">FIXADO</span>');
+                            } else if (!isPinned && existingBadge.length > 0) {
+                                existingBadge.remove();
+                            }
+
+                            // Update pin indicator on avatar
+                            const avatar = deviceItem.find('.cp-device-avatar');
+                            const existingIndicator = avatar.find('.cp-device-pin-indicator');
+                            if (isPinned && existingIndicator.length === 0) {
+                                avatar.append('<div class="cp-device-pin-indicator"><i class="fas fa-thumbtack"></i></div>');
+                            } else if (!isPinned && existingIndicator.length > 0) {
+                                existingIndicator.remove();
+                            }
+
+                            // Re-sort the list
+                            setTimeout(() => {
+                                dialog.close();
+                                this.showAllDevicesMenu(allDevices);
+                            }, 200);
+                        }
+                    }
+                });
+
+                // Device selection events
+                html.find('.cp-device-select-btn').click((event) => {
+                    const deviceId = $(event.currentTarget).data('device-id');
+                    if (deviceId) {
+                        console.log(`Cyberpunk Agent | GM selected device: ${deviceId}`);
+                        dialog.close();
+                        this.openSpecificAgent(deviceId);
+                    }
+                });
+
+                // Double-click to select device
+                html.find('.cp-device-item').dblclick((event) => {
+                    const deviceId = $(event.currentTarget).data('device-id');
+                    if (deviceId) {
+                        console.log(`Cyberpunk Agent | GM double-clicked device: ${deviceId}`);
+                        dialog.close();
+                        this.openSpecificAgent(deviceId);
+                    }
+                });
+
+                // Focus filter input
+                setTimeout(() => filterInput.focus(), 100);
+            }
+        });
+
+        dialog.render(true);
+    }
+
+    /**
+     * Create HTML for a device item in the selection interface
+     */
+    _createDeviceItemHtml(device) {
+        // Get user status for this device
+        const deviceUser = this._getUserForDevice(device.deviceId);
+        const isOnline = deviceUser && deviceUser.active;
+        const isGMDevice = deviceUser && deviceUser.isGM;
+
+        // Get unread message count for this device
+        let unreadCount = 0;
+        try {
+            for (const [conversationKey, messages] of this.messages.entries()) {
+                if (conversationKey.includes(device.deviceId)) {
+                    unreadCount += messages.filter(msg => !msg.read && msg.receiverId === device.deviceId).length;
+                }
+            }
+        } catch (error) {
+            // Ignore errors in unread count calculation
+        }
+
+        const statusClass = isOnline ? 'online' : 'offline';
+        const userTypeClass = isGMDevice ? 'gm' : 'player';
+        const isPinned = this.isDevicePinned(device.deviceId);
+        const pinnedClass = isPinned ? 'pinned' : '';
+
+        return `
+            <div class="cp-device-item ${statusClass} ${userTypeClass} ${pinnedClass}" data-device-id="${device.deviceId}" data-search-text="${device.ownerName?.toLowerCase() || ''} ${device.phoneNumber}">
+                <div class="cp-device-avatar">
+                    <img src="${device.img || 'icons/svg/mystery-man.svg'}" alt="${device.ownerName}" />
+                    ${isPinned ? '<div class="cp-device-pin-indicator"><i class="fas fa-thumbtack"></i></div>' : ''}
+                </div>
+                <div class="cp-device-info">
+                    <div class="cp-device-name">
+                        ${device.ownerName || 'Unknown'}
+                        ${isGMDevice ? '<span class="cp-gm-badge">GM</span>' : ''}
+                        ${isPinned ? '<span class="cp-pin-badge">FIXADO</span>' : ''}
+                    </div>
+                    <div class="cp-device-phone">${device.phoneNumber}</div>
+                        <div class="cp-device-details">
+                            <span class="cp-device-id">ID: ${device.deviceId.slice(-8)}</span>
+                            <span class="cp-device-contacts">${device.contacts?.length || 0} contatos</span>
+                            ${unreadCount > 0 ? `<span class="cp-device-unread">${unreadCount} não lidas</span>` : ''}
+                        </div>
+                </div>
+                <div class="cp-device-actions">
+                    <button class="cp-device-pin-btn" data-device-id="${device.deviceId}" title="${isPinned ? 'Desfixar dispositivo' : 'Fixar dispositivo'}">
+                        <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}"></i>
+                    </button>
+                    <button class="cp-device-select-btn" data-device-id="${device.deviceId}">
+                        <i class="fas fa-mobile-alt"></i>
+                        OPERAR
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -7970,6 +8227,66 @@ class CyberpunkAgent {
             console.error("Cyberpunk Agent | Error in master synchronization:", error);
             throw error;
         }
+    }
+
+    /**
+     * Load pinned devices from settings
+     */
+    async loadPinnedDevices() {
+        try {
+            const pinnedData = game.settings.get('cyberpunk-agent', 'gm-pinned-devices') || [];
+            this.pinnedDevices = new Set(pinnedData);
+            console.log(`Cyberpunk Agent | Loaded ${this.pinnedDevices.size} pinned devices`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading pinned devices:", error);
+            this.pinnedDevices = new Set();
+        }
+    }
+
+    /**
+     * Save pinned devices to settings
+     */
+    async savePinnedDevices() {
+        try {
+            const pinnedArray = Array.from(this.pinnedDevices);
+            await game.settings.set('cyberpunk-agent', 'gm-pinned-devices', pinnedArray);
+            console.log(`Cyberpunk Agent | Saved ${pinnedArray.length} pinned devices`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving pinned devices:", error);
+        }
+    }
+
+    /**
+     * Toggle pin status for a device
+     */
+    async toggleDevicePin(deviceId) {
+        if (!game.user.isGM) {
+            console.warn("Cyberpunk Agent | Only GMs can pin devices");
+            return false;
+        }
+
+        try {
+            if (this.pinnedDevices.has(deviceId)) {
+                this.pinnedDevices.delete(deviceId);
+                console.log(`Cyberpunk Agent | Unpinned device: ${deviceId}`);
+            } else {
+                this.pinnedDevices.add(deviceId);
+                console.log(`Cyberpunk Agent | Pinned device: ${deviceId}`);
+            }
+
+            await this.savePinnedDevices();
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error toggling device pin:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Check if a device is pinned
+     */
+    isDevicePinned(deviceId) {
+        return this.pinnedDevices.has(deviceId);
     }
 
     /**
@@ -11652,4 +11969,65 @@ window.testMessageEditing = async function () {
         console.error("❌ Error in message editing test:", error);
         return false;
     }
+};
+
+// Test function for GM device selection interface
+window.testGMDeviceSelection = function () {
+    console.log("🎮 === TESTING GM DEVICE SELECTION INTERFACE ===");
+
+    if (!window.CyberpunkAgent?.instance) {
+        console.log("❌ CyberpunkAgent instance not available");
+        return false;
+    }
+
+    if (!game.user.isGM) {
+        console.log("❌ This test requires GM access");
+        return false;
+    }
+
+    const agent = window.CyberpunkAgent.instance;
+    const allDevices = agent.getAllRegisteredDevices();
+
+    console.log(`📱 Device selection test:`);
+    console.log(`  - Total devices: ${allDevices.length}`);
+    console.log(`  - Online users: ${Array.from(game.users.values()).filter(u => u.active).length}`);
+    console.log(`  - GM users: ${Array.from(game.users.values()).filter(u => u.isGM).length}`);
+
+    if (allDevices.length === 0) {
+        console.log("❌ No devices available for testing");
+        return false;
+    }
+
+    // Show device categories
+    const onlineDevices = allDevices.filter(device => {
+        const user = agent._getUserForDevice(device.deviceId);
+        return user && user.active;
+    });
+
+    const gmDevices = allDevices.filter(device => {
+        const user = agent._getUserForDevice(device.deviceId);
+        return user && user.isGM;
+    });
+
+    console.log(`📊 Device breakdown:`);
+    console.log(`  - Online: ${onlineDevices.length}`);
+    console.log(`  - Offline: ${allDevices.length - onlineDevices.length}`);
+    console.log(`  - GM devices: ${gmDevices.length}`);
+    console.log(`  - Player devices: ${allDevices.length - gmDevices.length}`);
+
+    // Test the interface
+    console.log("🎯 Opening enhanced device selection interface...");
+    agent.showAllDevicesMenu(allDevices);
+
+    console.log("✅ GM device selection interface test completed");
+    console.log("📝 Try the following in the interface:");
+    console.log("  - Filter by name or phone number");
+    console.log("  - Filter by status (Online/Offline)");
+    console.log("  - Filter by type (GM/Players)");
+    console.log("  - Click pin button to pin/unpin devices for quick access");
+    console.log("  - Double-click a device to operate it");
+    console.log("  - Press Escape to clear all filters");
+    console.log("  - Pinned devices appear at the top with special styling");
+
+    return true;
 }; 

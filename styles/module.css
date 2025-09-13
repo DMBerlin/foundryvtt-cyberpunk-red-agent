@@ -2252,6 +2252,492 @@
   box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
 }
 
+/* ===== GM DEVICE SELECTION INTERFACE ===== */
+.cp-device-selection-dialog {
+  background: var(--cp-gradient-dark) !important;
+  border: 2px solid var(--cp-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 30px var(--cp-glow-strong) !important;
+  width: 800px !important;
+  max-width: 90vw !important;
+  resize: both !important;
+  overflow: auto !important;
+  min-width: 600px !important;
+  min-height: 400px !important;
+}
+
+.cp-device-selection-dialog .window-header {
+  background: var(--cp-gradient-primary) !important;
+  border-bottom: 1px solid var(--cp-border) !important;
+  color: var(--cp-text) !important;
+  font-family: 'Orbitron', monospace !important;
+}
+
+.cp-device-selection-dialog .window-content {
+  padding: 20px !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* FoundryVTT-style resize handle */
+.cp-device-selection-dialog::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(-45deg,
+      transparent 30%,
+      var(--cp-border) 30%,
+      var(--cp-border) 35%,
+      transparent 35%,
+      transparent 45%,
+      var(--cp-border) 45%,
+      var(--cp-border) 50%,
+      transparent 50%,
+      transparent 60%,
+      var(--cp-border) 60%,
+      var(--cp-border) 65%,
+      transparent 65%);
+  cursor: nw-resize;
+  z-index: 1000;
+  border-bottom-right-radius: 12px;
+}
+
+.cp-device-selection-container {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--cp-text);
+  width: 100%;
+  min-height: 400px;
+}
+
+.cp-device-selection-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--cp-border);
+}
+
+.cp-device-selection-header h3 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.2em;
+  color: var(--cp-primary);
+  margin: 0 0 10px 0;
+  text-shadow: 0 0 10px var(--cp-glow-weak);
+}
+
+.cp-device-selection-header p {
+  font-size: 0.9em;
+  color: var(--cp-text-muted);
+  margin: 0;
+}
+
+.cp-device-filter-section {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.cp-filter-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.cp-filter-wrapper input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--cp-border);
+  border-radius: 8px;
+  color: var(--cp-text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1em;
+  padding: 10px 40px 10px 15px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.cp-filter-wrapper input:focus {
+  border-color: var(--cp-primary);
+  box-shadow: 0 0 10px var(--cp-glow-weak);
+}
+
+.cp-filter-wrapper input::placeholder {
+  color: var(--cp-text-muted);
+}
+
+.cp-filter-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cp-text-muted);
+  pointer-events: none;
+}
+
+.cp-device-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8em;
+  color: var(--cp-text-muted);
+  white-space: nowrap;
+}
+
+.cp-device-list {
+  max-height: 60vh;
+  min-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--cp-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+}
+
+.cp-device-section-header {
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: var(--cp-primary);
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: rgba(255, 0, 51, 0.1);
+  border: 1px solid var(--cp-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 0 5px var(--cp-glow-weak);
+}
+
+.cp-device-section-header.with-spacing {
+  margin-top: 20px;
+}
+
+.cp-device-section-header i {
+  color: var(--cp-primary);
+}
+
+.cp-device-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 15px;
+  margin-bottom: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--cp-border-weak);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cp-device-item:hover {
+  background: rgba(255, 0, 51, 0.1);
+  border-color: var(--cp-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 10px rgba(255, 0, 51, 0.2);
+}
+
+.cp-device-item:last-child {
+  margin-bottom: 0;
+}
+
+.cp-device-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid var(--cp-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cp-device-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-device-status-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--cp-darker);
+}
+
+.cp-device-status-indicator.online {
+  background: #00ff41;
+  box-shadow: 0 0 8px #00ff41;
+}
+
+.cp-device-status-indicator.offline {
+  background: #666;
+  box-shadow: 0 0 4px #666;
+}
+
+.cp-device-pin-indicator {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 16px;
+  height: 16px;
+  background: var(--cp-primary);
+  border-radius: 50%;
+  border: 2px solid var(--cp-darker);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px var(--cp-glow-weak);
+  z-index: 2;
+}
+
+.cp-device-pin-indicator i {
+  font-size: 0.6em;
+  color: var(--cp-text);
+  transform: rotate(45deg);
+}
+
+.cp-device-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cp-device-name {
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 1em;
+  color: var(--cp-text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-gm-badge {
+  background: var(--cp-gradient-primary);
+  color: var(--cp-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--cp-border);
+  box-shadow: 0 0 5px var(--cp-glow-weak);
+}
+
+.cp-pin-badge {
+  background: linear-gradient(45deg, #ffaa00, #ff6600);
+  color: var(--cp-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffaa00;
+  box-shadow: 0 0 5px rgba(255, 170, 0, 0.5);
+}
+
+.cp-device-phone {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  color: var(--cp-primary);
+  margin-bottom: 4px;
+}
+
+.cp-device-details {
+  display: flex;
+  gap: 15px;
+  font-size: 0.8em;
+  color: var(--cp-text-muted);
+}
+
+.cp-device-id {
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.cp-device-contacts {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.cp-device-unread {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--cp-primary);
+  font-weight: bold;
+}
+
+.cp-device-status {
+  margin-top: 6px;
+}
+
+.cp-status-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cp-status-text.online {
+  color: #00ff41;
+}
+
+.cp-status-text.offline {
+  color: #666;
+}
+
+.cp-status-text i {
+  font-size: 0.6em;
+}
+
+/* Device item variants */
+.cp-device-item.gm {
+  border-left: 3px solid var(--cp-primary);
+}
+
+.cp-device-item.player {
+  border-left: 3px solid var(--cp-border-weak);
+}
+
+.cp-device-item.pinned {
+  border: 2px solid #ffaa00;
+  background: rgba(255, 170, 0, 0.05);
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.2);
+}
+
+.cp-device-item.pinned:hover {
+  border-color: #ffaa00;
+  background: rgba(255, 170, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+}
+
+.cp-device-item.online:hover {
+  border-left-color: #00ff41;
+}
+
+.cp-device-item.pinned.online:hover {
+  border-color: #ffaa00;
+}
+
+.cp-device-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cp-device-pin-btn {
+  background: transparent;
+  border: 1px solid var(--cp-border-weak);
+  color: var(--cp-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-device-pin-btn:hover {
+  border-color: #ffaa00;
+  color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.cp-device-pin-btn i.pinned {
+  color: #ffaa00;
+  transform: rotate(45deg);
+}
+
+.cp-device-pin-btn:hover i {
+  transform: rotate(45deg);
+}
+
+.cp-device-select-btn {
+  background: var(--cp-gradient-primary);
+  border: 1px solid var(--cp-border);
+  color: var(--cp-text);
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  font-size: 0.8em;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-device-select-btn:hover {
+  background: rgba(255, 0, 51, 0.3);
+  box-shadow: 0 0 15px var(--cp-glow-weak);
+  transform: translateY(-1px);
+}
+
+.cp-device-selection-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--cp-border);
+  text-align: center;
+}
+
+.cp-selection-stats {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8em;
+  color: var(--cp-text-muted);
+}
+
+/* Custom scrollbar for device list */
+.cp-device-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cp-device-list::-webkit-scrollbar-track {
+  background: rgba(255, 0, 51, 0.1);
+  border-radius: 4px;
+}
+
+.cp-device-list::-webkit-scrollbar-thumb {
+  background: var(--cp-gradient-primary);
+  border-radius: 4px;
+  border: 1px solid var(--cp-border-weak);
+  box-shadow: 0 0 10px var(--cp-glow-weak);
+}
+
+/* No devices found indicator */
+.cp-no-devices-found {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--cp-text-muted);
+}
+
+.cp-no-devices-found .cp-no-devices-icon {
+  font-size: 2em;
+  margin-bottom: 15px;
+  opacity: 0.5;
+}
+
+.cp-no-devices-found h4 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1em;
+  margin: 0 0 10px 0;
+  color: var(--cp-text);
+}
+
+.cp-no-devices-found p {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9em;
+  margin: 0;
+  opacity: 0.8;
+}
+
 /* ===== ENHANCED CYBERPUNK EFFECTS ===== */
 
 @keyframes scanline {
