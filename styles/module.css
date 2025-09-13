@@ -933,6 +933,7 @@
   font-size: 0.95em;
   line-height: 1.4;
   word-wrap: break-word;
+  white-space: pre-wrap;
   font-family: 'Rajdhani', sans-serif;
   font-weight: 400;
   /* Regular */
@@ -1064,9 +1065,9 @@
   z-index: 4;
 }
 
-/* Protocol text */
+/* Protocol text with line break hint */
 .cp-message-input-container::after {
-  content: 'NEURO NETPROTOCOL 3888_M';
+  content: 'NEURO NETPROTOCOL 3888_M | SHIFT+ENTER: LINE BREAK';
   position: absolute;
   bottom: 5px;
   right: 20px;
@@ -1100,14 +1101,18 @@
   outline: none;
   padding: 8px 0;
   border-bottom: 1px solid #3FA6AD;
-  height: 35px;
-  line-height: 35px;
+  min-height: 35px;
+  max-height: 150px;
+  line-height: 1.4;
   box-sizing: border-box;
+  overflow-y: hidden;
+  transition: height 0.1s ease;
 }
 
 .cp-message-input::placeholder {
   color: var(--cp-text-muted);
 }
+
 
 .cp-send-message {
   background: transparent;

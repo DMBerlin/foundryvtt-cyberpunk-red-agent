@@ -6921,11 +6921,12 @@ class CyberpunkAgent {
 
 
     /**
-     * Delete messages from a conversation
+     * Delete messages from a conversation (actor-based)
+     * This affects both local cache and server storage to ensure persistence
      */
     async deleteMessages(actorId1, actorId2, messageIds) {
         try {
-            console.log("Cyberpunk Agent | Starting message deletion process");
+            console.log("Cyberpunk Agent | Starting actor message deletion process");
             console.log("Cyberpunk Agent | Actor1:", actorId1, "Actor2:", actorId2, "MessageIds:", messageIds);
 
             if (!game.user.isGM) {
@@ -6934,41 +6935,47 @@ class CyberpunkAgent {
             }
 
             const conversationKey = this._getConversationKey(actorId1, actorId2);
-            console.log("Cyberpunk Agent | Conversation key:", conversationKey);
+            console.log("Cyberpunk Agent | Actor conversation key:", conversationKey);
 
+            // CRITICAL: Delete from server storage first to ensure persistence
+            console.log("Cyberpunk Agent | GM deleting actor messages from server storage");
+            const serverDeleteSuccess = await this.deleteMessagesFromServerAsGM(conversationKey, messageIds);
+
+            // Update local memory
             const messages = this.messages.get(conversationKey) || [];
-            console.log("Cyberpunk Agent | Original messages count:", messages.length);
+            console.log("Cyberpunk Agent | Original actor messages count:", messages.length);
 
             // Filter out messages to be deleted
             const updatedMessages = messages.filter(message => !messageIds.includes(message.id));
-            console.log("Cyberpunk Agent | Updated messages count:", updatedMessages.length);
+            console.log("Cyberpunk Agent | Updated actor messages count:", updatedMessages.length);
 
-            // Update the conversation
+            // Update the conversation in local memory
             this.messages.set(conversationKey, updatedMessages);
 
-            // Save messages to settings
-            console.log("Cyberpunk Agent | Saving messages to settings...");
+            // Save messages to localStorage (legacy method for actor-based conversations)
+            console.log("Cyberpunk Agent | Saving actor messages to localStorage...");
             await this.saveMessages();
 
-            // Delete corresponding FoundryVTT chat messages
-            console.log("Cyberpunk Agent | Deleting FoundryVTT chat messages...");
-            // Foundry chat deletion removed - using SocketLib only
-
             // Notify all clients about the message deletion
-            console.log("Cyberpunk Agent | Notifying clients about message deletion...");
+            console.log("Cyberpunk Agent | Notifying clients about actor message deletion...");
             await this._notifyMessageDeletion(actorId1, actorId2, messageIds);
 
-            console.log(`Cyberpunk Agent | Successfully deleted ${messageIds.length} messages from conversation ${conversationKey}`);
-            return true;
+            if (!serverDeleteSuccess) {
+                console.warn("Cyberpunk Agent | Server deletion failed for actor messages, messages deleted locally only");
+                ui.notifications.warn("Mensagens deletadas localmente. Podem reaparecer ao reconectar.");
+            }
+
+            console.log(`Cyberpunk Agent | Successfully deleted ${messageIds.length} messages from actor conversation ${conversationKey}`);
+            return serverDeleteSuccess; // Return server success status
         } catch (error) {
-            console.error("Cyberpunk Agent | Error deleting messages:", error);
+            console.error("Cyberpunk Agent | Error deleting actor messages:", error);
             return false;
         }
     }
 
     /**
      * Delete messages from a device conversation (device-specific)
-     * This only affects the current device's view of the conversation
+     * This affects both local cache and server storage to ensure persistence
      */
     async deleteDeviceMessages(deviceId, contactDeviceId, messageIds) {
         try {
@@ -6978,6 +6985,20 @@ class CyberpunkAgent {
             const conversationKey = this._getDeviceConversationKey(deviceId, contactDeviceId);
             console.log("Cyberpunk Agent | Device conversation key:", conversationKey);
 
+            // CRITICAL: Delete from server storage first to ensure persistence
+            let serverDeleteSuccess = false;
+
+            if (game.user.isGM) {
+                // GM directly deletes from server
+                console.log("Cyberpunk Agent | GM deleting messages from server storage");
+                serverDeleteSuccess = await this.deleteMessagesFromServerAsGM(conversationKey, messageIds);
+            } else {
+                // Players request GM to delete messages from server
+                console.log("Cyberpunk Agent | Player requesting GM to delete messages from server");
+                serverDeleteSuccess = await this.requestGMMessageDeletion(conversationKey, messageIds);
+            }
+
+            // Update local memory
             const messages = this.messages.get(conversationKey) || [];
             console.log("Cyberpunk Agent | Original device messages count:", messages.length);
 
@@ -6985,21 +7006,88 @@ class CyberpunkAgent {
             const updatedMessages = messages.filter(message => !messageIds.includes(message.id));
             console.log("Cyberpunk Agent | Updated device messages count:", updatedMessages.length);
 
-            // Update the conversation
+            // Update the conversation in local memory
             this.messages.set(conversationKey, updatedMessages);
 
-            // Save messages for the specific device
-            console.log("Cyberpunk Agent | Saving device messages...");
+            // Save messages for the specific device (local cache)
+            console.log("Cyberpunk Agent | Saving device messages to localStorage...");
             await this.saveMessagesForDevice(deviceId);
 
             // Notify all clients about the device message deletion
             console.log("Cyberpunk Agent | Notifying clients about device message deletion...");
             await this._notifyDeviceMessageDeletion(deviceId, contactDeviceId, messageIds);
 
+            if (!serverDeleteSuccess) {
+                console.warn("Cyberpunk Agent | Server deletion failed, messages deleted locally only");
+                ui.notifications.warn("Mensagens deletadas localmente. Podem reaparecer ao reconectar.");
+            }
+
             console.log(`Cyberpunk Agent | Successfully deleted ${messageIds.length} messages from device conversation ${conversationKey}`);
-            return true;
+            return serverDeleteSuccess; // Return server success status
         } catch (error) {
             console.error("Cyberpunk Agent | Error deleting device messages:", error);
+            return false;
+        }
+    }
+
+    /**
+     * GM deletes messages directly from server storage
+     */
+    async deleteMessagesFromServerAsGM(conversationKey, messageIds) {
+        try {
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+
+            if (serverMessages[conversationKey]) {
+                // Filter out messages to be deleted
+                const originalCount = serverMessages[conversationKey].length;
+                serverMessages[conversationKey] = serverMessages[conversationKey].filter(
+                    message => !messageIds.includes(message.id)
+                );
+                const newCount = serverMessages[conversationKey].length;
+
+                // Save updated messages back to server
+                await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+                console.log(`Cyberpunk Agent | GM deleted ${originalCount - newCount} messages from server storage`);
+
+                return true;
+            } else {
+                console.log("Cyberpunk Agent | No conversation found in server storage for deletion");
+                return true; // Not an error if conversation doesn't exist
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error deleting messages from server as GM:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Player requests GM to delete messages from server
+     */
+    async requestGMMessageDeletion(conversationKey, messageIds) {
+        try {
+            if (this.socketLibIntegration) {
+                const deleteRequest = {
+                    conversationKey,
+                    messageIds,
+                    requestingUserId: game.user.id,
+                    requestingUserName: game.user.name,
+                    timestamp: Date.now()
+                };
+
+                console.log("Cyberpunk Agent | Sending message deletion request to GM");
+                const success = await this.socketLibIntegration.sendMessageToGM('deleteMessagesFromServer', deleteRequest);
+
+                if (!success) {
+                    console.warn("Cyberpunk Agent | Failed to send deletion request to GM");
+                }
+
+                return success;
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available for GM message deletion request");
+                return false;
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error requesting GM message deletion:", error);
             return false;
         }
     }

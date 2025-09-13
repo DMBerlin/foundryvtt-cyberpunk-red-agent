@@ -85,8 +85,10 @@ function initializeSocketLib() {
 
     // Enhanced message broker handlers
     socket.register("saveMessageToServer", handleSaveMessageToServer);
+    socket.register("deleteMessagesFromServer", handleDeleteMessagesFromServer);
     socket.register("requestServerMessageSync", handleRequestServerMessageSync);
     socket.register("syncMessagesFromServer", handleSyncMessagesFromServer);
+    socket.register("messagesDeletedFromServer", handleMessagesDeletedFromServer);
 
     // Offline message queue handlers
     socket.register("queueOfflineMessage", handleQueueOfflineMessage);
@@ -1264,6 +1266,57 @@ async function handleSaveMessageToServer(data) {
 }
 
 /**
+ * Handle message deletion request from players (GM Message Broker)
+ */
+async function handleDeleteMessagesFromServer(data) {
+  console.log("Cyberpunk Agent | GM received message deletion request:", data);
+
+  // Only GM can handle this
+  if (!game.user.isGM) {
+    console.warn("Cyberpunk Agent | Non-GM received message deletion request, ignoring");
+    return;
+  }
+
+  try {
+    const { conversationKey, messageIds, requestingUserId, requestingUserName } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Delete messages from server storage
+      const success = await window.CyberpunkAgent.instance.deleteMessagesFromServerAsGM(conversationKey, messageIds);
+
+      if (success) {
+        console.log(`Cyberpunk Agent | GM deleted ${messageIds.length} messages from server for ${requestingUserName}`);
+
+        // Broadcast the deletion to all clients for immediate UI updates
+        const deletionData = {
+          conversationKey,
+          messageIds,
+          deletedBy: game.user.id,
+          deletedByName: game.user.name,
+          timestamp: Date.now()
+        };
+
+        // Send to all active users
+        const activeUsers = Array.from(game.users.values()).filter(user => user.active && user.id !== game.user.id);
+        for (const user of activeUsers) {
+          await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+            user.id,
+            'messagesDeletedFromServer',
+            deletionData
+          );
+        }
+
+        console.log(`Cyberpunk Agent | Broadcasted message deletion to ${activeUsers.length} clients`);
+      } else {
+        console.error(`Cyberpunk Agent | Failed to delete messages from server for ${requestingUserName}`);
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling message deletion request:", error);
+  }
+}
+
+/**
  * Handle server message sync request from clients (enhanced broker)
  */
 async function handleRequestServerMessageSync(data) {
@@ -1397,6 +1450,44 @@ async function handleSyncMessagesFromServer(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error syncing messages from server:", error);
+  }
+}
+
+/**
+ * Handle messages deleted from server notification
+ */
+async function handleMessagesDeletedFromServer(data) {
+  console.log("Cyberpunk Agent | Received message deletion notification from server:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { conversationKey, messageIds, deletedBy, deletedByName } = data;
+
+      // Remove messages from local memory
+      if (window.CyberpunkAgent.instance.messages.has(conversationKey)) {
+        const conversation = window.CyberpunkAgent.instance.messages.get(conversationKey);
+        const originalCount = conversation.length;
+
+        // Filter out deleted messages
+        const updatedMessages = conversation.filter(message => !messageIds.includes(message.id));
+        window.CyberpunkAgent.instance.messages.set(conversationKey, updatedMessages);
+
+        console.log(`Cyberpunk Agent | Removed ${originalCount - updatedMessages.length} messages from local memory`);
+      }
+
+      // Extract device IDs from conversation key and update localStorage
+      const deviceIds = conversationKey.split('-').filter(part => part.startsWith('device'));
+      for (const deviceId of deviceIds) {
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+      }
+
+      // Update UI immediately
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+      console.log(`Cyberpunk Agent | ${messageIds.length} messages deleted by ${deletedByName}`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling messages deleted from server:", error);
   }
 }
 

@@ -787,6 +787,11 @@ class AgentApplication extends FormApplication {
     console.log("AgentApplication | Found message input:", messageInput.length);
     messageInput.keypress(this._onMessageInputKeypress.bind(this));
 
+    // Add input event for auto-resizing textarea
+    messageInput.on('input', (event) => {
+      this._autoResizeTextarea(event.target);
+    });
+
     // Message context menu
     const messageElements = html.find('.cp-message[data-action="message-context-menu"]');
     console.log("AgentApplication | Found message elements:", messageElements.length);
@@ -1644,7 +1649,30 @@ class AgentApplication extends FormApplication {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this._sendMessage();
+    } else {
+      // Auto-resize textarea
+      setTimeout(() => {
+        this._autoResizeTextarea(event.target);
+      }, 0);
     }
+  }
+
+  /**
+   * Auto-resize textarea based on content
+   */
+  _autoResizeTextarea(textarea) {
+    // Reset height to calculate new height
+    textarea.style.height = 'auto';
+
+    // Calculate new height (max 5 lines)
+    const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight);
+    const maxHeight = lineHeight * 5;
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+
+    textarea.style.height = newHeight + 'px';
+
+    // Show scrollbar if content exceeds max height
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
   }
 
   /**
@@ -1652,20 +1680,27 @@ class AgentApplication extends FormApplication {
    */
   async _sendMessage() {
     const input = this.element.find('.cp-message-input');
-    const text = input.val().trim();
+    const text = input.val();
 
-    if (!text || !this.currentContact || !this.currentContact.id) {
+    // Only trim whitespace at the beginning and end, preserve internal line breaks
+    const trimmedText = text.replace(/^\s+|\s+$/g, '');
+
+    if (!trimmedText || !this.currentContact || !this.currentContact.id) {
       console.warn("AgentApplication | Cannot send message: missing text or currentContact");
       return;
     }
 
-    // Clear input
+    // Clear input and reset height
     input.val('');
+    if (input[0] && input[0].tagName === 'TEXTAREA') {
+      input[0].style.height = 'auto';
+      input[0].style.overflowY = 'hidden';
+    }
 
     // Send message through CyberpunkAgent
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       try {
-        const success = await window.CyberpunkAgent.instance.sendDeviceMessage(this.device.id, this.currentContact.id, text);
+        const success = await window.CyberpunkAgent.instance.sendDeviceMessage(this.device.id, this.currentContact.id, trimmedText);
 
         if (success) {
           console.log("Cyberpunk Agent | Device message sent successfully");
