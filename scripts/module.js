@@ -483,114 +483,7 @@ window.quickValidateEnhancements = function () {
     return results;
 };
 
-// Test basic messaging function (for development/troubleshooting)
-window.testBasicMessaging = function () {
-    console.log("📱 === CYBERPUNK AGENT - TESTING MESSAGING ===");
 
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-    const userActors = agent.getUserActors();
-
-    if (userActors.length < 2) {
-        console.log("⚠️ Need at least 2 user actors to test messaging");
-        console.log("Available actors:", userActors.map(a => a.name));
-        return false;
-    }
-
-    const actor1 = userActors[0];
-    const actor2 = userActors[1];
-    const testMessage = `Enhanced test message ${Date.now()}`;
-
-    console.log(`📤 Sending message from ${actor1.name} to ${actor2.name}: "${testMessage}"`);
-
-    agent.sendMessage(actor1.id, actor2.id, testMessage)
-        .then(success => {
-            if (success) {
-                console.log("✅ Message sent successfully with enhanced features");
-
-                const conversationKey = agent._getConversationKey(actor1.id, actor2.id);
-                const conversation = agent.messages.get(conversationKey);
-
-                if (conversation && conversation.length > 0) {
-                    const lastMessage = conversation[conversation.length - 1];
-                    console.log("✅ Message found in conversation:", lastMessage.text);
-
-                    if (lastMessage.id.includes('-') && lastMessage.id.length > 20) {
-                        console.log("✅ Enhanced message ID format detected");
-                    } else {
-                        console.log("⚠️ Using fallback message ID format");
-                    }
-                } else {
-                    console.log("❌ Message not found in conversation");
-                }
-            } else {
-                console.log("❌ Message sending failed");
-            }
-        })
-        .catch(error => {
-            console.error("❌ Message sending error:", error);
-        });
-
-    return true;
-};
-
-// Test enhanced features function (for development/troubleshooting)
-window.testEnhancedFeatures = function () {
-    console.log("🚀 === CYBERPUNK AGENT - TESTING ENHANCED FEATURES ===");
-
-    // Test message deduplication
-    if (window.CyberpunkAgentMessageDeduplication) {
-        const testId = `test-${Date.now()}`;
-        if (!window.CyberpunkAgentMessageDeduplication.isDuplicate(testId)) {
-            window.CyberpunkAgentMessageDeduplication.addMessage(testId);
-
-            if (window.CyberpunkAgentMessageDeduplication.isDuplicate(testId)) {
-                console.log("✅ Message deduplication working");
-            } else {
-                console.log("❌ Message deduplication failed");
-            }
-        }
-
-        const stats = window.CyberpunkAgentMessageDeduplication.getStats();
-        console.log("📊 Deduplication stats:", stats);
-    }
-
-    // Test performance manager
-    if (window.CyberpunkAgentPerformanceManager) {
-        const testMessages = [
-            { id: "1", text: "Test 1", timestamp: Date.now() },
-            { id: "2", text: "Test 2", timestamp: Date.now() + 1000 },
-            { id: "3", text: "Test 3", timestamp: Date.now() + 2000 }
-        ];
-
-        const recent = window.CyberpunkAgentPerformanceManager.getRecentMessages(testMessages, 2);
-        if (recent.length === 2) {
-            console.log("✅ Performance optimizations working");
-        } else {
-            console.log("❌ Performance optimizations failed");
-        }
-    }
-
-    // Test smart notifications
-    if (window.CyberpunkAgentNotificationManager) {
-        const userId = "test-user";
-        const deviceId = "test-device";
-        const contactId = "test-contact";
-        const conversationKey = `${deviceId}|${contactId}`;
-
-        if (window.CyberpunkAgentNotificationManager.shouldNotify(conversationKey, userId, deviceId, contactId)) {
-            console.log("✅ Smart notifications working");
-        } else {
-            console.log("❌ Smart notifications failed");
-        }
-    }
-
-    console.log("🎯 Enhanced features test completed");
-};
 
 console.log("Cyberpunk Agent | Enhanced features integrated into module.js");
 
@@ -874,212 +767,7 @@ window.cyberpunkAgentFixTokenControls = function () {
     }
 };
 
-// Test function for contact list behavior
-window.cyberpunkAgentTestContactLogic = async function () {
-    console.log("📋 === CYBERPUNK AGENT - TESTING CONTACT LOGIC ===");
 
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Get available devices for testing
-    const devices = Array.from(agent.devices.values());
-    if (devices.length < 2) {
-        console.log("❌ Need at least 2 devices for testing contact logic");
-        console.log("Available devices:", devices.length);
-        return false;
-    }
-
-    const device1 = devices[0];
-    const device2 = devices[1];
-
-    console.log(`🔍 Testing contact logic between:`);
-    console.log(`  - Device 1: ${device1.ownerName || device1.deviceName} (${device1.id})`);
-    console.log(`  - Device 2: ${device2.ownerName || device2.deviceName} (${device2.id})`);
-
-    // Check initial contact lists
-    const device1Contacts = device1.contacts || [];
-    const device2Contacts = device2.contacts || [];
-
-    console.log(`📱 Initial contact lists:`);
-    console.log(`  - Device 1 contacts: ${device1Contacts.length}`);
-    console.log(`  - Device 2 contacts: ${device2Contacts.length}`);
-    console.log(`  - Device 1 has Device 2: ${device1Contacts.includes(device2.id)}`);
-    console.log(`  - Device 2 has Device 1: ${device2Contacts.includes(device1.id)}`);
-
-    // Test sending a message from device1 to device2
-    console.log(`📤 Sending test message from Device 1 to Device 2...`);
-    const testMessage = `Contact test message ${Date.now()}`;
-
-    try {
-        const success = await agent.sendDeviceMessage(device1.id, device2.id, testMessage);
-
-        if (success) {
-            console.log("✅ Message sent successfully");
-
-            // Check if contacts were auto-added
-            setTimeout(() => {
-                // Reload device data to see changes
-                agent.loadDeviceData();
-
-                const updatedDevice1 = agent.devices.get(device1.id);
-                const updatedDevice2 = agent.devices.get(device2.id);
-
-                const device1ContactsAfter = updatedDevice1.contacts || [];
-                const device2ContactsAfter = updatedDevice2.contacts || [];
-
-                console.log(`📱 Contact lists after message:`);
-                console.log(`  - Device 1 contacts: ${device1ContactsAfter.length}`);
-                console.log(`  - Device 2 contacts: ${device2ContactsAfter.length}`);
-                console.log(`  - Device 1 has Device 2: ${device1ContactsAfter.includes(device2.id)}`);
-                console.log(`  - Device 2 has Device 1: ${device2ContactsAfter.includes(device1.id)}`);
-
-                // Verify automatic addition worked
-                const device1Added = device1ContactsAfter.includes(device2.id);
-                const device2Added = device2ContactsAfter.includes(device1.id);
-
-                if (device1Added && device2Added) {
-                    console.log("✅ Automatic contact addition working correctly!");
-                } else {
-                    console.log("❌ Automatic contact addition failed:");
-                    console.log(`  - Device 1 → Device 2: ${device1Added ? 'Added' : 'Missing'}`);
-                    console.log(`  - Device 2 → Device 1: ${device2Added ? 'Added' : 'Missing'}`);
-                }
-
-                // Check conversation
-                const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
-                const conversation = agent.messages.get(conversationKey);
-
-                if (conversation && conversation.length > 0) {
-                    console.log(`✅ Message found in conversation (${conversation.length} messages)`);
-                    const lastMessage = conversation[conversation.length - 1];
-                    console.log(`  - Last message: "${lastMessage.text}"`);
-                } else {
-                    console.log("❌ Message not found in conversation");
-                }
-
-            }, 1000); // Wait 1 second for processing
-
-        } else {
-            console.log("❌ Message sending failed");
-        }
-    } catch (error) {
-        console.error("❌ Error testing contact logic:", error);
-    }
-
-    console.log("📋 === CONTACT LOGIC TEST COMPLETED ===");
-    return true;
-};
-
-// Test function for NPC messaging scenarios
-window.cyberpunkAgentTestNPCMessaging = async function () {
-    console.log("🤖 === CYBERPUNK AGENT - TESTING NPC MESSAGING ===");
-
-    if (!game.user.isGM) {
-        console.log("❌ This test requires GM access");
-        return false;
-    }
-
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Get all character actors
-    const allActors = game.actors.filter(a => a.type === 'character');
-    if (allActors.length < 2) {
-        console.log("❌ Need at least 2 character actors for testing");
-        return false;
-    }
-
-    const npc = allActors[0];  // Use first as NPC
-    const pc = allActors[1];   // Use second as PC
-
-    console.log(`🔍 Testing NPC → PC messaging:`);
-    console.log(`  - NPC: ${npc.name} (${npc.id})`);
-    console.log(`  - PC: ${pc.name} (${pc.id})`);
-
-    // Check if both have devices
-    const npcDevices = agent.deviceMappings.get(npc.id) || [];
-    const pcDevices = agent.deviceMappings.get(pc.id) || [];
-
-    console.log(`📱 Current device status:`);
-    console.log(`  - NPC devices: ${npcDevices.length}`);
-    console.log(`  - PC devices: ${pcDevices.length}`);
-
-    // Send message from NPC to PC
-    console.log(`📤 Sending message from NPC to PC...`);
-    const testMessage = `NPC test message from ${npc.name} to ${pc.name} - ${Date.now()}`;
-
-    try {
-        const success = await agent.sendMessage(npc.id, pc.id, testMessage);
-
-        if (success) {
-            console.log("✅ Message sent successfully");
-
-            // Check device status after message
-            setTimeout(() => {
-                agent.loadDeviceData();
-
-                const npcDevicesAfter = agent.deviceMappings.get(npc.id) || [];
-                const pcDevicesAfter = agent.deviceMappings.get(pc.id) || [];
-
-                console.log(`📱 Device status after message:`);
-                console.log(`  - NPC devices: ${npcDevicesAfter.length}`);
-                console.log(`  - PC devices: ${pcDevicesAfter.length}`);
-
-                if (npcDevicesAfter.length > 0 && pcDevicesAfter.length > 0) {
-                    const npcDevice = agent.devices.get(npcDevicesAfter[0]);
-                    const pcDevice = agent.devices.get(pcDevicesAfter[0]);
-
-                    console.log(`🔍 Device details:`);
-                    console.log(`  - NPC Device: ${npcDevice?.deviceName} (${npcDevice?.id})`);
-                    console.log(`  - NPC Avatar: ${npcDevice?.img}`);
-                    console.log(`  - PC Device: ${pcDevice?.deviceName} (${pcDevice?.id})`);
-                    console.log(`  - PC Avatar: ${pcDevice?.img}`);
-
-                    // Check conversation
-                    const conversationKey = agent._getDeviceConversationKey(npcDevicesAfter[0], pcDevicesAfter[0]);
-                    const conversation = agent.messages.get(conversationKey);
-
-                    if (conversation && conversation.length > 0) {
-                        console.log(`✅ Message found in device conversation (${conversation.length} messages)`);
-                        const lastMessage = conversation[conversation.length - 1];
-                        console.log(`  - Last message: "${lastMessage.text}"`);
-                        console.log(`  - Sender ID: ${lastMessage.senderId}`);
-                        console.log(`  - Receiver ID: ${lastMessage.receiverId}`);
-                    } else {
-                        console.log("❌ Message not found in device conversation");
-                        console.log(`  - Conversation key: ${conversationKey}`);
-                        console.log(`  - Available conversations:`, Array.from(agent.messages.keys()));
-                    }
-
-                    // Check contact lists
-                    const npcContacts = npcDevice.contacts || [];
-                    const pcContacts = pcDevice.contacts || [];
-
-                    console.log(`📋 Contact lists after message:`);
-                    console.log(`  - NPC contacts: ${npcContacts.length} (has PC: ${npcContacts.includes(pcDevicesAfter[0])})`);
-                    console.log(`  - PC contacts: ${pcContacts.length} (has NPC: ${pcContacts.includes(npcDevicesAfter[0])})`);
-                }
-
-            }, 1500); // Wait 1.5 seconds for processing
-
-        } else {
-            console.log("❌ Message sending failed");
-        }
-    } catch (error) {
-        console.error("❌ Error testing NPC messaging:", error);
-    }
-
-    console.log("🤖 === NPC MESSAGING TEST COMPLETED ===");
-    return true;
-};
 
 // Debug function to check actor-device mapping
 window.cyberpunkAgentDebugActorDevices = function () {
@@ -1280,126 +968,7 @@ window.cyberpunkAgentDebugNavigation = function () {
     return true;
 };
 
-// Test function for player messaging permissions
-window.cyberpunkAgentTestPlayerMessaging = async function () {
-    console.log("👥 === CYBERPUNK AGENT - TESTING PLAYER MESSAGING ===");
 
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Get available devices
-    const devices = Array.from(agent.devices.values());
-    if (devices.length < 2) {
-        console.log("❌ Need at least 2 devices for testing player messaging");
-        return false;
-    }
-
-    const device1 = devices[0];
-    const device2 = devices[1];
-
-    console.log(`🔍 Testing player messaging:`);
-    console.log(`  - From: ${device1.deviceName} (${device1.id})`);
-    console.log(`  - To: ${device2.deviceName} (${device2.id})`);
-    console.log(`  - User is GM: ${game.user.isGM}`);
-    console.log(`  - SocketLib available: ${agent._isSocketLibAvailable()}`);
-
-    const testMessage = `Player messaging test ${Date.now()}`;
-
-    try {
-        console.log(`📤 Sending test message: "${testMessage}"`);
-        const success = await agent.sendDeviceMessage(device1.id, device2.id, testMessage);
-
-        if (success) {
-            console.log("✅ Player message sent successfully");
-
-            // Check if message was stored locally
-            const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
-            const conversation = agent.messages.get(conversationKey);
-
-            if (conversation && conversation.length > 0) {
-                const lastMessage = conversation[conversation.length - 1];
-                console.log("✅ Message stored locally:", lastMessage.text);
-
-                // Check SocketLib delivery
-                if (agent._isSocketLibAvailable()) {
-                    console.log("✅ SocketLib should deliver to other clients in real-time");
-                } else {
-                    console.log("⚠️ SocketLib not available - message local only");
-                }
-            } else {
-                console.log("❌ Message not found in local storage");
-            }
-
-        } else {
-            console.log("❌ Player message sending failed");
-        }
-
-    } catch (error) {
-        console.error("❌ Error testing player messaging:", error);
-    }
-
-    console.log("👥 === PLAYER MESSAGING TEST COMPLETED ===");
-    return true;
-};
-
-// Test function for offline message queue
-window.cyberpunkAgentTestOfflineQueue = function () {
-    console.log("📬 === CYBERPUNK AGENT - TESTING OFFLINE QUEUE ===");
-
-    if (!game.user.isGM) {
-        console.log("❌ This test requires GM access to check the queue");
-        return false;
-    }
-
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    try {
-        // Get current offline queue
-        const offlineQueue = game.settings.get('cyberpunk-agent', 'offline-message-queue') || {};
-
-        console.log("📬 Current offline message queue:");
-        console.log(`   - Total users with queued messages: ${Object.keys(offlineQueue).length}`);
-
-        for (const [userId, messages] of Object.entries(offlineQueue)) {
-            const user = game.users.get(userId);
-            const userName = user ? user.name : `Unknown (${userId})`;
-            const undeliveredMessages = messages.filter(msg => !msg.delivered);
-
-            console.log(`   📨 ${userName}: ${undeliveredMessages.length} undelivered messages`);
-
-            if (undeliveredMessages.length > 0) {
-                undeliveredMessages.forEach((msg, index) => {
-                    const queuedTime = new Date(msg.queuedAt).toLocaleString();
-                    console.log(`      ${index + 1}. "${msg.text}" (queued: ${queuedTime})`);
-                });
-            }
-        }
-
-        // Show connected users
-        console.log("\n👥 Currently connected users:");
-        game.users.forEach(user => {
-            if (user.active) {
-                console.log(`   ✅ ${user.name} (online)`);
-            } else {
-                const queuedCount = offlineQueue[user.id]?.filter(msg => !msg.delivered)?.length || 0;
-                console.log(`   ❌ ${user.name} (offline${queuedCount > 0 ? `, ${queuedCount} queued` : ''})`);
-            }
-        });
-
-    } catch (error) {
-        console.error("❌ Error checking offline queue:", error);
-    }
-
-    console.log("📬 === OFFLINE QUEUE TEST COMPLETED ===");
-    return true;
-};
 
 // Debug function for offline message issues
 window.cyberpunkAgentDebugOfflineMessages = function (deviceId) {
@@ -1636,48 +1205,6 @@ window.cyberpunkAgentTestGMConnection = async function () {
     }
 };
 
-// Test function to simulate offline player scenario
-window.cyberpunkAgentTestOfflinePlayerSync = async function () {
-    console.log("📱 === CYBERPUNK AGENT - TESTING OFFLINE PLAYER SYNC ===");
-
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Check server messages
-    const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
-    console.log(`📬 Server has ${Object.keys(serverMessages).length} conversations stored`);
-
-    // Show all server conversations
-    for (const [conversationKey, messages] of Object.entries(serverMessages)) {
-        console.log(`   💬 ${conversationKey}: ${messages.length} messages`);
-        if (messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            console.log(`      Last: "${lastMessage.text}" (${lastMessage.time})`);
-        }
-    }
-
-    // If we're a player, request sync
-    if (!game.user.isGM) {
-        console.log("\n🔄 Requesting message sync as player...");
-        await agent.requestMessageSyncFromGM();
-    } else {
-        console.log("\n👑 As GM, checking which players need sync...");
-
-        // Find offline players with messages
-        for (const user of game.users) {
-            if (!user.active && !user.isGM) {
-                console.log(`📤 Would sync messages for offline player: ${user.name}`);
-            }
-        }
-    }
-
-    console.log("📱 === OFFLINE PLAYER SYNC TEST COMPLETED ===");
-    return true;
-};
 
 console.log("🔧 Cyberpunk Agent GM functions loaded:");
 console.log("  - cyberpunkAgentMasterReset() - Executa reset completo do sistema");
@@ -2089,8 +1616,12 @@ class CyberpunkAgent {
         // Messages and settings per device
         this.messages = new Map(); // deviceId -> conversationKey -> [messages]
         this._userMuteSettings = new Map(); // userId -> deviceId -> {contactDeviceId -> muted}
-        this.lastReadTimestamps = new Map(); // deviceId -> conversationKey -> timestamp
+        this.lastReadTimestamps = new Map(); // deviceId -> conversationKey -> timestamp (legacy)
         this.unreadCounts = new Map(); // deviceId -> conversationKey -> count
+
+        // Enhanced read status system (user-specific, server-based)
+        this.readStatus = new Map(); // conversationKey -> userId -> {lastReadTimestamp, readMessages}
+        this._readStatusCache = new Map(); // Local cache for performance
 
         // UI and system management
         this.uiController = new UIController();
@@ -2151,6 +1682,16 @@ class CyberpunkAgent {
         game.settings.register('cyberpunk-agent', 'server-messages', {
             name: 'Server Messages',
             hint: 'Internal storage for server-based messaging system',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: {}
+        });
+
+        // Register server-based read status setting
+        game.settings.register('cyberpunk-agent', 'server-read-status', {
+            name: 'Server Read Status',
+            hint: 'Internal storage for server-based read status system',
             scope: 'world',
             config: false,
             type: Object,
@@ -2320,6 +1861,9 @@ class CyberpunkAgent {
 
         // Load user's mute settings
         this._loadUserMuteSettings(game.user.id);
+
+        // Initialize enhanced read status system
+        await this._initializeEnhancedReadStatus();
 
         // Setup SocketLib integration if available
         this.setupSocketLibIntegration();
@@ -4324,16 +3868,30 @@ class CyberpunkAgent {
     /**
      * Mark a conversation as read (when user opens the chat)
      */
-    markConversationAsRead(actorId1, actorId2) {
+    /**
+     * Mark a conversation as read (when user opens the chat)
+     * Enhanced version with user-specific read status and GM/Player separation
+     */
+    async markConversationAsRead(actorId1, actorId2, userId = null) {
+        const currentUserId = userId || game.user.id;
         const conversationKey = this._getConversationKey(actorId1, actorId2);
         const now = Date.now();
 
-        console.log(`Cyberpunk Agent | Marking conversation ${conversationKey} as read for actor ${actorId1}`);
+        console.log(`Cyberpunk Agent | Marking conversation ${conversationKey} as read for user ${currentUserId} (actor ${actorId1})`);
 
-        // Update the last read timestamp
+        // Check if this user should be able to mark messages as read
+        if (!this._shouldMarkAsRead(actorId1, actorId2, currentUserId)) {
+            console.log(`Cyberpunk Agent | User ${currentUserId} cannot mark conversation ${conversationKey} as read`);
+            return;
+        }
+
+        // Update the enhanced read status system
+        await this._updateReadStatus(conversationKey, currentUserId, now);
+
+        // Legacy support: Update the old read timestamp system
         this.lastReadTimestamps.set(conversationKey, now);
 
-        // Mark all messages in this conversation as read
+        // Mark all messages in this conversation as read for this user
         if (this.messages.has(conversationKey)) {
             const conversation = this.messages.get(conversationKey);
             let hasChanges = false;
@@ -4343,16 +3901,16 @@ class CyberpunkAgent {
                 if (message.receiverId === actorId1 && !message.read) {
                     message.read = true;
                     hasChanges = true;
-                    console.log(`Cyberpunk Agent | Marked message ${message.id} as read`);
+                    console.log(`Cyberpunk Agent | Marked message ${message.id} as read for user ${currentUserId}`);
                 }
             });
 
             // Save messages if there were changes
             if (hasChanges) {
                 this.saveMessages();
-                console.log(`Cyberpunk Agent | Marked messages in conversation ${conversationKey} as read`);
+                console.log(`Cyberpunk Agent | Marked messages in conversation ${conversationKey} as read for user ${currentUserId}`);
             } else {
-                console.log(`Cyberpunk Agent | No messages to mark as read in conversation ${conversationKey}`);
+                console.log(`Cyberpunk Agent | No messages to mark as read in conversation ${conversationKey} for user ${currentUserId}`);
             }
         } else {
             console.log(`Cyberpunk Agent | No conversation found for key ${conversationKey}`);
@@ -4362,7 +3920,7 @@ class CyberpunkAgent {
         this.unreadCounts.delete(conversationKey);
         console.log(`Cyberpunk Agent | Cleared unread count cache for conversation ${conversationKey}`);
 
-        // Save the read timestamps to settings
+        // Save the read timestamps to settings (legacy)
         this._saveReadTimestamps();
 
         // Force immediate UI updates using multiple strategies
@@ -4496,29 +4054,44 @@ class CyberpunkAgent {
     /**
      * Get unread message count for a conversation
      */
-    getUnreadCount(actorId1, actorId2) {
+    /**
+     * Get unread message count for a conversation
+     * Enhanced version with user-specific read status
+     */
+    getUnreadCount(actorId1, actorId2, userId = null) {
+        const currentUserId = userId || game.user.id;
         const conversationKey = this._getConversationKey(actorId1, actorId2);
 
-        // Check cache first
-        if (this.unreadCounts.has(conversationKey)) {
-            const cachedCount = this.unreadCounts.get(conversationKey);
-            console.log(`Cyberpunk Agent | Using cached unread count for ${conversationKey}: ${cachedCount}`);
+        // Check cache first (user-specific cache key)
+        const cacheKey = `${conversationKey}-${currentUserId}`;
+        if (this.unreadCounts.has(cacheKey)) {
+            const cachedCount = this.unreadCounts.get(cacheKey);
+            console.log(`Cyberpunk Agent | Using cached unread count for ${conversationKey} (user ${currentUserId}): ${cachedCount}`);
             return cachedCount;
         }
 
         // Get all messages for this conversation
         const messages = this.getMessagesForConversation(actorId1, actorId2);
 
-        // Count messages that are unread for the current user
-        const unreadCount = messages.filter(message =>
-            message.receiverId === actorId1 &&
-            !message.read
-        ).length;
+        // Get user-specific read status
+        const userReadStatus = this.readStatus.get(conversationKey)?.get(currentUserId);
 
-        // Cache the result
-        this.unreadCounts.set(conversationKey, unreadCount);
+        // Count messages that are unread for this specific user
+        const unreadCount = messages.filter(message => {
+            if (message.receiverId !== actorId1) return false;
 
-        console.log(`Cyberpunk Agent | Calculated unread count for ${conversationKey}: ${unreadCount} (${messages.length} total messages)`);
+            // Use enhanced read status if available, fallback to legacy read property
+            if (userReadStatus) {
+                return !this._isMessageReadByUser(message, currentUserId, userReadStatus);
+            } else {
+                return !message.read;
+            }
+        }).length;
+
+        // Cache the result with user-specific key
+        this.unreadCounts.set(cacheKey, unreadCount);
+
+        console.log(`Cyberpunk Agent | Calculated unread count for ${conversationKey} (user ${currentUserId}): ${unreadCount} (${messages.length} total messages)`);
 
         return unreadCount;
     }
@@ -4581,6 +4154,379 @@ class CyberpunkAgent {
             }
         } catch (error) {
             console.error("Cyberpunk Agent | Error loading read timestamps from localStorage:", error);
+        }
+    }
+
+    /**
+     * ENHANCED READ STATUS SYSTEM
+     * ===========================
+     * 
+     * This system provides user-specific, server-based read status tracking
+     * that addresses cross-browser synchronization and GM/Player separation.
+     * 
+     * Key Features:
+     * - User-specific read status (not device-based)
+     * - Server-based storage for cross-browser sync
+     * - GM/Player separation logic
+     * - Proper ownership validation
+     */
+
+    /**
+     * Check if a user should be able to mark messages as read
+     */
+    _shouldMarkAsRead(actorId1, actorId2, userId) {
+        const user = game.users.get(userId);
+        const actor = game.actors.get(actorId1);
+
+        if (!user || !actor) {
+            console.warn(`Cyberpunk Agent | Invalid user or actor: user=${userId}, actor=${actorId1}`);
+            return false;
+        }
+
+        // If user is GM operating their own device, mark as read
+        if (user.isGM && actor.ownership[userId] === 3) {
+            console.log(`Cyberpunk Agent | GM ${user.name} operating own device ${actorId1} - marking as read`);
+            return true;
+        }
+
+        // If user is Player operating their own device, mark as read
+        if (!user.isGM && actor.ownership[userId] === 3) {
+            console.log(`Cyberpunk Agent | Player ${user.name} operating own device ${actorId1} - marking as read`);
+            return true;
+        }
+
+        // If GM is operating a player's device, don't mark as read for the player
+        if (user.isGM && actor.ownership[userId] !== 3) {
+            console.log(`Cyberpunk Agent | GM ${user.name} operating player device ${actorId1} - NOT marking as read`);
+            return false;
+        }
+
+        // If player is trying to operate someone else's device, don't mark as read
+        if (!user.isGM && actor.ownership[userId] !== 3) {
+            console.log(`Cyberpunk Agent | Player ${user.name} operating someone else's device ${actorId1} - NOT marking as read`);
+            return false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Update read status for a specific user and conversation
+     */
+    async _updateReadStatus(conversationKey, userId, timestamp) {
+        try {
+            // Update local cache
+            if (!this.readStatus.has(conversationKey)) {
+                this.readStatus.set(conversationKey, new Map());
+            }
+
+            const conversationReadStatus = this.readStatus.get(conversationKey);
+            const readMessageIds = this._getReadMessageIds(conversationKey, userId);
+
+            conversationReadStatus.set(userId, {
+                lastReadTimestamp: timestamp,
+                readMessages: readMessageIds
+            });
+
+            console.log(`Cyberpunk Agent | Updated read status for user ${userId} in conversation ${conversationKey}`);
+
+            // Save to server
+            await this._saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds);
+
+            // Broadcast update to other clients
+            await this._broadcastReadStatusUpdate(conversationKey, userId, timestamp, readMessageIds);
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error updating read status for user ${userId}:`, error);
+        }
+    }
+
+    /**
+     * Get list of message IDs that should be marked as read for a user
+     */
+    _getReadMessageIds(conversationKey, userId) {
+        if (!this.messages.has(conversationKey)) {
+            return [];
+        }
+
+        const conversation = this.messages.get(conversationKey);
+        const [actorId1, actorId2] = conversationKey.split('-');
+
+        return conversation
+            .filter(message => message.receiverId === actorId1)
+            .map(message => message.id);
+    }
+
+    /**
+     * Check if a message is read by a specific user
+     */
+    _isMessageReadByUser(message, userId, userReadStatus) {
+        if (!userReadStatus) return false;
+
+        return userReadStatus.readMessages.includes(message.id) ||
+            message.timestamp <= userReadStatus.lastReadTimestamp;
+    }
+
+    /**
+     * Save read status to server (following message persistence pattern)
+     */
+    async _saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds) {
+        try {
+            // Use server settings for read status (same pattern as messages)
+            const serverReadStatus = game.settings.get('cyberpunk-agent', 'server-read-status') || {};
+
+            if (!serverReadStatus[userId]) {
+                serverReadStatus[userId] = {};
+            }
+
+            serverReadStatus[userId][conversationKey] = {
+                lastReadTimestamp: timestamp,
+                readMessages: readMessageIds
+            };
+
+            // Save to server settings
+            await game.settings.set('cyberpunk-agent', 'server-read-status', serverReadStatus);
+            console.log(`Cyberpunk Agent | Saved read status to server for user ${userId}`);
+
+            // Also save to localStorage as cache
+            const storageKey = `cyberpunk-agent-read-status-${userId}`;
+            const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            existingData[conversationKey] = {
+                lastReadTimestamp: timestamp,
+                readMessages: readMessageIds
+            };
+            localStorage.setItem(storageKey, JSON.stringify(existingData));
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error saving read status to server:`, error);
+
+            // Fallback to localStorage only
+            try {
+                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                existingData[conversationKey] = {
+                    lastReadTimestamp: timestamp,
+                    readMessages: readMessageIds
+                };
+                localStorage.setItem(storageKey, JSON.stringify(existingData));
+                console.log(`Cyberpunk Agent | Fallback: Saved read status to localStorage for user ${userId}`);
+            } catch (localStorageError) {
+                console.error(`Cyberpunk Agent | Error saving to localStorage fallback:`, localStorageError);
+            }
+        }
+    }
+
+    /**
+     * Load read status from server (following message persistence pattern)
+     */
+    async _loadReadStatusFromServer(userId) {
+        try {
+            // Try to load from server settings first
+            const serverReadStatus = game.settings.get('cyberpunk-agent', 'server-read-status') || {};
+            const userReadStatus = serverReadStatus[userId] || {};
+
+            if (Object.keys(userReadStatus).length > 0) {
+                // Load from server settings
+                Object.entries(userReadStatus).forEach(([conversationKey, userData]) => {
+                    if (!this.readStatus.has(conversationKey)) {
+                        this.readStatus.set(conversationKey, new Map());
+                    }
+
+                    this.readStatus.get(conversationKey).set(userId, userData);
+                });
+
+                console.log(`Cyberpunk Agent | Loaded read status from server settings for user ${userId}`);
+
+                // Update localStorage cache
+                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                localStorage.setItem(storageKey, JSON.stringify(userReadStatus));
+
+            } else {
+                // Fallback to localStorage
+                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storedData = localStorage.getItem(storageKey);
+
+                if (storedData) {
+                    const readStatusData = JSON.parse(storedData);
+
+                    Object.entries(readStatusData).forEach(([conversationKey, userData]) => {
+                        if (!this.readStatus.has(conversationKey)) {
+                            this.readStatus.set(conversationKey, new Map());
+                        }
+
+                        this.readStatus.get(conversationKey).set(userId, userData);
+                    });
+
+                    console.log(`Cyberpunk Agent | Loaded read status from localStorage fallback for user ${userId}`);
+                } else {
+                    console.log(`Cyberpunk Agent | No read status found for user ${userId}`);
+                }
+            }
+
+        } catch (error) {
+            console.error(`Cyberpunk Agent | Error loading read status from server:`, error);
+
+            // Fallback to localStorage only
+            try {
+                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storedData = localStorage.getItem(storageKey);
+
+                if (storedData) {
+                    const readStatusData = JSON.parse(storedData);
+
+                    Object.entries(readStatusData).forEach(([conversationKey, userData]) => {
+                        if (!this.readStatus.has(conversationKey)) {
+                            this.readStatus.set(conversationKey, new Map());
+                        }
+
+                        this.readStatus.get(conversationKey).set(userId, userData);
+                    });
+
+                    console.log(`Cyberpunk Agent | Fallback: Loaded read status from localStorage for user ${userId}`);
+                }
+            } catch (localStorageError) {
+                console.error(`Cyberpunk Agent | Error loading from localStorage fallback:`, localStorageError);
+            }
+        }
+    }
+
+    /**
+     * Initialize the enhanced read status system
+     */
+    async _initializeEnhancedReadStatus() {
+        try {
+            console.log("Cyberpunk Agent | Initializing enhanced read status system...");
+
+            // Load read status for current user
+            await this._loadReadStatusFromServer(game.user.id);
+
+            // Migrate legacy read timestamps if they exist
+            await this._migrateLegacyReadTimestamps();
+
+            // Synchronize with other clients if SocketLib is available
+            if (this.socketLibIntegration && this.socketLibIntegration.isAvailable()) {
+                // Add a small delay to ensure SocketLib is fully ready
+                setTimeout(async () => {
+                    await this.synchronizeReadStatusWithClients();
+                }, 1000);
+            }
+
+            console.log("Cyberpunk Agent | Enhanced read status system initialized successfully");
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error initializing enhanced read status system:", error);
+        }
+    }
+
+    /**
+     * Migrate legacy read timestamps to new enhanced system
+     */
+    async _migrateLegacyReadTimestamps() {
+        try {
+            // Load legacy read timestamps
+            this._loadReadTimestamps();
+
+            if (this.lastReadTimestamps.size === 0) {
+                console.log("Cyberpunk Agent | No legacy read timestamps to migrate");
+                return;
+            }
+
+            console.log(`Cyberpunk Agent | Migrating ${this.lastReadTimestamps.size} legacy read timestamps...`);
+
+            // Convert legacy timestamps to new format
+            for (const [conversationKey, timestamp] of this.lastReadTimestamps.entries()) {
+                if (!this.readStatus.has(conversationKey)) {
+                    this.readStatus.set(conversationKey, new Map());
+                }
+
+                // Get read message IDs for this conversation
+                const readMessageIds = this._getReadMessageIds(conversationKey, game.user.id);
+
+                this.readStatus.get(conversationKey).set(game.user.id, {
+                    lastReadTimestamp: timestamp,
+                    readMessages: readMessageIds
+                });
+            }
+
+            // Save migrated data
+            await this._saveReadStatusToServer('', game.user.id, Date.now(), []);
+
+            console.log("Cyberpunk Agent | Legacy read timestamps migrated successfully");
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error migrating legacy read timestamps:", error);
+        }
+    }
+
+    /**
+     * Synchronize read status with other clients
+     */
+    async synchronizeReadStatusWithClients() {
+        try {
+            if (!this.socketLibIntegration || !this.socketLibIntegration.isAvailable()) {
+                console.log("Cyberpunk Agent | SocketLib not available for read status sync");
+                return;
+            }
+
+            console.log("Cyberpunk Agent | Synchronizing read status with other clients...");
+
+            // Get all active users except current user
+            const activeUsers = Array.from(game.users.values()).filter(user =>
+                user.active && user.id !== game.user.id
+            );
+
+            if (activeUsers.length === 0) {
+                console.log("Cyberpunk Agent | No other active users for read status sync");
+                return;
+            }
+
+            // Request read status sync from other users
+            for (const user of activeUsers) {
+                try {
+                    await this.socketLibIntegration.sendSystemResponseToUser(
+                        user.id,
+                        'requestReadStatusSync',
+                        {
+                            requestingUserId: game.user.id,
+                            requestingUserName: game.user.name,
+                            timestamp: Date.now()
+                        }
+                    );
+                    console.log(`Cyberpunk Agent | Requested read status sync from ${user.name}`);
+                } catch (error) {
+                    console.error(`Cyberpunk Agent | Error requesting read status sync from ${user.name}:`, error);
+                }
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error synchronizing read status with clients:", error);
+        }
+    }
+
+    /**
+     * Broadcast read status update to other clients
+     */
+    async _broadcastReadStatusUpdate(conversationKey, userId, timestamp, readMessageIds) {
+        try {
+            if (!this.socketLibIntegration || !this.socketLibIntegration.isAvailable()) {
+                console.log("Cyberpunk Agent | SocketLib not available for read status broadcast");
+                return;
+            }
+
+            const updateData = {
+                conversationKey,
+                userId,
+                timestamp,
+                readMessageIds,
+                updatingUserName: game.user.name
+            };
+
+            // Broadcast to all other users
+            await this.socketLibIntegration.sendSystemResponseToOthers('readStatusUpdate', updateData);
+            console.log(`Cyberpunk Agent | Broadcasted read status update for conversation ${conversationKey}`);
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error broadcasting read status update:", error);
         }
     }
 
@@ -10331,13 +10277,6 @@ class CyberpunkAgent {
 }
 
 // Make test functions globally available
-window.testContactNetworkPersistence = function () {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.testContactNetworkPersistence();
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 window.verifyContactNetworkPersistence = function () {
     if (CyberpunkAgent.instance) {
@@ -10347,13 +10286,6 @@ window.verifyContactNetworkPersistence = function () {
     }
 };
 
-window.testPlayerContactNetworkAccess = function () {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.testPlayerContactNetworkAccess();
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 
 
@@ -10388,70 +10320,7 @@ window.debugUIController = function () {
     }
 };
 
-window.testMessagePersistence = function () {
-    if (CyberpunkAgent.instance) {
-        console.log("=== TESTING MESSAGE PERSISTENCE ===");
 
-        // Get current messages
-        const currentMessages = Object.fromEntries(CyberpunkAgent.instance.messages);
-        console.log("Current messages in memory:", currentMessages);
-
-        // Test sending a message
-        const testMessage = "Test message " + Date.now();
-        console.log("Sending test message:", testMessage);
-
-        // This will be called from the chat interface
-        console.log("🔄 Please send this message in the chat interface:", testMessage);
-        console.log("🔄 Then check if it appears immediately and persists after refresh");
-
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testRealtimeCommunication = function () {
-    if (CyberpunkAgent.instance) {
-        console.log("=== TESTING REALTIME COMMUNICATION ===");
-
-        // Test SocketLib connection
-        console.log("🔍 Testing SocketLib connection...");
-        const socketStatus = CyberpunkAgent.instance.socketLibIntegration.getConnectionStatus();
-        console.log("SocketLib Status:", socketStatus);
-
-        // Test if we can send a message via SocketLib
-        console.log("🔍 Testing SocketLib message sending...");
-        const testMessage = "Realtime test " + Date.now();
-
-        // Get user actors for testing
-        const userActors = CyberpunkAgent.instance.getUserActors();
-        if (userActors.length >= 2) {
-            const actor1 = userActors[0];
-            const actor2 = userActors[1];
-
-            console.log(`🔄 Testing message from ${actor1.name} to ${actor2.name}:`, testMessage);
-
-            // Send test message via SocketLib directly
-            CyberpunkAgent.instance.socketLibIntegration.sendMessage(actor1.id, actor2.id, testMessage, `test-${Date.now()}`)
-                .then(success => {
-                    console.log("✅ SocketLib message sending result:", success);
-                    if (success) {
-                        console.log("🔄 Message sent via SocketLib - check if it appears in the other client");
-                    } else {
-                        console.log("❌ SocketLib message sending failed");
-                    }
-                })
-                .catch(error => {
-                    console.error("❌ SocketLib message sending error:", error);
-                });
-        } else {
-            console.log("⚠️ Need at least 2 user actors to test realtime communication");
-            console.log("Available actors:", userActors.map(a => a.name));
-        }
-
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 window.checkSocketLibStatus = function () {
     if (CyberpunkAgent.instance) {
@@ -10462,14 +10331,6 @@ window.checkSocketLibStatus = function () {
     }
 };
 
-window.testSocketLibSetup = function () {
-    if (CyberpunkAgent.instance) {
-        console.log("=== TESTING SOCKETLIB SETUP ===");
-        CyberpunkAgent.instance._testSocketLibSetup();
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 console.log("Cyberpunk Agent | module.js loaded successfully");
 
@@ -10657,29 +10518,8 @@ Hooks.once('disableModule', () => {
 window.CyberpunkAgent = CyberpunkAgent;
 
 // Make test functions globally available
-window.testRealtimeUpdate = () => {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.testRealtimeUpdate();
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
-window.testCrossClientCommunication = () => {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.testCrossClientCommunication();
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
-window.testSocketLibOfficial = () => {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.testSocketLibOfficial();
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
 window.debugSocketLib = () => {
     if (CyberpunkAgent.instance) {
@@ -10689,55 +10529,7 @@ window.debugSocketLib = () => {
     }
 };
 
-window.testSystemMessage = () => {
-    if (CyberpunkAgent.instance) {
-        CyberpunkAgent.instance.broadcastContactUpdate({
-            type: 'contactUpdate',
-            data: {
-                timestamp: Date.now(),
-                userId: game.user.id,
-                userName: game.user.name,
-                sessionId: game.data.id,
-                test: true
-            }
-        }, {
-            action: 'test',
-            contactName: 'Sistema de Mensagens',
-            actorId: 'test-actor',
-            contactActorId: 'test-contact'
-        });
-        console.log("Cyberpunk Agent | System message test completed");
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
-window.testMessageSystem = () => {
-    if (CyberpunkAgent.instance) {
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            // Send a test message
-            const success = CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, "Esta é uma mensagem de teste!");
-
-            if (success) {
-                console.log("Cyberpunk Agent | Test message sent successfully");
-                ui.notifications.info("Mensagem de teste enviada!");
-            } else {
-                console.error("Cyberpunk Agent | Failed to send test message");
-                ui.notifications.error("Erro ao enviar mensagem de teste");
-            }
-        } else {
-            console.error("Cyberpunk Agent | Need at least 2 character actors for message test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar mensagens");
-        }
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
 window.getConversationMessages = (actorId1, actorId2) => {
     if (CyberpunkAgent.instance) {
@@ -10752,42 +10544,6 @@ window.getConversationMessages = (actorId1, actorId2) => {
 
 
 
-window.testRealtimeMessages = () => {
-    if (CyberpunkAgent.instance) {
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            // Send multiple test messages to test real-time updates
-            const messages = [
-                "Teste de mensagem em tempo real #1",
-                "Teste de mensagem em tempo real #2",
-                "Teste de mensagem em tempo real #3"
-            ];
-
-            let sentCount = 0;
-            messages.forEach((msg, index) => {
-                setTimeout(() => {
-                    const success = CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, msg);
-                    if (success) {
-                        sentCount++;
-                        console.log(`Cyberpunk Agent | Realtime test message ${index + 1} sent successfully`);
-                        ui.notifications.info(`Mensagem de teste ${index + 1} enviada!`);
-                    }
-                }, index * 2000); // Send each message 2 seconds apart
-            });
-
-            console.log("Cyberpunk Agent | Realtime message test started - sending 3 messages over 6 seconds");
-        } else {
-            console.error("Cyberpunk Agent | Need at least 2 character actors for realtime message test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar mensagens em tempo real");
-        }
-    } else {
-        console.error("Cyberpunk Agent | Instance not available");
-    }
-};
 
 window.forceTokenControlsUpdate = () => {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -10815,53 +10571,6 @@ window.forceTokenControlsUpdate = () => {
     }
 };
 
-window.testFoundryChatIntegration = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== FoundryVTT Chat Integration Test ===");
-
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing chat integration between ${actor1.name} and ${actor2.name}`);
-
-            // Test 1: Send a message that should appear in FoundryVTT chat
-            const testMessage = "Esta é uma mensagem de teste para o chat do FoundryVTT!";
-            console.log("📤 Sending test message to FoundryVTT chat...");
-
-            CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, testMessage).then((success) => {
-                if (success) {
-                    console.log("✅ Test message sent successfully");
-                    ui.notifications.info("Mensagem de teste enviada para o chat do FoundryVTT!");
-
-                    // Test 2: Check if message appears in chat
-                    setTimeout(() => {
-                        const foundryMessages = CyberpunkAgent.instance.getMessagesFromFoundryChat(actor1.id, actor2.id);
-                        console.log("📋 Messages found in FoundryVTT chat:", foundryMessages.length);
-
-                        if (foundryMessages.length > 0) {
-                            console.log("✅ FoundryVTT chat integration working!");
-                            ui.notifications.success("Integração com chat do FoundryVTT funcionando!");
-                        } else {
-                            console.warn("⚠️ No messages found in FoundryVTT chat");
-                            ui.notifications.warn("Nenhuma mensagem encontrada no chat do FoundryVTT");
-                        }
-                    }, 1000);
-                } else {
-                    console.error("❌ Failed to send test message");
-                    ui.notifications.error("Falha ao enviar mensagem de teste");
-                }
-            });
-        } else {
-            console.error("❌ Need at least 2 character actors for chat integration test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar integração com chat");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 window.syncFoundryChat = () => {
     if (CyberpunkAgent.instance) {
@@ -10891,115 +10600,7 @@ window.getFoundryChatMessages = (actorId1, actorId2) => {
     }
 };
 
-window.testMessageSaving = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Message Saving System ===");
 
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing message saving between ${actor1.name} and ${actor2.name}`);
-            console.log(`👤 Current user: ${game.user.name} (GM: ${game.user.isGM})`);
-
-            // Test 1: Send a message
-            const testMessage = "Esta é uma mensagem de teste para verificar o salvamento!";
-            console.log("📤 Sending test message...");
-
-            CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, testMessage).then((success) => {
-                if (success) {
-                    console.log("✅ Test message sent successfully");
-                    ui.notifications.info("Mensagem de teste enviada e salva!");
-
-                    // Test 2: Check if message was saved
-                    setTimeout(() => {
-                        const messages = CyberpunkAgent.instance.getMessagesForConversation(actor1.id, actor2.id);
-                        console.log("📋 Messages in conversation:", messages.length);
-
-                        if (messages.length > 0) {
-                            console.log("✅ Message saving system working!");
-                            ui.notifications.success("Sistema de salvamento funcionando!");
-                        } else {
-                            console.warn("⚠️ No messages found in conversation");
-                            ui.notifications.warn("Nenhuma mensagem encontrada na conversa");
-                        }
-                    }, 1000);
-                } else {
-                    console.error("❌ Failed to send test message");
-                    ui.notifications.error("Falha ao enviar mensagem de teste");
-                }
-            });
-        } else {
-            console.error("❌ Need at least 2 character actors for message saving test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar salvamento");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testPrivateMessages = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Private Messages System ===");
-
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing private messages between ${actor1.name} and ${actor2.name}`);
-            console.log(`👤 Current user: ${game.user.name} (GM: ${game.user.isGM})`);
-
-            // Check current privacy setting
-            const privateMessages = game.settings.get('cyberpunk-agent', 'private-messages');
-            console.log(`🔒 Private messages enabled: ${privateMessages}`);
-
-            // Test 1: Send a private message
-            const testMessage = "Esta é uma mensagem privada de teste!";
-            console.log("📤 Sending private test message...");
-
-            CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, testMessage).then((success) => {
-                if (success) {
-                    console.log("✅ Private test message sent successfully");
-                    ui.notifications.info("Mensagem privada de teste enviada!");
-
-                    // Test 2: Check message visibility
-                    setTimeout(() => {
-                        const foundryMessages = CyberpunkAgent.instance.getMessagesFromFoundryChat(actor1.id, actor2.id);
-                        console.log("📋 Messages in FoundryVTT chat:", foundryMessages.length);
-
-                        if (foundryMessages.length > 0) {
-                            const lastMessage = foundryMessages[foundryMessages.length - 1];
-                            console.log("📋 Last message flags:", lastMessage);
-
-                            if (privateMessages) {
-                                console.log("✅ Private message system working!");
-                                ui.notifications.success("Sistema de mensagens privadas funcionando!");
-                            } else {
-                                console.log("✅ Public message system working!");
-                                ui.notifications.success("Sistema de mensagens públicas funcionando!");
-                            }
-                        } else {
-                            console.warn("⚠️ No messages found in FoundryVTT chat");
-                            ui.notifications.warn("Nenhuma mensagem encontrada no chat do FoundryVTT");
-                        }
-                    }, 1000);
-                } else {
-                    console.error("❌ Failed to send private test message");
-                    ui.notifications.error("Falha ao enviar mensagem privada de teste");
-                }
-            });
-        } else {
-            console.error("❌ Need at least 2 character actors for private message test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar mensagens privadas");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 window.togglePrivateMessages = () => {
     if (CyberpunkAgent.instance) {
@@ -11018,284 +10619,10 @@ window.togglePrivateMessages = () => {
     }
 };
 
-window.testMessageLayout = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Message Layout ===");
 
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
 
-            console.log(`📱 Testing message layout between ${actor1.name} and ${actor2.name}`);
 
-            // Test messages with different lengths and alternating senders
-            const testMessages = [
-                { sender: actor1, text: "Oi!" },
-                { sender: actor1, text: "Como você está?" },
-                { sender: actor1, text: "Tudo bem?" },
-                { sender: actor2, text: "Oi! Tudo bem sim!" },
-                { sender: actor2, text: "E você?" },
-                { sender: actor1, text: "Ótimo!" },
-                { sender: actor1, text: "Vamos conversar mais?" },
-                { sender: actor2, text: "Claro!" },
-                { sender: actor2, text: "Adoraria!" },
-                { sender: actor2, text: "O que você tem em mente?" }
-            ];
 
-            let sentCount = 0;
-            testMessages.forEach((msgData, index) => {
-                setTimeout(() => {
-                    CyberpunkAgent.instance.sendMessage(msgData.sender.id,
-                        msgData.sender.id === actor1.id ? actor2.id : actor1.id,
-                        msgData.text).then((success) => {
-                            if (success) {
-                                sentCount++;
-                                console.log(`✅ Test message ${index + 1} sent successfully`);
-                                ui.notifications.info(`Mensagem de teste ${index + 1} enviada!`);
-
-                                if (sentCount === testMessages.length) {
-                                    console.log("✅ All layout test messages sent!");
-                                    ui.notifications.success("Todas as mensagens de teste de layout enviadas!");
-                                    console.log("📱 Verifique o espaçamento entre mensagens do mesmo tipo (menor) vs tipos diferentes (normal)");
-                                }
-                            }
-                        });
-                }, index * 1000); // Send each message 1 second apart
-            });
-
-            console.log("Cyberpunk Agent | Layout test started - sending 5 messages with different lengths");
-        } else {
-            console.error("❌ Need at least 2 character actors for layout test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar layout");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testChatEventSystem = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Chat Event System ===");
-
-        // Get first character actor for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 1) {
-            const actor = characterActors[0];
-
-            console.log(`📱 Testing chat event system with actor: ${actor.name}`);
-            console.log(`👤 Current user: ${game.user.name} (GM: ${game.user.isGM})`);
-
-            // Test different types of contact update events
-            const testEvents = [
-                {
-                    action: 'add',
-                    contactName: 'Test Contact 1',
-                    actorId: actor.id,
-                    contactActorId: 'test-contact-1'
-                },
-                {
-                    action: 'remove',
-                    contactName: 'Test Contact 2',
-                    actorId: actor.id,
-                    contactActorId: 'test-contact-2'
-                },
-                {
-                    action: 'modify',
-                    contactName: 'Test Contact 3',
-                    actorId: actor.id,
-                    contactActorId: 'test-contact-3'
-                },
-                {
-                    action: 'bulk',
-                    count: 5,
-                    description: 'Importação em lote de contatos',
-                    actorId: actor.id
-                }
-            ];
-
-            let sentCount = 0;
-            testEvents.forEach((event, index) => {
-                setTimeout(() => {
-                    const success = CyberpunkAgent.instance._sendContactUpdateViaChat(event);
-                    if (success) {
-                        sentCount++;
-                        console.log(`✅ Test event ${index + 1} sent successfully`);
-                        ui.notifications.info(`Evento de teste ${index + 1} enviado!`);
-
-                        if (sentCount === testEvents.length) {
-                            console.log("✅ All chat event tests completed!");
-                            ui.notifications.success("Todos os testes de eventos de chat concluídos!");
-                        }
-                    } else {
-                        console.error(`❌ Failed to send test event ${index + 1}`);
-                        ui.notifications.error(`Falha ao enviar evento de teste ${index + 1}`);
-                    }
-                }, index * 2000); // Send each event 2 seconds apart
-            });
-
-            console.log("Cyberpunk Agent | Chat event test started - sending 4 different event types");
-        } else {
-            console.error("❌ Need at least 1 character actor for chat event test");
-            ui.notifications.error("Precisa de pelo menos 1 personagem para testar eventos de chat");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testUserSpecificEvents = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing User-Specific Events ===");
-
-        // Get all non-GM users
-        const players = game.users.filter(user => !user.isGM && user.active);
-
-        if (players.length > 0) {
-            console.log(`📱 Testing user-specific events for ${players.length} players`);
-
-            players.forEach((player, index) => {
-                setTimeout(() => {
-                    const eventData = {
-                        message: `Notificação personalizada para ${player.name}`,
-                        actorId: 'test-actor',
-                        action: 'notification'
-                    };
-
-                    const success = CyberpunkAgent.instance._sendEventToUser(player.id, 'userNotification', eventData);
-
-                    if (success) {
-                        console.log(`✅ User-specific event sent to ${player.name}`);
-                        ui.notifications.info(`Evento enviado para ${player.name}!`);
-                    } else {
-                        console.error(`❌ Failed to send event to ${player.name}`);
-                        ui.notifications.error(`Falha ao enviar evento para ${player.name}`);
-                    }
-                }, index * 1000);
-            });
-
-            console.log("Cyberpunk Agent | User-specific event test started");
-        } else {
-            console.log("ℹ️ No active players found for user-specific event test");
-            ui.notifications.info("Nenhum jogador ativo encontrado para teste de eventos específicos");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testAutoScroll = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Auto-Scroll Functionality ===");
-
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing auto-scroll between ${actor1.name} and ${actor2.name}`);
-
-            // Send multiple test messages to test auto-scroll
-            const testMessages = [
-                "Teste de scroll automático #1",
-                "Teste de scroll automático #2 - Esta mensagem é um pouco mais longa para testar o comportamento do scroll",
-                "Teste de scroll automático #3 - Mensagem muito longa que deve quebrar linhas e testar se o scroll funciona corretamente com textos extensos",
-                "Teste de scroll automático #4",
-                "Teste de scroll automático #5 - Última mensagem do teste"
-            ];
-
-            let sentCount = 0;
-            testMessages.forEach((msg, index) => {
-                setTimeout(() => {
-                    CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, msg).then((success) => {
-                        if (success) {
-                            sentCount++;
-                            console.log(`✅ Auto-scroll test message ${index + 1} sent successfully`);
-                            ui.notifications.info(`Mensagem de teste ${index + 1} enviada!`);
-
-                            if (sentCount === testMessages.length) {
-                                console.log("✅ All auto-scroll test messages sent!");
-                                ui.notifications.success("Todas as mensagens de teste de auto-scroll enviadas!");
-                                console.log("📱 Check if the chat interface automatically scrolls to show new messages");
-                            }
-                        }
-                    });
-                }, index * 1500); // Send each message 1.5 seconds apart
-            });
-
-            console.log("Cyberpunk Agent | Auto-scroll test started - sending 5 messages over 6 seconds");
-        } else {
-            console.error("❌ Need at least 2 character actors for auto-scroll test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar auto-scroll");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
-
-window.testDetailedContactUpdates = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Detailed Contact Update Messages ===");
-
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing detailed contact updates between ${actor1.name} and ${actor2.name}`);
-
-            // Test different types of contact updates
-            const testActions = [
-                {
-                    action: 'add',
-                    actorId: actor1.id,
-                    contactActorId: actor2.id,
-                    contactName: actor2.name,
-                    description: `Teste de adição de contato`
-                },
-                {
-                    action: 'remove',
-                    actorId: actor1.id,
-                    contactActorId: actor2.id,
-                    contactName: actor2.name,
-                    description: `Teste de remoção de contato`
-                },
-                {
-                    action: 'modify',
-                    actorId: actor1.id,
-                    contactActorId: actor2.id,
-                    contactName: actor2.name,
-                    description: `Teste de modificação de contato`
-                },
-                {
-                    action: 'bulk',
-                    actorId: actor1.id,
-                    count: 3,
-                    description: `Teste de operação em lote`
-                }
-            ];
-
-            testActions.forEach((actionDetails, index) => {
-                setTimeout(() => {
-                    console.log(`📤 Sending ${actionDetails.action} update...`);
-                    CyberpunkAgent.instance.broadcastContactUpdate({}, actionDetails);
-                    ui.notifications.info(`Evento de ${actionDetails.action} enviado!`);
-                }, index * 2000); // Send each update 2 seconds apart
-            });
-
-            console.log("Cyberpunk Agent | Detailed contact update test started - sending 4 updates over 6 seconds");
-            console.log("📱 Check the chat log for detailed update messages");
-        } else {
-            console.error("❌ Need at least 2 character actors for detailed contact update test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar atualizações detalhadas");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not available");
-    }
-};
 
 
 
@@ -11329,400 +10656,11 @@ window.forceUpdateInterfaces = () => {
     }
 };
 
-window.testDeleteMessages = () => {
-    if (CyberpunkAgent.instance && game.user.isGM) {
-        console.log("=== Testing Message Deletion ===");
 
-        // Get first two character actors for testing
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
 
-            console.log(`🗑️ Testing message deletion between ${actor1.name} and ${actor2.name}`);
 
-            // Test 1: Send multiple messages to create conversation
-            console.log("🔍 Test 1: Sending test messages...");
-            const messages = [
-                "Primeira mensagem de teste",
-                "Segunda mensagem de teste",
-                "Terceira mensagem de teste",
-                "Quarta mensagem de teste"
-            ];
 
-            let messageCount = 0;
-            const sendNextMessage = () => {
-                if (messageCount < messages.length) {
-                    CyberpunkAgent.instance.sendMessage(actor1.id, actor2.id, messages[messageCount]).then((success) => {
-                        if (success) {
-                            messageCount++;
-                            console.log(`✅ Message ${messageCount} sent`);
 
-                            if (messageCount < messages.length) {
-                                setTimeout(sendNextMessage, 1000);
-                            } else {
-                                // Test 2: Get messages and delete some
-                                setTimeout(() => {
-                                    console.log("🔍 Test 2: Getting messages for deletion test...");
-                                    const conversationMessages = CyberpunkAgent.instance.getMessagesForConversation(actor1.id, actor2.id);
-                                    console.log("Messages found:", conversationMessages);
-
-                                    if (conversationMessages.length >= 2) {
-                                        // Delete first two messages
-                                        const messageIdsToDelete = conversationMessages.slice(0, 2).map(msg => msg.id);
-                                        console.log("🗑️ Deleting messages:", messageIdsToDelete);
-
-                                        CyberpunkAgent.instance.deleteMessages(actor1.id, actor2.id, messageIdsToDelete).then((success) => {
-                                            if (success) {
-                                                ui.notifications.success(`✅ ${messageIdsToDelete.length} mensagem(ns) deletada(s) com sucesso!`);
-                                                console.log("🗑️ Messages deleted successfully");
-
-                                                // Test 3: Verify deletion
-                                                setTimeout(() => {
-                                                    const remainingMessages = CyberpunkAgent.instance.getMessagesForConversation(actor1.id, actor2.id);
-                                                    console.log("Remaining messages:", remainingMessages);
-                                                    ui.notifications.info(`📱 ${remainingMessages.length} mensagem(ns) restante(s)`);
-                                                }, 1000);
-                                            } else {
-                                                ui.notifications.error("❌ Failed to delete messages");
-                                            }
-                                        });
-                                    } else {
-                                        ui.notifications.warn("⚠️ Not enough messages for deletion test");
-                                    }
-                                }, 2000);
-                            }
-                        } else {
-                            console.error("❌ Failed to send message");
-                        }
-                    });
-                }
-            };
-
-            sendNextMessage();
-            console.log("Cyberpunk Agent | Message deletion test started");
-        } else {
-            console.error("❌ Need at least 2 character actors for message deletion test");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar deleção de mensagens");
-        }
-    } else {
-        console.error("❌ Cyberpunk Agent instance not available or user is not GM");
-        ui.notifications.error("Sistema não disponível ou usuário não é GM");
-    }
-};
-
-window.testSimpleDelete = () => {
-    console.log("=== Testing Simple Delete System ===");
-    console.log("User is GM:", game.user.isGM);
-
-    // Check if there are any open chat conversation windows
-    const openWindows = Object.values(ui.windows).filter(window =>
-        window instanceof ChatConversationApplication ||
-        window.constructor.name === 'ChatConversationApplication'
-    );
-
-    console.log("Open chat conversation windows:", openWindows.length);
-
-    if (openWindows.length > 0) {
-        const chatWindow = openWindows[0];
-
-        // Check if delete buttons exist in messages
-        const deleteButtons = chatWindow.element.find('.cp-message-delete');
-        console.log("Delete buttons found:", deleteButtons.length);
-
-        if (deleteButtons.length > 0) {
-            console.log("Delete button HTML:", deleteButtons[0].outerHTML);
-            ui.notifications.info(`✅ ${deleteButtons.length} botão(ões) de deleção encontrado(s)!`);
-
-            // Test hovering over a message to show delete button
-            const firstMessage = chatWindow.element.find('.cp-message').first();
-            if (firstMessage.length > 0) {
-                firstMessage.trigger('mouseenter');
-                console.log("Triggered hover on first message");
-
-                setTimeout(() => {
-                    const visibleDeleteButton = firstMessage.find('.cp-message-delete');
-                    console.log("Delete button visible on hover:", visibleDeleteButton.is(':visible'));
-
-                    if (visibleDeleteButton.is(':visible')) {
-                        ui.notifications.success("✅ Botão de deleção aparece no hover!");
-                    } else {
-                        ui.notifications.warn("⚠️ Botão de deleção não aparece no hover");
-                    }
-                }, 100);
-            }
-        } else {
-            console.log("No delete buttons found");
-            ui.notifications.warn("⚠️ Botões de deleção não encontrados");
-        }
-    } else {
-        console.log("No open chat conversation windows found");
-        ui.notifications.info("📱 Abra uma conversa de chat primeiro");
-    }
-};
-
-window.testMessageDeletionSync = () => {
-    console.log("=== Testing Message Deletion Synchronization ===");
-
-    // Check if CyberpunkAgent instance exists
-    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-        console.error("Cyberpunk Agent instance not found");
-        ui.notifications.error("❌ Instância do Cyberpunk Agent não encontrada");
-        return;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Check communication method
-    const communicationMethod = agent._getCommunicationMethod();
-    console.log("Current communication method:", communicationMethod);
-
-    // Check if SocketLib is available
-    const socketLibAvailable = agent._isSocketLibAvailable();
-    console.log("SocketLib available:", socketLibAvailable);
-
-    // Check if socket is working
-    const socketWorking = agent._isSocketWorking();
-    console.log("Socket working:", socketWorking);
-
-    // Show current status
-    ui.notifications.info(`📡 Método de comunicação: ${communicationMethod}`);
-    ui.notifications.info(`🔌 SocketLib disponível: ${socketLibAvailable}`);
-    ui.notifications.info(`🌐 Socket funcionando: ${socketWorking}`);
-
-    // Test sending a fake deletion notification
-    console.log("Testing fake deletion notification...");
-    agent._notifyMessageDeletion('test-actor-1', 'test-actor-2', ['test-message-1']);
-
-    console.log("Test completed");
-};
-
-window.testRealTimeDeletion = () => {
-    console.log("=== Testing Real-Time Message Deletion ===");
-
-    // Check if there are any open chat conversation windows
-    const openWindows = Object.values(ui.windows).filter(window =>
-        window instanceof ChatConversationApplication ||
-        window.constructor.name === 'ChatConversationApplication'
-    );
-
-    console.log("Open chat conversation windows:", openWindows.length);
-
-    if (openWindows.length === 0) {
-        ui.notifications.warn("⚠️ Nenhuma conversa de chat aberta");
-        return;
-    }
-
-    const chatWindow = openWindows[0];
-    const messages = chatWindow.element.find('.cp-message');
-
-    console.log("Messages found:", messages.length);
-
-    if (messages.length === 0) {
-        ui.notifications.warn("⚠️ Nenhuma mensagem encontrada para testar");
-        return;
-    }
-
-    // Get the first message ID
-    const firstMessage = messages.first();
-    const messageId = firstMessage.data('message-id');
-
-    console.log("Testing deletion of message ID:", messageId);
-
-    if (!messageId) {
-        ui.notifications.error("❌ Não foi possível obter o ID da mensagem");
-        return;
-    }
-
-    // Simulate the deletion process
-    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-        const agent = window.CyberpunkAgent.instance;
-
-        // Get actor and contact IDs from the chat window
-        const actorId = chatWindow.actor?.id;
-        const contactId = chatWindow.contact?.id;
-
-        console.log("Actor ID:", actorId, "Contact ID:", contactId);
-
-        if (actorId && contactId) {
-            ui.notifications.info("🧪 Simulando deleção de mensagem...");
-
-            // Test the deletion process
-            agent.deleteMessages(actorId, contactId, [messageId]).then(success => {
-                if (success) {
-                    ui.notifications.success("✅ Deleção simulada com sucesso!");
-                    console.log("Deletion simulation completed successfully");
-                } else {
-                    ui.notifications.error("❌ Falha na simulação de deleção");
-                    console.log("Deletion simulation failed");
-                }
-            }).catch(error => {
-                console.error("Error in deletion simulation:", error);
-                ui.notifications.error("❌ Erro na simulação: " + error.message);
-            });
-        } else {
-            ui.notifications.error("❌ Não foi possível obter IDs do ator/contato");
-        }
-    } else {
-        ui.notifications.error("❌ Instância do Cyberpunk Agent não encontrada");
-    }
-};
-
-// Test function specifically for message spacing
-window.testMessageSpacing = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Message Spacing ===");
-
-        const characterActors = game.actors.filter(actor => actor.type === 'character');
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing message spacing between ${actor1.name} and ${actor2.name}`);
-
-            // Test sequence: own-own-other-other-own-other-own-own-other
-            const testSequence = [
-                { sender: actor1, text: "Primeira mensagem minha" },
-                { sender: actor1, text: "Segunda mensagem minha (espaçamento reduzido)" },
-                { sender: actor2, text: "Primeira mensagem dele" },
-                { sender: actor2, text: "Segunda mensagem dele (espaçamento reduzido)" },
-                { sender: actor1, text: "Minha resposta (espaçamento normal)" },
-                { sender: actor2, text: "Resposta dele (espaçamento normal)" },
-                { sender: actor1, text: "Outra minha" },
-                { sender: actor1, text: "E mais uma minha (espaçamento reduzido)" },
-                { sender: actor2, text: "Última dele (espaçamento normal)" }
-            ];
-
-            let sentCount = 0;
-            testSequence.forEach((msgData, index) => {
-                setTimeout(() => {
-                    CyberpunkAgent.instance.sendMessage(msgData.sender.id,
-                        msgData.sender.id === actor1.id ? actor2.id : actor1.id,
-                        msgData.text).then((success) => {
-                            if (success) {
-                                sentCount++;
-                                console.log(`✅ Spacing test message ${index + 1} sent`);
-
-                                if (sentCount === testSequence.length) {
-                                    console.log("✅ All spacing test messages sent!");
-                                    ui.notifications.success("Teste de espaçamento concluído!");
-                                    console.log("📱 Verifique:");
-                                    console.log("  - Mensagens consecutivas do mesmo tipo: espaçamento reduzido (4px)");
-                                    console.log("  - Mensagens de tipos diferentes: espaçamento normal (12px)");
-                                }
-                            }
-                        });
-                }, index * 800); // Send each message 800ms apart
-            });
-        } else {
-            console.error("❌ Need at least 2 character actors to test message spacing");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar o espaçamento!");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not found");
-        ui.notifications.error("Instância do CyberpunkAgent não encontrada!");
-    }
-};
-
-// Test function for contact mute functionality
-window.testContactMute = () => {
-    if (CyberpunkAgent.instance) {
-        console.log("=== Testing Contact Mute Functionality ===");
-
-        // Force initialize mute system
-        console.log("0. Forcing mute system initialization...");
-        CyberpunkAgent.instance._initializeMuteSystem();
-
-        // Test _userMuteSettings initialization
-        console.log("1. Testing _userMuteSettings initialization...");
-        console.log(`✅ _userMuteSettings exists: ${!!CyberpunkAgent.instance._userMuteSettings}`);
-        console.log(`✅ _userMuteSettings type: ${typeof CyberpunkAgent.instance._userMuteSettings}`);
-        console.log(`✅ _userMuteSettings instanceof Map: ${CyberpunkAgent.instance._userMuteSettings instanceof Map}`);
-
-        // Test game objects availability
-        console.log("2. Testing game objects availability...");
-        console.log(`✅ game exists: ${!!game}`);
-        console.log(`✅ game.user exists: ${!!game.user}`);
-        console.log(`✅ game.actors exists: ${!!game.actors}`);
-        console.log(`✅ game.scenes exists: ${!!game.scenes}`);
-        console.log(`✅ game.scenes.active exists: ${!!(game.scenes && game.scenes.active)}`);
-
-        const characterActors = game.actors ? game.actors.filter(actor => actor.type === 'character') : [];
-        const userActors = CyberpunkAgent.instance.getUserActors();
-
-        console.log(`👤 Current user: ${game.user ? game.user.name : 'Unknown'} (GM: ${game.user ? game.user.isGM : 'Unknown'})`);
-        console.log(`🎭 User actors: ${userActors.map(a => a.name).join(', ')}`);
-        console.log(`🎭 All character actors: ${characterActors.map(a => a.name).join(', ')}`);
-
-        if (characterActors.length >= 2) {
-            const actor1 = characterActors[0];
-            const actor2 = characterActors[1];
-
-            console.log(`📱 Testing contact mute between ${actor1.name} and ${actor2.name}`);
-
-            // Test access permissions
-            console.log("3. Testing access permissions...");
-            const hasAccess1 = userActors.some(actor => actor.id === actor1.id);
-            const hasAccess2 = userActors.some(actor => actor.id === actor2.id);
-            console.log(`✅ Access to ${actor1.name}: ${hasAccess1 ? 'YES' : 'NO'}`);
-            console.log(`✅ Access to ${actor2.name}: ${hasAccess2 ? 'YES' : 'NO'}`);
-
-            // Test mute functionality for accessible actor
-            if (hasAccess1) {
-                console.log("4. Testing mute toggle for accessible actor...");
-                const isMuted1 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
-                console.log(`✅ Contact ${actor2.name} mute status: ${isMuted1 ? 'MUTED' : 'UNMUTED'}`);
-
-                // Test mute check
-                console.log("5. Testing mute check...");
-                const isMutedCheck = CyberpunkAgent.instance.isContactMuted(actor1.id, actor2.id);
-                console.log(`✅ Mute check result: ${isMutedCheck ? 'MUTED' : 'UNMUTED'}`);
-
-                // Test localStorage persistence
-                console.log("6. Testing localStorage persistence...");
-                const muteKey = `cyberpunk-agent-mutes-${game.user.id}`;
-                const storedData = localStorage.getItem(muteKey);
-                console.log(`✅ localStorage data: ${storedData}`);
-
-                // Test toggle back
-                console.log("7. Testing mute toggle back...");
-                const isMuted2 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
-                console.log(`✅ Contact ${actor2.name} mute status: ${isMuted2 ? 'MUTED' : 'UNMUTED'}`);
-
-                console.log("✅ Contact mute test completed!");
-                ui.notifications.success("Teste de mute de contatos concluído!");
-            } else {
-                console.log("4. Testing mute toggle for inaccessible actor...");
-                const isMuted1 = CyberpunkAgent.instance.toggleContactMute(actor1.id, actor2.id);
-                console.log(`❌ Expected failure for inaccessible actor: ${isMuted1 === false ? 'SUCCESS' : 'FAILED'}`);
-            }
-
-            // Test sending a message to verify sound is muted
-            if (hasAccess1) {
-                console.log("8. Testing message with muted contact...");
-                setTimeout(() => {
-                    CyberpunkAgent.instance.sendMessage(actor2.id, actor1.id, "Teste de mensagem com contato mutado").then(() => {
-                        console.log("✅ Message sent to muted contact - sound should be suppressed");
-                        ui.notifications.info("Mensagem enviada para contato mutado - som deve estar suprimido");
-                    });
-                }, 1000);
-            }
-
-        } else {
-            console.error("❌ Need at least 2 character actors to test contact mute");
-            ui.notifications.error("Precisa de pelo menos 2 personagens para testar o mute de contatos!");
-        }
-    } else {
-        console.error("❌ CyberpunkAgent instance not found");
-        ui.notifications.error("Instância do CyberpunkAgent não encontrada!");
-    }
-};
-
-console.log("Cyberpunk Agent | CyberpunkAgent class and test functions made globally available");
-console.log("Cyberpunk Agent | New test functions:");
-console.log("  - testSystemMessage() - Test the new system message fallback");
-console.log("  - testMessageSystem() - Test the messaging system");
-console.log("  - getConversationMessages(actorId1, actorId2) - Get messages between two actors");
 
 console.log("  - testRealtimeMessages() - Test real-time message updates");
 console.log("  - testFoundryChatIntegration() - Test FoundryVTT chat integration");
@@ -11855,63 +10793,6 @@ window.debugActivityManager = () => {
     console.log("  - Run testAutoFadeAlerts() to test the auto-fade functionality");
 };
 
-// Test function for notification sound behavior
-window.testNotificationSound = () => {
-    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-        console.error("❌ CyberpunkAgent instance not found");
-        return;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-    console.log("=== NOTIFICATION SOUND TEST ===");
-
-    // Get current user's active conversation
-    const activeConversation = agent.getActiveConversation(game.user.id);
-
-    if (activeConversation) {
-        console.log("📱 Current active conversation found:");
-        console.log(`  - Device: ${activeConversation.deviceId}`);
-        console.log(`  - Contact: ${activeConversation.contactId}`);
-
-        // Test notification sound for active conversation
-        console.log("🎵 Testing notification sound for ACTIVE conversation (should NOT play):");
-        const shouldPlayActive = agent.shouldPlayNotificationSound(activeConversation.deviceId, activeConversation.contactId);
-        console.log(`  - Should play sound: ${shouldPlayActive}`);
-
-        if (!shouldPlayActive) {
-            console.log("✅ CORRECT: Notification sound suppressed for active conversation");
-        } else {
-            console.log("❌ INCORRECT: Notification sound would play for active conversation");
-        }
-
-        // Test notification sound for different conversation
-        console.log("🎵 Testing notification sound for DIFFERENT conversation (should play):");
-        const shouldPlayDifferent = agent.shouldPlayNotificationSound(activeConversation.deviceId, 'different-contact-id');
-        console.log(`  - Should play sound: ${shouldPlayDifferent}`);
-
-        if (shouldPlayDifferent) {
-            console.log("✅ CORRECT: Notification sound would play for different conversation");
-        } else {
-            console.log("❌ INCORRECT: Notification sound suppressed for different conversation");
-        }
-
-    } else {
-        console.log("📱 No active conversation found - testing with no active conversation:");
-
-        // Test notification sound when no active conversation
-        const shouldPlayNoActive = agent.shouldPlayNotificationSound('test-device-id', 'test-contact-id');
-        console.log(`  - Should play sound: ${shouldPlayNoActive}`);
-
-        if (shouldPlayNoActive) {
-            console.log("✅ CORRECT: Notification sound would play when no active conversation");
-        } else {
-            console.log("❌ INCORRECT: Notification sound suppressed when no active conversation");
-        }
-    }
-
-    console.log("🎵 Manual notification sound test:");
-    console.log("  - Run agent.playNotificationSound('sender-id', 'receiver-id') to test actual sound");
-};
 
 // Function to manually register an active conversation for testing
 window.registerTestConversation = (deviceId, contactId) => {
@@ -11940,191 +10821,5 @@ window.clearTestConversation = () => {
 };
 
 // Function to test auto-fade alerts
-window.testAutoFadeAlerts = () => {
-    if (!window.CyberpunkAgent || !window.CyberpunkAgent.instance) {
-        console.error("❌ CyberpunkAgent instance not found");
-        return;
-    }
 
-    const agent = window.CyberpunkAgent.instance;
-    console.log("=== AUTO-FADE ALERTS TEST ===");
 
-    // Check if we have any devices
-    if (agent.devices.size === 0) {
-        console.error("❌ No devices available for testing");
-        return false;
-    }
-
-    // Get the first available device
-    const device = agent.devices.values().next().value;
-    console.log("✅ Using device for testing:", device);
-
-    // Show agent interface
-    agent.showAgentHome(device);
-
-    console.log("📝 Navigate to 'Add Contact' to test the auto-fade functionality");
-    console.log("📝 Try searching for a non-existent contact to see error fade");
-    console.log("📝 Try adding a valid contact to see success fade");
-    console.log("📝 Both messages should fade away after 5 seconds with smooth animation");
-
-    return true;
-};
-
-// Test function for message editing functionality
-window.testMessageEditing = async function () {
-    console.log("✏️ === TESTING MESSAGE EDITING FUNCTIONALITY ===");
-
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-
-    // Get available devices
-    const devices = Array.from(agent.devices.values());
-    if (devices.length < 2) {
-        console.log("❌ Need at least 2 devices for testing message editing");
-        return false;
-    }
-
-    const device1 = devices[0];
-    const device2 = devices[1];
-
-    console.log(`📱 Testing message editing:`);
-    console.log(`  - Device 1: ${device1.deviceName} (${device1.id})`);
-    console.log(`  - Device 2: ${device2.deviceName} (${device2.id})`);
-    console.log(`  - User is GM: ${game.user.isGM}`);
-
-    try {
-        // Step 1: Send a test message
-        const originalMessage = `Original message ${Date.now()}`;
-        console.log(`📤 Step 1: Sending test message: "${originalMessage}"`);
-
-        const sendSuccess = await agent.sendDeviceMessage(device1.id, device2.id, originalMessage);
-        if (!sendSuccess) {
-            console.log("❌ Failed to send test message");
-            return false;
-        }
-
-        // Wait a moment for the message to be processed
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Step 2: Get the conversation and find the message
-        const conversationKey = agent._getDeviceConversationKey(device1.id, device2.id);
-        const messages = agent.messages.get(conversationKey) || [];
-        const testMsg = messages.find(msg => msg.text === originalMessage);
-
-        if (!testMsg) {
-            console.log("❌ Test message not found in conversation");
-            return false;
-        }
-
-        console.log(`✅ Test message created with ID: ${testMsg.id}`);
-
-        // Step 3: Test editing the message
-        const editedMessage = `EDITED: ${originalMessage} - Modified at ${new Date().toLocaleTimeString()}`;
-        console.log(`✏️ Step 2: Testing message edit to: "${editedMessage}"`);
-
-        const editSuccess = await agent.editDeviceMessage(device1.id, device2.id, testMsg.id, editedMessage, originalMessage);
-
-        console.log(`📊 Edit result: ${editSuccess ? 'SUCCESS' : 'FAILED'}`);
-
-        // Wait for edit to propagate
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Step 4: Check if message was edited in local storage
-        const updatedMessages = agent.messages.get(conversationKey) || [];
-        const editedMsg = updatedMessages.find(msg => msg.id === testMsg.id);
-
-        if (editedMsg) {
-            console.log(`📊 Local edit check: ${editedMsg.text === editedMessage ? 'SUCCESS' : 'FAILED'}`);
-            console.log(`📊 Edit flag: ${editedMsg.edited ? 'SUCCESS - Marked as edited' : 'FAILED - Not marked as edited'}`);
-            console.log(`📊 Original text preserved: ${editedMsg.originalText === originalMessage ? 'SUCCESS' : 'FAILED'}`);
-        } else {
-            console.log("❌ Edited message not found in conversation");
-        }
-
-        // Step 5: Check server storage (if GM)
-        if (game.user.isGM) {
-            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
-            const serverConversation = serverMessages[conversationKey] || [];
-            const serverMsg = serverConversation.find(msg => msg.id === testMsg.id);
-
-            if (serverMsg) {
-                console.log(`📊 Server edit check: ${serverMsg.text === editedMessage ? 'SUCCESS' : 'FAILED'}`);
-                console.log(`📊 Server edit flag: ${serverMsg.edited ? 'SUCCESS' : 'FAILED'}`);
-            } else {
-                console.log("❌ Message not found in server storage");
-            }
-        }
-
-        console.log("✅ Message editing test completed");
-        return true;
-
-    } catch (error) {
-        console.error("❌ Error in message editing test:", error);
-        return false;
-    }
-};
-
-// Test function for GM device selection interface
-window.testGMDeviceSelection = function () {
-    console.log("🎮 === TESTING GM DEVICE SELECTION INTERFACE ===");
-
-    if (!window.CyberpunkAgent?.instance) {
-        console.log("❌ CyberpunkAgent instance not available");
-        return false;
-    }
-
-    if (!game.user.isGM) {
-        console.log("❌ This test requires GM access");
-        return false;
-    }
-
-    const agent = window.CyberpunkAgent.instance;
-    const allDevices = agent.getAllRegisteredDevices();
-
-    console.log(`📱 Device selection test:`);
-    console.log(`  - Total devices: ${allDevices.length}`);
-    console.log(`  - Online users: ${Array.from(game.users.values()).filter(u => u.active).length}`);
-    console.log(`  - GM users: ${Array.from(game.users.values()).filter(u => u.isGM).length}`);
-
-    if (allDevices.length === 0) {
-        console.log("❌ No devices available for testing");
-        return false;
-    }
-
-    // Show device categories
-    const onlineDevices = allDevices.filter(device => {
-        const user = agent._getUserForDevice(device.deviceId);
-        return user && user.active;
-    });
-
-    const gmDevices = allDevices.filter(device => {
-        const user = agent._getUserForDevice(device.deviceId);
-        return user && user.isGM;
-    });
-
-    console.log(`📊 Device breakdown:`);
-    console.log(`  - Online: ${onlineDevices.length}`);
-    console.log(`  - Offline: ${allDevices.length - onlineDevices.length}`);
-    console.log(`  - GM devices: ${gmDevices.length}`);
-    console.log(`  - Player devices: ${allDevices.length - gmDevices.length}`);
-
-    // Test the interface
-    console.log("🎯 Opening enhanced device selection interface...");
-    agent.showAllDevicesMenu(allDevices);
-
-    console.log("✅ GM device selection interface test completed");
-    console.log("📝 Try the following in the interface:");
-    console.log("  - Filter by name or phone number");
-    console.log("  - Filter by status (Online/Offline)");
-    console.log("  - Filter by type (GM/Players)");
-    console.log("  - Click pin button to pin/unpin devices for quick access");
-    console.log("  - Double-click a device to operate it");
-    console.log("  - Press Escape to clear all filters");
-    console.log("  - Pinned devices appear at the top with special styling");
-
-    return true;
-}; 

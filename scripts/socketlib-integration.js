@@ -104,6 +104,11 @@ function initializeSocketLib() {
     socket.register("allContactListsCleared", handleAllContactListsCleared);
     socket.register("allDevicesSynchronized", handleAllDevicesSynchronized);
 
+    // Register read status synchronization handlers
+    socket.register("readStatusUpdate", handleReadStatusUpdate);
+    socket.register("requestReadStatusSync", handleRequestReadStatusSync);
+    socket.register("readStatusSyncResponse", handleReadStatusSyncResponse);
+
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
@@ -2796,6 +2801,140 @@ window.getSocketLibStatus = () => {
   const integration = new SocketLibIntegration();
   return integration.getDetailedStatus();
 };
+
+/**
+ * Handle read status update from other clients
+ */
+async function handleReadStatusUpdate(data) {
+  console.log("Cyberpunk Agent | Received read status update via SocketLib:", data);
+
+  try {
+    const { conversationKey, userId, timestamp, readMessageIds, updatingUserName } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const agent = window.CyberpunkAgent.instance;
+
+      // Update local read status
+      if (!agent.readStatus.has(conversationKey)) {
+        agent.readStatus.set(conversationKey, new Map());
+      }
+
+      agent.readStatus.get(conversationKey).set(userId, {
+        lastReadTimestamp: timestamp,
+        readMessages: readMessageIds
+      });
+
+      // Update localStorage cache
+      const storageKey = `cyberpunk-agent-read-status-${userId}`;
+      const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      existingData[conversationKey] = {
+        lastReadTimestamp: timestamp,
+        readMessages: readMessageIds
+      };
+      localStorage.setItem(storageKey, JSON.stringify(existingData));
+
+      // Clear unread count cache for this conversation
+      const cacheKey = `${conversationKey}-${userId}`;
+      agent.unreadCounts.delete(cacheKey);
+
+      // Update UI
+      agent._updateChatInterfacesImmediately();
+
+      console.log(`Cyberpunk Agent | Updated read status for user ${userId} in conversation ${conversationKey} (from ${updatingUserName})`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling read status update:", error);
+  }
+}
+
+/**
+ * Handle read status sync request from other clients
+ */
+async function handleRequestReadStatusSync(data) {
+  console.log("Cyberpunk Agent | Received read status sync request:", data);
+
+  try {
+    const { requestingUserId, requestingUserName } = data;
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const agent = window.CyberpunkAgent.instance;
+
+      // Get all read status for the requesting user
+      const userReadStatus = {};
+
+      for (const [conversationKey, userMap] of agent.readStatus.entries()) {
+        const userData = userMap.get(requestingUserId);
+        if (userData) {
+          userReadStatus[conversationKey] = userData;
+        }
+      }
+
+      // Send response back to requesting user
+      if (socket && typeof socket.executeForUser === 'function') {
+        await socket.executeForUser(requestingUserId, 'readStatusSyncResponse', {
+          success: true,
+          readStatus: userReadStatus,
+          timestamp: Date.now(),
+          respondingUserName: game.user.name
+        });
+      }
+
+      console.log(`Cyberpunk Agent | Sent read status sync response to ${requestingUserName} (${Object.keys(userReadStatus).length} conversations)`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling read status sync request:", error);
+
+    // Send error response
+    if (socket && typeof socket.executeForUser === 'function') {
+      await socket.executeForUser(data.requestingUserId, 'readStatusSyncResponse', {
+        success: false,
+        error: error.message,
+        timestamp: Date.now()
+      });
+    }
+  }
+}
+
+/**
+ * Handle read status sync response from other clients
+ */
+async function handleReadStatusSyncResponse(data) {
+  console.log("Cyberpunk Agent | Received read status sync response:", data);
+
+  try {
+    if (data.success && data.readStatus) {
+      const agent = window.CyberpunkAgent.instance;
+
+      // Update local read status with synced data
+      Object.entries(data.readStatus).forEach(([conversationKey, userData]) => {
+        if (!agent.readStatus.has(conversationKey)) {
+          agent.readStatus.set(conversationKey, new Map());
+        }
+
+        agent.readStatus.get(conversationKey).set(game.user.id, userData);
+      });
+
+      // Update localStorage cache
+      const storageKey = `cyberpunk-agent-read-status-${game.user.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(data.readStatus));
+
+      // Clear unread count cache
+      Object.keys(data.readStatus).forEach(conversationKey => {
+        const cacheKey = `${conversationKey}-${game.user.id}`;
+        agent.unreadCounts.delete(cacheKey);
+      });
+
+      // Update UI
+      agent._updateChatInterfacesImmediately();
+
+      console.log(`Cyberpunk Agent | Synced read status from ${data.respondingUserName} (${Object.keys(data.readStatus).length} conversations)`);
+    } else {
+      console.error("Cyberpunk Agent | Read status sync failed:", data.error);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling read status sync response:", error);
+  }
+}
 
 console.log("Cyberpunk Agent | SocketLib integration loaded");
 console.log("Run 'testSocketLib()' to test SocketLib functionality");
