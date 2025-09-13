@@ -2,13 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.2.1]
+
+### Enhanced
+- **Edit Modal Styling**: Updated message edit modal to match agent device phone styling
+  - **Phone-Native Design**: Edit modal now uses the same visual styling as the agent device phone interface
+  - **Consistent Styling**: Updated container, header, body, and footer to match phone's cyberpunk aesthetic
+  - **Enhanced Visual Effects**: Added glow animations, scanline effects, and cyberpunk visual elements
+  - **Improved Integration**: Edit modal now feels cohesive with other phone components
+  - **Responsive Design**: Added responsive styling for different screen sizes within phone containers
+  - **Character Counter**: Enhanced character counter with warning states and visual feedback
+  - **Button Styling**: Updated save/cancel buttons to match phone's button styling with hover effects
+
+### Technical Improvements
+- **CSS Architecture**: Enhanced edit modal CSS with phone container integration
+  - **Container Styling**: Updated modal container to use `var(--cp-gradient-dark)` background
+  - **Border Consistency**: Changed to `3px solid var(--cp-border)` to match phone styling
+  - **Animation Effects**: Added glow animation and cyberpunk visual effects
+  - **Responsive Breakpoints**: Added media queries for phone container compatibility
+  - **Visual Hierarchy**: Improved header, body, and footer styling consistency
 
 ## [2.2.0] - 2025-09-13
-
-## [2.1.3] - 2025-09-13
-
-## [2.1.2] - 2025-09-13
 
 ### Added
 - **Enhanced GM Device Selection Interface**: Completely redesigned device selection with advanced features
