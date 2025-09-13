@@ -6690,6 +6690,16 @@ class CyberpunkAgent {
                         <input type="text" id="cp-device-filter" placeholder="Filtrar por nome ou telefone..." />
                         <i class="fas fa-search cp-filter-icon"></i>
                     </div>
+                    <div class="cp-sort-controls">
+                        <select id="cp-sort-by" class="cp-sort-select">
+                            <option value="name">Ordenar por Nome</option>
+                            <option value="unread">Ordenar por Não Lidas</option>
+                        </select>
+                        <button id="cp-unread-only" class="cp-unread-toggle" title="Mostrar apenas dispositivos com mensagens não lidas">
+                            <i class="fas fa-envelope"></i>
+                            <span>Apenas Não Lidas</span>
+                        </button>
+                    </div>
                     <div class="cp-device-count">
                         <span id="cp-visible-count">${allDevices.length}</span> de ${allDevices.length} dispositivos
                     </div>
@@ -6729,8 +6739,10 @@ class CyberpunkAgent {
                 // Add cyberpunk styling to the dialog
                 html.closest('.dialog').addClass('cp-device-selection-dialog');
 
-                // Simplified filter functionality
+                // Enhanced filter and sort functionality
                 const filterInput = html.find('#cp-device-filter');
+                const sortSelect = html.find('#cp-sort-by');
+                const unreadToggle = html.find('#cp-unread-only');
                 const deviceItems = html.find('.cp-device-item');
                 const visibleCount = html.find('#cp-visible-count');
 
@@ -6743,20 +6755,161 @@ class CyberpunkAgent {
                         .trim();
                 };
 
+                // Get unread count for a device item
+                const getDeviceUnreadCount = (deviceItem) => {
+                    const unreadElement = deviceItem.find('.cp-device-unread');
+                    if (unreadElement.length > 0) {
+                        const text = unreadElement.text();
+                        const match = text.match(/(\d+)/);
+                        return match ? parseInt(match[1]) : 0;
+                    }
+                    return 0;
+                };
+
+                // Sort devices based on selected criteria
+                const sortDevices = () => {
+                    const sortBy = sortSelect.val();
+                    const deviceList = html.find('#cp-device-list');
+                    const items = deviceList.find('.cp-device-item').get();
+
+                    if (sortBy === 'unread') {
+                        // Sort by unread count (highest first)
+                        items.sort((a, b) => {
+                            const aUnread = getDeviceUnreadCount($(a));
+                            const bUnread = getDeviceUnreadCount($(b));
+
+                            // Pinned devices still come first
+                            const aIsPinned = $(a).hasClass('pinned');
+                            const bIsPinned = $(b).hasClass('pinned');
+
+                            if (aIsPinned && !bIsPinned) return -1;
+                            if (!aIsPinned && bIsPinned) return 1;
+
+                            // Within same pin status, sort by unread count
+                            return bUnread - aUnread;
+                        });
+                    } else {
+                        // Sort by name (alphabetical)
+                        items.sort((a, b) => {
+                            const aName = $(a).find('.cp-device-name').text().toLowerCase();
+                            const bName = $(b).find('.cp-device-name').text().toLowerCase();
+
+                            // Pinned devices still come first
+                            const aIsPinned = $(a).hasClass('pinned');
+                            const bIsPinned = $(b).hasClass('pinned');
+
+                            if (aIsPinned && !bIsPinned) return -1;
+                            if (!aIsPinned && bIsPinned) return 1;
+
+                            // Within same pin status, sort alphabetically
+                            return aName.localeCompare(bName);
+                        });
+                    }
+
+                    // Remove all items and headers, then re-add in sorted order
+                    deviceList.empty();
+
+                    // Re-add section headers and items
+                    const pinnedItems = items.filter(item => $(item).hasClass('pinned'));
+                    const regularItems = items.filter(item => !$(item).hasClass('pinned'));
+
+                    if (pinnedItems.length > 0) {
+                        deviceList.append(`
+                            <div class="cp-device-section-header">
+                                <i class="fas fa-thumbtack"></i>
+                                <span>DISPOSITIVOS FIXADOS (${pinnedItems.length})</span>
+                            </div>
+                        `);
+                        pinnedItems.forEach(item => deviceList.append(item));
+                    }
+
+                    if (regularItems.length > 0) {
+                        deviceList.append(`
+                            <div class="cp-device-section-header ${pinnedItems.length > 0 ? 'with-spacing' : ''}">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>OUTROS DISPOSITIVOS (${regularItems.length})</span>
+                            </div>
+                        `);
+                        regularItems.forEach(item => deviceList.append(item));
+                    }
+
+                    // Re-add no devices found message
+                    deviceList.append(`
+                        <div class="cp-no-devices-found" id="cp-no-devices-found" style="display: none;">
+                            <div class="cp-no-devices-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h4>Nenhum dispositivo encontrado</h4>
+                            <p>Tente ajustar os filtros para encontrar dispositivos.</p>
+                        </div>
+                    `);
+
+                    // Reattach event handlers and update filters
+                    attachDeviceEventHandlers();
+                    updateFilter();
+                };
+
+                // Function to attach event handlers to device items
+                const attachDeviceEventHandlers = () => {
+                    // Pin/unpin functionality
+                    html.find('.cp-device-pin-btn').off('click').click(async (event) => {
+                        event.stopPropagation();
+                        const deviceId = $(event.currentTarget).data('device-id');
+
+                        if (deviceId) {
+                            const success = await this.toggleDevicePin(deviceId);
+                            if (success) {
+                                // Re-sort the list to show changes
+                                setTimeout(() => {
+                                    dialog.close();
+                                    this.showAllDevicesMenu(allDevices);
+                                }, 200);
+                            }
+                        }
+                    });
+
+                    // Device selection events
+                    html.find('.cp-device-select-btn').off('click').click((event) => {
+                        const deviceId = $(event.currentTarget).data('device-id');
+                        if (deviceId) {
+                            console.log(`Cyberpunk Agent | GM selected device: ${deviceId}`);
+                            dialog.close();
+                            this.openSpecificAgent(deviceId);
+                        }
+                    });
+
+                    // Double-click to select device
+                    html.find('.cp-device-item').off('dblclick').dblclick((event) => {
+                        const deviceId = $(event.currentTarget).data('device-id');
+                        if (deviceId) {
+                            console.log(`Cyberpunk Agent | GM double-clicked device: ${deviceId}`);
+                            dialog.close();
+                            this.openSpecificAgent(deviceId);
+                        }
+                    });
+                };
+
                 const updateFilter = () => {
                     const filterText = normalizeSearchText(filterInput.val());
+                    const showUnreadOnly = unreadToggle.hasClass('active');
                     let visibleDevices = 0;
 
-                    deviceItems.each(function () {
+                    html.find('.cp-device-item').each(function () {
                         const item = $(this);
                         const searchText = item.data('search-text') || '';
                         const normalizedSearchText = normalizeSearchText(searchText);
+                        const hasUnread = getDeviceUnreadCount(item) > 0;
 
-                        // Enhanced text matching
+                        // Text filter
                         const matchesText = !filterText || normalizedSearchText.includes(filterText);
 
-                        item.toggle(matchesText);
-                        if (matchesText) visibleDevices++;
+                        // Unread filter
+                        const matchesUnread = !showUnreadOnly || hasUnread;
+
+                        const isVisible = matchesText && matchesUnread;
+
+                        item.toggle(isVisible);
+                        if (isVisible) visibleDevices++;
                     });
 
                     visibleCount.text(visibleDevices);
@@ -6766,79 +6919,23 @@ class CyberpunkAgent {
                     noDevicesFound.toggle(visibleDevices === 0);
                 };
 
-                // Filter input events
+                // Initial event handler attachment
+                attachDeviceEventHandlers();
+
+                // Filter and sort events
                 filterInput.on('input', updateFilter);
+                sortSelect.on('change', sortDevices);
+
+                unreadToggle.click(() => {
+                    unreadToggle.toggleClass('active');
+                    updateFilter();
+                });
 
                 filterInput.on('keydown', (event) => {
                     if (event.key === 'Escape') {
                         filterInput.val('');
+                        unreadToggle.removeClass('active');
                         updateFilter();
-                    }
-                });
-
-                // Pin/unpin functionality
-                html.find('.cp-device-pin-btn').click(async (event) => {
-                    event.stopPropagation();
-                    const deviceId = $(event.currentTarget).data('device-id');
-                    const pinBtn = $(event.currentTarget);
-                    const deviceItem = pinBtn.closest('.cp-device-item');
-
-                    if (deviceId) {
-                        const success = await this.toggleDevicePin(deviceId);
-                        if (success) {
-                            const isPinned = this.isDevicePinned(deviceId);
-
-                            // Update pin button
-                            pinBtn.find('i').toggleClass('pinned', isPinned);
-                            pinBtn.attr('title', isPinned ? 'Desfixar dispositivo' : 'Fixar dispositivo');
-
-                            // Update device item
-                            deviceItem.toggleClass('pinned', isPinned);
-
-                            // Update pin badge
-                            const nameDiv = deviceItem.find('.cp-device-name');
-                            const existingBadge = nameDiv.find('.cp-pin-badge');
-                            if (isPinned && existingBadge.length === 0) {
-                                nameDiv.append('<span class="cp-pin-badge">FIXADO</span>');
-                            } else if (!isPinned && existingBadge.length > 0) {
-                                existingBadge.remove();
-                            }
-
-                            // Update pin indicator on avatar
-                            const avatar = deviceItem.find('.cp-device-avatar');
-                            const existingIndicator = avatar.find('.cp-device-pin-indicator');
-                            if (isPinned && existingIndicator.length === 0) {
-                                avatar.append('<div class="cp-device-pin-indicator"><i class="fas fa-thumbtack"></i></div>');
-                            } else if (!isPinned && existingIndicator.length > 0) {
-                                existingIndicator.remove();
-                            }
-
-                            // Re-sort the list
-                            setTimeout(() => {
-                                dialog.close();
-                                this.showAllDevicesMenu(allDevices);
-                            }, 200);
-                        }
-                    }
-                });
-
-                // Device selection events
-                html.find('.cp-device-select-btn').click((event) => {
-                    const deviceId = $(event.currentTarget).data('device-id');
-                    if (deviceId) {
-                        console.log(`Cyberpunk Agent | GM selected device: ${deviceId}`);
-                        dialog.close();
-                        this.openSpecificAgent(deviceId);
-                    }
-                });
-
-                // Double-click to select device
-                html.find('.cp-device-item').dblclick((event) => {
-                    const deviceId = $(event.currentTarget).data('device-id');
-                    if (deviceId) {
-                        console.log(`Cyberpunk Agent | GM double-clicked device: ${deviceId}`);
-                        dialog.close();
-                        this.openSpecificAgent(deviceId);
                     }
                 });
 
