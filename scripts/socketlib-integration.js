@@ -89,6 +89,8 @@ function initializeSocketLib() {
     socket.register("requestServerMessageSync", handleRequestServerMessageSync);
     socket.register("syncMessagesFromServer", handleSyncMessagesFromServer);
     socket.register("messagesDeletedFromServer", handleMessagesDeletedFromServer);
+    socket.register("performMasterMessageSync", handlePerformMasterMessageSync);
+    socket.register("masterSyncCompleted", handleMasterSyncCompleted);
 
     // Offline message queue handlers
     socket.register("queueOfflineMessage", handleQueueOfflineMessage);
@@ -569,10 +571,10 @@ async function handleAllContactListsCleared(data) {
 }
 
 /**
- * Handle all devices synchronized broadcast
+ * Handle all devices synchronized broadcast (legacy - kept for compatibility)
  */
 async function handleAllDevicesSynchronized(data) {
-  console.log("Cyberpunk Agent | Received all devices synchronized broadcast via SocketLib:", data);
+  console.log("Cyberpunk Agent | Received all devices synchronized broadcast via SocketLib (legacy):", data);
 
   // Prevent processing our own updates
   if (data.userId === game.user.id) {
@@ -593,10 +595,10 @@ async function handleAllDevicesSynchronized(data) {
       window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
       window.CyberpunkAgent.instance.updateOpenInterfaces();
 
-      console.log(`Cyberpunk Agent | Devices synchronized: ${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated`);
+      console.log(`Cyberpunk Agent | Legacy devices synchronized: ${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated`);
 
-      // Show notification
-      ui.notifications.info(`All devices have been synchronized by the GM (${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated)`);
+      // Show notification (legacy format)
+      ui.notifications.info(`📱 Devices synchronized by GM (${data.synchronizedCount || 0} devices, ${data.updatedCount || 0} updated)`);
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling all devices synchronized broadcast:", error);
@@ -1488,6 +1490,118 @@ async function handleMessagesDeletedFromServer(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling messages deleted from server:", error);
+  }
+}
+
+/**
+ * Handle master message sync command from GM
+ */
+async function handlePerformMasterMessageSync(data) {
+  console.log("Cyberpunk Agent | Received master message sync command from GM:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { serverMessages, gmUserName } = data;
+
+      console.log("Cyberpunk Agent | Starting master sync - clearing local storage...");
+
+      // Step 1: Clear all local message storage
+      window.CyberpunkAgent.instance.messages.clear();
+
+      // Step 2: Clear localStorage for all user devices
+      const userDevices = [];
+      for (const [actorId, deviceIds] of window.CyberpunkAgent.instance.deviceMappings.entries()) {
+        const actor = game.actors.get(actorId);
+        if (actor && actor.ownership && actor.ownership[game.user.id] >= 1) {
+          userDevices.push(...deviceIds);
+        }
+      }
+
+      // Clear localStorage for each user device
+      for (const deviceId of userDevices) {
+        const storageKey = `cyberpunk-agent-messages-${deviceId}`;
+        localStorage.removeItem(storageKey);
+      }
+
+      console.log(`Cyberpunk Agent | Cleared local storage for ${userDevices.length} devices`);
+
+      // Step 3: Rebuild from server data
+      let syncedConversations = 0;
+      let syncedMessages = 0;
+
+      for (const [conversationKey, messages] of Object.entries(serverMessages)) {
+        // Only sync conversations that involve user's devices
+        const conversationInvolvesUser = userDevices.some(deviceId =>
+          conversationKey.includes(deviceId)
+        );
+
+        if (conversationInvolvesUser) {
+          window.CyberpunkAgent.instance.messages.set(conversationKey, [...messages]);
+          syncedConversations++;
+          syncedMessages += messages.length;
+        }
+      }
+
+      // Step 4: Save to localStorage
+      for (const deviceId of userDevices) {
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+      }
+
+      // Step 5: Update UI
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      console.log(`Cyberpunk Agent | Master sync completed: ${syncedConversations} conversations, ${syncedMessages} messages`);
+      ui.notifications.info(`📱 Master sync completed by ${gmUserName}: ${syncedConversations} conversations, ${syncedMessages} messages`);
+
+    } else {
+      console.error("Cyberpunk Agent | CyberpunkAgent instance not available for master sync");
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error performing master message sync:", error);
+    ui.notifications.error("Error during master message sync: " + error.message);
+  }
+}
+
+/**
+ * Handle master sync completion notification
+ */
+async function handleMasterSyncCompleted(data) {
+  console.log("Cyberpunk Agent | Received master sync completion notification:", data);
+
+  // Prevent processing our own notifications
+  if (data.userId === game.user.id) {
+    console.log("Cyberpunk Agent | Ignoring own master sync completion notification");
+    return;
+  }
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { deviceCount, devicesUpdated, actorDataUpdated, conversationsSync, messagesSync, userName } = data;
+
+      // Reload device and phone number data to get the latest synchronized state
+      window.CyberpunkAgent.instance.loadDeviceData();
+      window.CyberpunkAgent.instance.loadPhoneNumberData();
+
+      // Update all open interfaces
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+      window.CyberpunkAgent.instance.updateOpenInterfaces();
+
+      console.log(`Cyberpunk Agent | Master sync completed by ${userName}:`);
+      console.log(`  - Actor Data: ${actorDataUpdated || 0} devices updated`);
+      console.log(`  - Devices: ${deviceCount} (${devicesUpdated} new phone numbers)`);
+      console.log(`  - Messages: ${conversationsSync} conversations, ${messagesSync} messages`);
+
+      // Show comprehensive notification
+      const message = `🔄 Master sync completed by GM ${userName}:\n` +
+        `👤 Actor data: ${actorDataUpdated || 0} devices updated\n` +
+        `📱 ${deviceCount} devices (${devicesUpdated} new phone numbers)\n` +
+        `💬 ${conversationsSync} conversations, ${messagesSync} messages`;
+
+      ui.notifications.info(message);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling master sync completion:", error);
   }
 }
 
