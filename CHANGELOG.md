@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.2] - 2025-01-27
+
+### Enhanced
+- **Cross-Browser Read Status Synchronization**: Implemented server-based read status system
+  - **Server-First Storage**: Read status now stored in server settings for cross-browser persistence
+  - **Cross-Browser Sync**: Messages marked as read in one browser remain read in other browsers
+  - **Incognito Session Support**: Read status persists across incognito sessions and browser cache clearing
+  - **Real-Time Synchronization**: SocketLib integration for instant read status updates across clients
+  - **GM/Player Separation**: Proper ownership validation prevents GM actions from affecting player read status
+  - **Legacy Compatibility**: Automatic migration from old localStorage-based system to new server-based system
+
+### Technical Improvements
+- **Enhanced Read Status Architecture**: Complete rewrite of read status system
+  - **User-Specific Tracking**: Read status now tracked per user, not per device
+  - **Server Settings Integration**: Uses `game.settings` for persistent cross-browser storage
+  - **SocketLib Handlers**: Added `readStatusUpdate`, `requestReadStatusSync`, `readStatusSyncResponse` handlers
+  - **Ownership Validation**: `_shouldMarkAsRead()` method ensures proper GM/Player separation
+  - **Performance Optimization**: User-specific caching and efficient read status calculations
+  - **Fallback Support**: Graceful fallback to localStorage if server storage fails
+
+### Fixed
+- **Cross-Browser Read Status Issue**: Resolved issue where messages appeared unread when switching browsers
+- **Incognito Session Persistence**: Fixed read status not persisting in incognito/private browsing sessions
+- **GM Interference Prevention**: GMs operating player devices no longer mark messages as read for players
+
+### Code Quality
+- **Production Cleanup**: Removed all test functions and development-only code from production build
+  - **Test Function Removal**: Cleaned up `window.test*` functions and development utilities
+  - **Debug Code Cleanup**: Removed test console logs and development debugging code
+  - **File Size Optimization**: Reduced module size by ~1,600 lines of test code
+  - **Production Ready**: Module now clean and optimized for production deployment
+
 ## [2.2.1]
 
 ### Enhanced
