@@ -52,7 +52,7 @@ class ContactSearchModal extends Application {
     super.activateListeners(html);
 
     // Phone input
-    const phoneInput = html.find('.cp-phone-input');
+    const phoneInput = html.find('.cpa-phone-input');
     phoneInput.on('input', this._onPhoneInput.bind(this));
     phoneInput.on('keypress', this._onPhoneKeypress.bind(this));
 
@@ -69,7 +69,7 @@ class ContactSearchModal extends Application {
     closeBtn.on('click', this._onCloseClick.bind(this));
 
     // Modal close button
-    const modalCloseBtn = html.find('.cp-modal-close');
+    const modalCloseBtn = html.find('.cpa-modal-close');
     modalCloseBtn.on('click', this._onCloseClick.bind(this));
   }
 
@@ -283,13 +283,13 @@ class ContactSearchModal extends Application {
    * Show search result
    */
   _showResult() {
-    const resultElement = this.element?.find('.cp-search-result');
-    const errorElement = this.element?.find('.cp-error-message');
+    const resultElement = this.element?.find('.cpa-search-result');
+    const errorElement = this.element?.find('.cpa-error-message');
 
     if (resultElement && this.searchResult) {
       // Update result content
-      resultElement.find('.cp-result-name').text(this.searchResult.name);
-      resultElement.find('.cp-result-number').text(this.searchResult.displayPhoneNumber);
+      resultElement.find('.cpa-result-name').text(this.searchResult.name);
+      resultElement.find('.cpa-result-number').text(this.searchResult.displayPhoneNumber);
 
       // Show result
       resultElement.show();
@@ -301,7 +301,7 @@ class ContactSearchModal extends Application {
    * Hide search result
    */
   _hideResult() {
-    const resultElement = this.element?.find('.cp-search-result');
+    const resultElement = this.element?.find('.cpa-search-result');
     resultElement?.hide();
   }
 
@@ -309,11 +309,11 @@ class ContactSearchModal extends Application {
    * Show error message
    */
   _showError(message) {
-    const errorElement = this.element?.find('.cp-error-message');
-    const resultElement = this.element?.find('.cp-search-result');
+    const errorElement = this.element?.find('.cpa-error-message');
+    const resultElement = this.element?.find('.cpa-search-result');
 
     if (errorElement) {
-      errorElement.find('.cp-error-text').text(message);
+      errorElement.find('.cpa-error-text').text(message);
       errorElement.show();
       resultElement?.hide();
     }
@@ -323,7 +323,7 @@ class ContactSearchModal extends Application {
    * Hide error message
    */
   _hideError() {
-    const errorElement = this.element?.find('.cp-error-message');
+    const errorElement = this.element?.find('.cpa-error-message');
     errorElement?.hide();
   }
 

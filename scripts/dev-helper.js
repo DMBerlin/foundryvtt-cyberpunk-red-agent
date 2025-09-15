@@ -74,7 +74,7 @@ class CyberpunkAgentDevHelper {
     }
 
     // Check if token tool button exists
-    const tokenToolButton = document.querySelector('.control-tool[data-tool="agent"]');
+    const tokenToolButton = document.querySelector('.cpa-control-tool[data-tool="agent"]');
     if (tokenToolButton) {
       console.log("✓ Token tool button found");
     } else {
@@ -185,7 +185,7 @@ class CyberpunkAgentDevHelper {
                     <p><strong>Current Status:</strong></p>
                     <ul>
                         <li>User Type: ${game.user.isGM ? 'GM' : 'Player'}</li>
-                        <li>Token Tool Button: ${document.querySelector('.control-tool[data-tool="agent"]') ? 'Found' : 'Not Found'}</li>
+                        <li>Token Tool Button: ${document.querySelector('.cpa-control-tool[data-tool="agent"]') ? 'Found' : 'Not Found'}</li>
                         <li>Module Active: ${game.modules.get('cyberpunk-agent')?.active ? 'Yes' : 'No'}</li>
                         <li>Available Actors: ${CyberpunkAgent.instance ? CyberpunkAgent.instance.getUserActors().length : 'Unknown'}</li>
                     </ul>

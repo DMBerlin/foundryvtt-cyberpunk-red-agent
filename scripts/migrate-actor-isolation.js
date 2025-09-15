@@ -35,7 +35,7 @@ async function migrateMuteSettings(agent) {
   console.log("--- Migrating Mute Settings ---");
 
   const userId = game.user.id;
-  const oldStorageKey = `cyberpunk-agent-mutes-${userId}`;
+  const oldStorageKey = `cpa-mutes-${userId}`;
   const oldMuteData = localStorage.getItem(oldStorageKey);
 
   if (!oldMuteData) {
@@ -85,7 +85,7 @@ async function migrateMuteSettings(agent) {
     }
 
     // Backup old settings
-    const backupKey = `cyberpunk-agent-mutes-${userId}-backup-${Date.now()}`;
+    const backupKey = `cpa-mutes-${userId}-backup-${Date.now()}`;
     localStorage.setItem(backupKey, oldMuteData);
     console.log(`Backed up old settings to: ${backupKey}`);
 
@@ -99,7 +99,7 @@ async function migrateMessageData(agent) {
   console.log("--- Migrating Message Data ---");
 
   const userId = game.user.id;
-  const oldStorageKey = `cyberpunk-agent-messages-${userId}`;
+  const oldStorageKey = `cpa-messages-${userId}`;
   const oldMessageData = localStorage.getItem(oldStorageKey);
 
   if (!oldMessageData) {
@@ -148,7 +148,7 @@ async function migrateMessageData(agent) {
     // Save actor-specific message data
     let migratedActors = 0;
     for (const [actorId, messages] of actorMessages.entries()) {
-      const newStorageKey = `cyberpunk-agent-messages-${userId}-${actorId}`;
+      const newStorageKey = `cpa-messages-${userId}-${actorId}`;
       localStorage.setItem(newStorageKey, JSON.stringify(messages));
       console.log(`Migrated messages for actor ${actorId}: ${Object.keys(messages).length} conversations`);
       migratedActors++;
@@ -157,7 +157,7 @@ async function migrateMessageData(agent) {
     console.log(`Successfully migrated messages for ${migratedActors} actors`);
 
     // Backup old message data
-    const backupKey = `cyberpunk-agent-messages-${userId}-backup-${Date.now()}`;
+    const backupKey = `cpa-messages-${userId}-backup-${Date.now()}`;
     localStorage.setItem(backupKey, oldMessageData);
     console.log(`Backed up old message data to: ${backupKey}`);
 
@@ -170,8 +170,8 @@ async function migrateMessageData(agent) {
 // Function to check if migration is needed
 function checkMigrationNeeded() {
   const userId = game.user.id;
-  const oldMuteKey = `cyberpunk-agent-mutes-${userId}`;
-  const oldMessageKey = `cyberpunk-agent-messages-${userId}`;
+  const oldMuteKey = `cpa-mutes-${userId}`;
+  const oldMessageKey = `cpa-messages-${userId}`;
 
   const hasOldMuteData = localStorage.getItem(oldMuteKey);
   const hasOldMessageData = localStorage.getItem(oldMessageKey);
@@ -193,7 +193,7 @@ function rollbackMigration() {
   const backupKeys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.includes(`cyberpunk-agent-${userId}-backup-`)) {
+    if (key && key.includes(`cpa-${userId}-backup-`)) {
       backupKeys.push(key);
     }
   }

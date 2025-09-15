@@ -184,7 +184,7 @@ class MessagePerformanceManager {
         // Processing save queue silently
 
         try {
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
             const existingData = localStorage.getItem(storageKey);
             const messagesData = existingData ? JSON.parse(existingData) : {};
 
@@ -305,7 +305,7 @@ class SmartNotificationManager {
     }
 
     updateUnreadBadge(deviceId) {
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-unread-update', {
+        document.dispatchEvent(new CustomEvent('cpa-unread-update', {
             detail: { deviceId }
         }));
     }
@@ -568,8 +568,8 @@ window.cyberpunkAgentMasterReset = async function () {
 
         // Passo 4: Limpar localStorage do GM
         console.log("💾 4/6 - Limpando localStorage local...");
-        const gmMessagesKey = `cyberpunk-agent-messages-${game.user.id}`;
-        const gmTimestampsKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+        const gmMessagesKey = `cpa-messages-${game.user.id}`;
+        const gmTimestampsKey = `cpa-read-timestamps-${game.user.id}`;
         localStorage.removeItem(gmMessagesKey);
         localStorage.removeItem(gmTimestampsKey);
         console.log("✅ localStorage do GM limpo");
@@ -1033,7 +1033,7 @@ window.cyberpunkAgentDebugOfflineMessages = function (deviceId) {
 
     // Check localStorage
     try {
-        const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+        const storageKey = `cpa-messages-${game.user.id}`;
         const storedData = localStorage.getItem(storageKey);
         if (storedData) {
             const parsedData = JSON.parse(storedData);
@@ -3134,7 +3134,7 @@ class CyberpunkAgent {
             const messagesToSync = [];
 
             // Get messages from localStorage for this user and actor
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}-${actorId}`;
+            const storageKey = `cpa-messages-${game.user.id}-${actorId}`;
             const storedData = localStorage.getItem(storageKey);
 
             if (storedData) {
@@ -3375,7 +3375,7 @@ class CyberpunkAgent {
     async saveMessages() {
         try {
             const messagesObject = Object.fromEntries(this.messages);
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
 
             localStorage.setItem(storageKey, JSON.stringify(messagesObject));
             console.log("Cyberpunk Agent | Messages saved to localStorage for user:", game.user.name);
@@ -3401,7 +3401,7 @@ class CyberpunkAgent {
             }
 
             const messagesObject = Object.fromEntries(actorMessages);
-            const storageKey = `cyberpunk-agent-messages-${userId}-${actorId}`;
+            const storageKey = `cpa-messages-${userId}-${actorId}`;
 
             localStorage.setItem(storageKey, JSON.stringify(messagesObject));
             console.log(`Cyberpunk Agent | Messages saved to localStorage for user ${game.user.name} and actor ${actorId}`);
@@ -3417,7 +3417,7 @@ class CyberpunkAgent {
     async loadMessages() {
         try {
             let messagesData = {};
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
 
             const storedData = localStorage.getItem(storageKey);
             if (storedData) {
@@ -3446,7 +3446,7 @@ class CyberpunkAgent {
     async loadMessagesForDevice(deviceId) {
         try {
             // Load all conversations that involve this device
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
             const storedData = localStorage.getItem(storageKey);
 
             if (storedData) {
@@ -3481,7 +3481,7 @@ class CyberpunkAgent {
                 }
             }
 
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
             localStorage.setItem(storageKey, JSON.stringify(allMessages));
 
             const conversationCount = Object.keys(allMessages).length;
@@ -3785,7 +3785,7 @@ class CyberpunkAgent {
     async loadMessagesForActor(actorId) {
         try {
             const userId = game.user.id;
-            const storageKey = `cyberpunk-agent-messages-${userId}-${actorId}`;
+            const storageKey = `cpa-messages-${userId}-${actorId}`;
             let messagesData = {};
 
             const storedData = localStorage.getItem(storageKey);
@@ -3953,7 +3953,7 @@ class CyberpunkAgent {
         this._forceChat7UnreadCountUpdate(actorId1, actorId2);
 
         // Strategy 3: Dispatch custom event for backward compatibility
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'conversationRead',
@@ -4039,7 +4039,7 @@ class CyberpunkAgent {
         this._forceChat7UnreadCountUpdate(deviceId1, deviceId2);
 
         // Strategy 3: Dispatch custom event for backward compatibility
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'deviceConversationRead',
@@ -4126,7 +4126,7 @@ class CyberpunkAgent {
                 timestampsData[conversationKey] = timestamp;
             });
 
-            const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            const storageKey = `cpa-read-timestamps-${game.user.id}`;
             localStorage.setItem(storageKey, JSON.stringify(timestampsData));
             console.log("Cyberpunk Agent | Read timestamps saved to localStorage for user:", game.user.name);
         } catch (error) {
@@ -4139,7 +4139,7 @@ class CyberpunkAgent {
      */
     _loadReadTimestamps() {
         try {
-            const storageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            const storageKey = `cpa-read-timestamps-${game.user.id}`;
             const storedData = localStorage.getItem(storageKey);
 
             if (storedData) {
@@ -4289,7 +4289,7 @@ class CyberpunkAgent {
             console.log(`Cyberpunk Agent | Saved read status to server for user ${userId}`);
 
             // Also save to localStorage as cache
-            const storageKey = `cyberpunk-agent-read-status-${userId}`;
+            const storageKey = `cpa-read-status-${userId}`;
             const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
             existingData[conversationKey] = {
                 lastReadTimestamp: timestamp,
@@ -4302,7 +4302,7 @@ class CyberpunkAgent {
 
             // Fallback to localStorage only
             try {
-                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storageKey = `cpa-read-status-${userId}`;
                 const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
                 existingData[conversationKey] = {
                     lastReadTimestamp: timestamp,
@@ -4338,12 +4338,12 @@ class CyberpunkAgent {
                 console.log(`Cyberpunk Agent | Loaded read status from server settings for user ${userId}`);
 
                 // Update localStorage cache
-                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storageKey = `cpa-read-status-${userId}`;
                 localStorage.setItem(storageKey, JSON.stringify(userReadStatus));
 
             } else {
                 // Fallback to localStorage
-                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storageKey = `cpa-read-status-${userId}`;
                 const storedData = localStorage.getItem(storageKey);
 
                 if (storedData) {
@@ -4368,7 +4368,7 @@ class CyberpunkAgent {
 
             // Fallback to localStorage only
             try {
-                const storageKey = `cyberpunk-agent-read-status-${userId}`;
+                const storageKey = `cpa-read-status-${userId}`;
                 const storedData = localStorage.getItem(storageKey);
 
                 if (storedData) {
@@ -4986,7 +4986,7 @@ class CyberpunkAgent {
                 this._updateChat7Interfaces();
 
                 // Dispatch update events
-                document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+                document.dispatchEvent(new CustomEvent('cpa-update', {
                     detail: {
                         type: 'contactUpdate',
                         deviceId: senderDeviceId,
@@ -5018,7 +5018,7 @@ class CyberpunkAgent {
             await this.saveDeviceData();
 
             // Notify UI update
-            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            document.dispatchEvent(new CustomEvent('cpa-update', {
                 detail: {
                     type: 'contactUpdate',
                     deviceId: deviceId,
@@ -6436,7 +6436,7 @@ class CyberpunkAgent {
      */
     notifyDeviceRegistryUpdate(actorId, updates) {
         // Dispatch custom event for UI updates
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-device-update', {
+        document.dispatchEvent(new CustomEvent('cpa-device-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'deviceRegistryUpdate',
@@ -6603,7 +6603,7 @@ class CyberpunkAgent {
         // Add pinned devices section
         if (pinnedDevices.length > 0) {
             deviceListHtml += `
-                <div class="cp-device-section-header">
+                <div class="cpa-device-section-header">
                     <i class="fas fa-thumbtack"></i>
                     <span>DISPOSITIVOS FIXADOS (${pinnedDevices.length})</span>
                 </div>
@@ -6614,7 +6614,7 @@ class CyberpunkAgent {
         // Add regular devices section
         if (regularDevices.length > 0) {
             deviceListHtml += `
-                <div class="cp-device-section-header ${pinnedDevices.length > 0 ? 'with-spacing' : ''}">
+                <div class="cpa-device-section-header ${pinnedDevices.length > 0 ? 'with-spacing' : ''}">
                     <i class="fas fa-mobile-alt"></i>
                     <span>OUTROS DISPOSITIVOS (${regularDevices.length})</span>
                 </div>
@@ -6625,36 +6625,36 @@ class CyberpunkAgent {
 
         // Create the enhanced dialog content
         const content = `
-            <div class="cp-device-selection-container">
-                <div class="cp-device-selection-header">
+            <div class="cpa-device-selection-container">
+                <div class="cpa-device-selection-header">
                     <h3><i class="fas fa-mobile-alt"></i> SELEÇÃO DE DISPOSITIVO</h3>
                     <p>Como GM, você pode operar qualquer dispositivo registrado no sistema.</p>
                 </div>
                 
-                <div class="cp-device-filter-section">
-                    <div class="cp-filter-wrapper">
-                        <input type="text" id="cp-device-filter" placeholder="Filtrar por nome ou telefone..." />
-                        <i class="fas fa-search cp-filter-icon"></i>
+                <div class="cpa-device-filter-section">
+                    <div class="cpa-filter-wrapper">
+                        <input type="text" id="cpa-device-filter" placeholder="Filtrar por nome ou telefone..." />
+                        <i class="fas fa-search cpa-filter-icon"></i>
                     </div>
-                    <div class="cp-sort-controls">
-                        <select id="cp-sort-by" class="cp-sort-select">
+                    <div class="cpa-sort-controls">
+                        <select id="cpa-sort-by" class="cpa-sort-select">
                             <option value="name">Ordenar por Nome</option>
                             <option value="unread">Ordenar por Não Lidas</option>
                         </select>
-                        <button id="cp-unread-only" class="cp-unread-toggle" title="Mostrar apenas dispositivos com mensagens não lidas">
+                        <button id="cpa-unread-only" class="cpa-unread-toggle" title="Mostrar apenas dispositivos com mensagens não lidas">
                             <i class="fas fa-envelope"></i>
                             <span>Apenas Não Lidas</span>
                         </button>
                     </div>
-                    <div class="cp-device-count">
-                        <span id="cp-visible-count">${allDevices.length}</span> de ${allDevices.length} dispositivos
+                    <div class="cpa-device-count">
+                        <span id="cpa-visible-count">${allDevices.length}</span> de ${allDevices.length} dispositivos
                     </div>
                 </div>
                 
-                <div class="cp-device-list" id="cp-device-list">
+                <div class="cpa-device-list" id="cpa-device-list">
                     ${deviceListHtml}
-                    <div class="cp-no-devices-found" id="cp-no-devices-found" style="display: none;">
-                        <div class="cp-no-devices-icon">
+                    <div class="cpa-no-devices-found" id="cpa-no-devices-found" style="display: none;">
+                        <div class="cpa-no-devices-icon">
                             <i class="fas fa-search"></i>
                         </div>
                         <h4>Nenhum dispositivo encontrado</h4>
@@ -6662,8 +6662,8 @@ class CyberpunkAgent {
                     </div>
                 </div>
                 
-                <div class="cp-device-selection-footer">
-                    <div class="cp-selection-stats">
+                <div class="cpa-device-selection-footer">
+                    <div class="cpa-selection-stats">
                         Total: ${allDevices.length} dispositivos registrados
                     </div>
                 </div>
@@ -6683,14 +6683,14 @@ class CyberpunkAgent {
             default: "cancel",
             render: (html) => {
                 // Add cyberpunk styling to the dialog
-                html.closest('.dialog').addClass('cp-device-selection-dialog');
+                html.closest('.dialog').addClass('cpa-device-selection-dialog');
 
                 // Enhanced filter and sort functionality
-                const filterInput = html.find('#cp-device-filter');
-                const sortSelect = html.find('#cp-sort-by');
-                const unreadToggle = html.find('#cp-unread-only');
-                const deviceItems = html.find('.cp-device-item');
-                const visibleCount = html.find('#cp-visible-count');
+                const filterInput = html.find('#cpa-device-filter');
+                const sortSelect = html.find('#cpa-sort-by');
+                const unreadToggle = html.find('#cpa-unread-only');
+                const deviceItems = html.find('.cpa-device-item');
+                const visibleCount = html.find('#cpa-visible-count');
 
                 // Helper function to normalize text for search (remove special chars, lowercase)
                 const normalizeSearchText = (text) => {
@@ -6703,7 +6703,7 @@ class CyberpunkAgent {
 
                 // Get unread count for a device item
                 const getDeviceUnreadCount = (deviceItem) => {
-                    const unreadElement = deviceItem.find('.cp-device-unread');
+                    const unreadElement = deviceItem.find('.cpa-device-unread');
                     if (unreadElement.length > 0) {
                         const text = unreadElement.text();
                         const match = text.match(/(\d+)/);
@@ -6715,8 +6715,8 @@ class CyberpunkAgent {
                 // Sort devices based on selected criteria
                 const sortDevices = () => {
                     const sortBy = sortSelect.val();
-                    const deviceList = html.find('#cp-device-list');
-                    const items = deviceList.find('.cp-device-item').get();
+                    const deviceList = html.find('#cpa-device-list');
+                    const items = deviceList.find('.cpa-device-item').get();
 
                     if (sortBy === 'unread') {
                         // Sort by unread count (highest first)
@@ -6737,8 +6737,8 @@ class CyberpunkAgent {
                     } else {
                         // Sort by name (alphabetical)
                         items.sort((a, b) => {
-                            const aName = $(a).find('.cp-device-name').text().toLowerCase();
-                            const bName = $(b).find('.cp-device-name').text().toLowerCase();
+                            const aName = $(a).find('.cpa-device-name').text().toLowerCase();
+                            const bName = $(b).find('.cpa-device-name').text().toLowerCase();
 
                             // Pinned devices still come first
                             const aIsPinned = $(a).hasClass('pinned');
@@ -6761,7 +6761,7 @@ class CyberpunkAgent {
 
                     if (pinnedItems.length > 0) {
                         deviceList.append(`
-                            <div class="cp-device-section-header">
+                            <div class="cpa-device-section-header">
                                 <i class="fas fa-thumbtack"></i>
                                 <span>DISPOSITIVOS FIXADOS (${pinnedItems.length})</span>
                             </div>
@@ -6771,7 +6771,7 @@ class CyberpunkAgent {
 
                     if (regularItems.length > 0) {
                         deviceList.append(`
-                            <div class="cp-device-section-header ${pinnedItems.length > 0 ? 'with-spacing' : ''}">
+                            <div class="cpa-device-section-header ${pinnedItems.length > 0 ? 'with-spacing' : ''}">
                                 <i class="fas fa-mobile-alt"></i>
                                 <span>OUTROS DISPOSITIVOS (${regularItems.length})</span>
                             </div>
@@ -6781,8 +6781,8 @@ class CyberpunkAgent {
 
                     // Re-add no devices found message
                     deviceList.append(`
-                        <div class="cp-no-devices-found" id="cp-no-devices-found" style="display: none;">
-                            <div class="cp-no-devices-icon">
+                        <div class="cpa-no-devices-found" id="cpa-no-devices-found" style="display: none;">
+                            <div class="cpa-no-devices-icon">
                                 <i class="fas fa-search"></i>
                             </div>
                             <h4>Nenhum dispositivo encontrado</h4>
@@ -6798,7 +6798,7 @@ class CyberpunkAgent {
                 // Function to attach event handlers to device items
                 const attachDeviceEventHandlers = () => {
                     // Pin/unpin functionality
-                    html.find('.cp-device-pin-btn').off('click').click(async (event) => {
+                    html.find('.cpa-device-pin-btn').off('click').click(async (event) => {
                         event.stopPropagation();
                         const deviceId = $(event.currentTarget).data('device-id');
 
@@ -6815,7 +6815,7 @@ class CyberpunkAgent {
                     });
 
                     // Device selection events
-                    html.find('.cp-device-select-btn').off('click').click((event) => {
+                    html.find('.cpa-device-select-btn').off('click').click((event) => {
                         const deviceId = $(event.currentTarget).data('device-id');
                         if (deviceId) {
                             console.log(`Cyberpunk Agent | GM selected device: ${deviceId}`);
@@ -6825,7 +6825,7 @@ class CyberpunkAgent {
                     });
 
                     // Double-click to select device
-                    html.find('.cp-device-item').off('dblclick').dblclick((event) => {
+                    html.find('.cpa-device-item').off('dblclick').dblclick((event) => {
                         const deviceId = $(event.currentTarget).data('device-id');
                         if (deviceId) {
                             console.log(`Cyberpunk Agent | GM double-clicked device: ${deviceId}`);
@@ -6840,7 +6840,7 @@ class CyberpunkAgent {
                     const showUnreadOnly = unreadToggle.hasClass('active');
                     let visibleDevices = 0;
 
-                    html.find('.cp-device-item').each(function () {
+                    html.find('.cpa-device-item').each(function () {
                         const item = $(this);
                         const searchText = item.data('search-text') || '';
                         const normalizedSearchText = normalizeSearchText(searchText);
@@ -6861,7 +6861,7 @@ class CyberpunkAgent {
                     visibleCount.text(visibleDevices);
 
                     // Show/hide no devices found message
-                    const noDevicesFound = html.find('#cp-no-devices-found');
+                    const noDevicesFound = html.find('#cpa-no-devices-found');
                     noDevicesFound.toggle(visibleDevices === 0);
                 };
 
@@ -6920,29 +6920,29 @@ class CyberpunkAgent {
         const pinnedClass = isPinned ? 'pinned' : '';
 
         return `
-            <div class="cp-device-item ${statusClass} ${userTypeClass} ${pinnedClass}" data-device-id="${device.deviceId}" data-search-text="${device.ownerName?.toLowerCase() || ''} ${device.phoneNumber}">
-                <div class="cp-device-avatar">
+            <div class="cpa-device-item ${statusClass} ${userTypeClass} ${pinnedClass}" data-device-id="${device.deviceId}" data-search-text="${device.ownerName?.toLowerCase() || ''} ${device.phoneNumber}">
+                <div class="cpa-device-avatar">
                     <img src="${device.img || 'icons/svg/mystery-man.svg'}" alt="${device.ownerName}" />
-                    ${isPinned ? '<div class="cp-device-pin-indicator"><i class="fas fa-thumbtack"></i></div>' : ''}
+                    ${isPinned ? '<div class="cpa-device-pin-indicator"><i class="fas fa-thumbtack"></i></div>' : ''}
                 </div>
-                <div class="cp-device-info">
-                    <div class="cp-device-name">
+                <div class="cpa-device-info">
+                    <div class="cpa-device-name">
                         ${device.ownerName || 'Unknown'}
-                        ${isGMDevice ? '<span class="cp-gm-badge">GM</span>' : ''}
-                        ${isPinned ? '<span class="cp-pin-badge">FIXADO</span>' : ''}
+                        ${isGMDevice ? '<span class="cpa-gm-badge">GM</span>' : ''}
+                        ${isPinned ? '<span class="cpa-pin-badge">FIXADO</span>' : ''}
                     </div>
-                    <div class="cp-device-phone">${device.phoneNumber}</div>
-                        <div class="cp-device-details">
-                            <span class="cp-device-id">ID: ${device.deviceId.slice(-8)}</span>
-                            <span class="cp-device-contacts">${device.contacts?.length || 0} contatos</span>
-                            ${unreadCount > 0 ? `<span class="cp-device-unread">${unreadCount} não lidas</span>` : ''}
+                    <div class="cpa-device-phone">${device.phoneNumber}</div>
+                        <div class="cpa-device-details">
+                            <span class="cpa-device-id">ID: ${device.deviceId.slice(-8)}</span>
+                            <span class="cpa-device-contacts">${device.contacts?.length || 0} contatos</span>
+                            ${unreadCount > 0 ? `<span class="cpa-device-unread">${unreadCount} não lidas</span>` : ''}
                         </div>
                 </div>
-                <div class="cp-device-actions">
-                    <button class="cp-device-pin-btn" data-device-id="${device.deviceId}" title="${isPinned ? 'Desfixar dispositivo' : 'Fixar dispositivo'}">
+                <div class="cpa-device-actions">
+                    <button class="cpa-device-pin-btn" data-device-id="${device.deviceId}" title="${isPinned ? 'Desfixar dispositivo' : 'Fixar dispositivo'}">
                         <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}"></i>
                     </button>
-                    <button class="cp-device-select-btn" data-device-id="${device.deviceId}">
+                    <button class="cpa-device-select-btn" data-device-id="${device.deviceId}">
                         <i class="fas fa-mobile-alt"></i>
                         OPERAR
                     </button>
@@ -7039,7 +7039,7 @@ class CyberpunkAgent {
             console.log(`Cyberpunk Agent | Contact ${contactId} ${newMuteStatus ? 'muted' : 'unmuted'} for actor ${actorId} by user ${userId}`);
 
             // Dispatch custom event for immediate UI updates
-            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            document.dispatchEvent(new CustomEvent('cpa-update', {
                 detail: {
                     timestamp: Date.now(),
                     type: 'contactMuteToggle',
@@ -7092,7 +7092,7 @@ class CyberpunkAgent {
             console.log(`Cyberpunk Agent | Device contact ${contactDeviceId} ${newMuteStatus ? 'muted' : 'unmuted'} for device ${deviceId} by user ${userId}`);
 
             // Dispatch custom event for immediate UI updates
-            document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            document.dispatchEvent(new CustomEvent('cpa-update', {
                 detail: {
                     timestamp: Date.now(),
                     type: 'deviceContactMuteToggle',
@@ -7123,7 +7123,7 @@ class CyberpunkAgent {
 
             // Convert Map to object for localStorage
             const muteData = Object.fromEntries(userMuteSettings);
-            localStorage.setItem(`cyberpunk-agent-mutes-${userId}`, JSON.stringify(muteData));
+            localStorage.setItem(`cpa-mutes-${userId}`, JSON.stringify(muteData));
 
             // Update the in-memory Map
             this._userMuteSettings.set(userId, userMuteSettings);
@@ -7142,7 +7142,7 @@ class CyberpunkAgent {
                 this._userMuteSettings = new Map();
             }
 
-            const muteData = localStorage.getItem(`cyberpunk-agent-mutes-${userId}`);
+            const muteData = localStorage.getItem(`cpa-mutes-${userId}`);
             if (muteData) {
                 const mutes = new Map(Object.entries(JSON.parse(muteData)));
                 this._userMuteSettings.set(userId, mutes);
@@ -7922,7 +7922,7 @@ class CyberpunkAgent {
         }
 
         // Also dispatch the custom event for backward compatibility
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 type: 'messageUpdate',
                 timestamp: Date.now()
@@ -8026,17 +8026,17 @@ class CyberpunkAgent {
 
             // Clear messages from localStorage
             this.messages.clear();
-            const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const messagesStorageKey = `cpa-messages-${game.user.id}`;
             localStorage.removeItem(messagesStorageKey);
 
             // Clear agent data from localStorage
             this.agentData.clear();
-            const agentDataStorageKey = `cyberpunk-agent-data-${game.user.id}`;
+            const agentDataStorageKey = `cpa-data-${game.user.id}`;
             localStorage.removeItem(agentDataStorageKey);
 
             // Clear read timestamps from localStorage
             this.lastReadTimestamps.clear();
-            const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+            const timestampsStorageKey = `cpa-read-timestamps-${game.user.id}`;
             localStorage.removeItem(timestampsStorageKey);
 
             // Update all open interfaces
@@ -8068,7 +8068,7 @@ class CyberpunkAgent {
             const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && key.startsWith('cyberpunk-agent-messages-')) {
+                if (key && key.startsWith('cpa-messages-')) {
                     keysToRemove.push(key);
                 }
             }
@@ -8083,7 +8083,7 @@ class CyberpunkAgent {
             const timestampKeysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && key.startsWith('cyberpunk-agent-read-timestamps-')) {
+                if (key && key.startsWith('cpa-read-timestamps-')) {
                     timestampKeysToRemove.push(key);
                 }
             }
@@ -8098,7 +8098,7 @@ class CyberpunkAgent {
             const unreadKeysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && key.startsWith('cyberpunk-agent-unread-counts-')) {
+                if (key && key.startsWith('cpa-unread-counts-')) {
                     unreadKeysToRemove.push(key);
                 }
             }
@@ -8850,7 +8850,7 @@ class CyberpunkAgent {
         this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
 
         // Strategy 5: Dispatch custom event for backward compatibility
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'messageUpdate',
@@ -8978,7 +8978,7 @@ class CyberpunkAgent {
         this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
 
         // Strategy 5: Dispatch custom event for backward compatibility
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'deviceMessageUpdate',
@@ -8989,7 +8989,7 @@ class CyberpunkAgent {
 
         // Strategy 6: Also dispatch contact update event to ensure contact list is refreshed
         // This is important for cases where the contact was added but the UI wasn't updated
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'contactUpdate',
@@ -9231,7 +9231,7 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Enhanced saving of cleared messages from notification...");
 
             // Save to localStorage for all users (GM and non-GM)
-            const storageKey = `cyberpunk-agent-messages-${game.user.id}`;
+            const storageKey = `cpa-messages-${game.user.id}`;
             const messagesObject = Object.fromEntries(this.messages);
             localStorage.setItem(storageKey, JSON.stringify(messagesObject));
             console.log("Cyberpunk Agent | Saved cleared messages to localStorage from notification for user:", game.user.name);
@@ -9354,12 +9354,12 @@ class CyberpunkAgent {
             if (dialogContent && dialogContent.innerHTML.includes('cyberpunk-agent')) {
                 console.log("Cyberpunk Agent | Found agent-related dialog, updating...");
                 // Trigger a custom event to refresh dialog content
-                dialog.dispatchEvent(new CustomEvent('cyberpunk-agent-update'));
+                dialog.dispatchEvent(new CustomEvent('cpa-update'));
             }
         });
 
         // Trigger custom event for any other listeners
-        document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+        document.dispatchEvent(new CustomEvent('cpa-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'contactUpdate'
@@ -9794,7 +9794,7 @@ class CyberpunkAgent {
     playNotificationSound(senderId = null, receiverId = null) {
         try {
             // Check if notification sounds are enabled in localStorage (default to true)
-            const soundEnabled = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+            const soundEnabled = localStorage.getItem('cpa-notification-sound') !== 'false';
 
             if (!soundEnabled) {
                 console.log("Cyberpunk Agent | Notification sounds disabled by user");
@@ -9887,10 +9887,10 @@ class CyberpunkAgent {
      */
     toggleNotificationSounds() {
         try {
-            const currentSetting = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+            const currentSetting = localStorage.getItem('cpa-notification-sound') !== 'false';
             const newSetting = !currentSetting;
 
-            localStorage.setItem('cyberpunk-agent-notification-sound', newSetting.toString());
+            localStorage.setItem('cpa-notification-sound', newSetting.toString());
 
             console.log(`Cyberpunk Agent | Notification sounds ${newSetting ? 'enabled' : 'disabled'}`);
             ui.notifications.info(`Notificações sonoras ${newSetting ? 'ativadas' : 'desativadas'}!`);

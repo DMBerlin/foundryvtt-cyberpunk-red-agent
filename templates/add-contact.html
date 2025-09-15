@@ -1,9 +1,9 @@
-<div class="cp-chat7-phone">
+<div class="cpa-chat7-phone">
   <!-- Phone Header -->
-  <div class="cp-phone-header">
-    <div class="cp-phone-status">
-      <span class="cp-time">{{currentTime}}</span>
-      <div class="cp-status-icons">
+  <div class="cpa-phone-header">
+    <div class="cpa-phone-status">
+      <span class="cpa-time">{{currentTime}}</span>
+      <div class="cpa-status-icons">
         <i class="fas fa-signal"></i>
         <i class="fas fa-wifi"></i>
         <i class="fas fa-battery-three-quarters"></i>
@@ -12,64 +12,64 @@
   </div>
 
   <!-- App Header -->
-  <div class="cp-app-header">
-    <button class="cp-back-button" data-action="chat7" title="Voltar ao Chat7">
+  <div class="cpa-app-header">
+    <button class="cpa-back-button" data-action="chat7" title="Voltar ao Chat7">
       <i class="fas fa-arrow-left"></i>
     </button>
-    <div class="cp-app-title">
+    <div class="cpa-app-title">
       <h3>NOVO CONTATO</h3>
-      <span class="cp-app-subtitle">Adicione o número do novo contato</span>
+      <span class="cpa-app-subtitle">Adicione o número do novo contato</span>
     </div>
   </div>
 
   <!-- Add Contact Form -->
-  <div class="cp-add-contact-container">
-    <div class="cp-add-contact-form">
-      <div class="cp-input-group">
-        <label for="cp-phone-input" class="cp-input-label">Número de Telefone</label>
-        <input type="text" id="cp-phone-input" class="cp-phone-input" placeholder="Ex: +1 (415) 212-0002" maxlength="20"
-          data-action="phone-input" value="{{phoneNumber}}" />
-        <small class="cp-input-hint">Digite o número e a formatação será aplicada automaticamente</small>
+  <div class="cpa-add-contact-container">
+    <div class="cpa-add-contact-form">
+      <div class="cpa-input-group">
+        <label for="cpa-phone-input" class="cpa-input-label">Número de Telefone</label>
+        <input type="text" id="cpa-phone-input" class="cpa-phone-input" placeholder="Ex: +1 (415) 212-0002"
+          maxlength="20" data-action="phone-input" value="{{phoneNumber}}" />
+        <small class="cpa-input-hint">Digite o número e a formatação será aplicada automaticamente</small>
       </div>
 
-      <button class="cp-search-btn" data-action="search" disabled>
+      <button class="cpa-search-btn" data-action="search" disabled>
         <i class="fas fa-search"></i>
         BUSCAR
       </button>
 
       <!-- Search Result -->
       {{#if searchResult}}
-      <div class="cp-search-result" data-action="add-contact" title="Clique para adicionar contato">
-        <div class="cp-result-avatar">
+      <div class="cpa-search-result" data-action="add-contact" title="Clique para adicionar contato">
+        <div class="cpa-result-avatar">
           <img src="{{searchResult.img}}" alt="{{searchResult.name}}" />
         </div>
-        <div class="cp-result-info">
-          <div class="cp-result-name">{{searchResult.name}}</div>
-          <div class="cp-result-number">{{searchResult.displayPhoneNumber}}</div>
+        <div class="cpa-result-info">
+          <div class="cpa-result-name">{{searchResult.name}}</div>
+          <div class="cpa-result-number">{{searchResult.displayPhoneNumber}}</div>
         </div>
       </div>
       {{/if}}
 
       <!-- Error Message -->
       {{#if errorMessage}}
-      <div class="cp-error-message">
+      <div class="cpa-error-message">
         <i class="fas fa-exclamation-triangle"></i>
-        <span class="cp-error-text">{{errorMessage}}</span>
+        <span class="cpa-error-text">{{errorMessage}}</span>
       </div>
       {{/if}}
 
       <!-- Success Message -->
       {{#if successMessage}}
-      <div class="cp-success-message">
+      <div class="cpa-success-message">
         <i class="fas fa-check-circle"></i>
-        <span class="cp-success-text">{{successMessage}}</span>
+        <span class="cpa-success-text">{{successMessage}}</span>
       </div>
       {{/if}}
     </div>
   </div>
 
   <!-- Footer -->
-  <div class="cp-phone-footer">
-    <div class="cp-home-indicator"></div>
+  <div class="cpa-phone-footer">
+    <div class="cpa-home-indicator"></div>
   </div>
 </div>

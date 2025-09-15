@@ -369,13 +369,13 @@ class AgentApplication extends FormApplication {
 
     // Remove event listeners to prevent memory leaks and unwanted behavior
     if (this._chat7UpdateHandler) {
-      document.removeEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+      document.removeEventListener('cpa-update', this._chat7UpdateHandler);
       this._chat7UpdateHandler = null;
       console.log("AgentApplication | Removed Chat7 event listener");
     }
 
     if (this._conversationUpdateHandler) {
-      document.removeEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+      document.removeEventListener('cpa-update', this._conversationUpdateHandler);
       this._conversationUpdateHandler = null;
       console.log("AgentApplication | Removed conversation event listener");
     }
@@ -612,7 +612,7 @@ class AgentApplication extends FormApplication {
    */
   _setupChat7RealtimeListener() {
     // Remove existing listener
-    document.removeEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+    document.removeEventListener('cpa-update', this._chat7UpdateHandler);
 
     // Create new handler
     this._chat7UpdateHandler = (event) => {
@@ -664,7 +664,7 @@ class AgentApplication extends FormApplication {
     };
 
     // Add listener
-    document.addEventListener('cyberpunk-agent-update', this._chat7UpdateHandler);
+    document.addEventListener('cpa-update', this._chat7UpdateHandler);
   }
 
   /**
@@ -672,7 +672,7 @@ class AgentApplication extends FormApplication {
    */
   _setupConversationRealtimeListener() {
     // Remove existing listener
-    document.removeEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+    document.removeEventListener('cpa-update', this._conversationUpdateHandler);
 
     // Create new handler
     this._conversationUpdateHandler = (event) => {
@@ -707,7 +707,7 @@ class AgentApplication extends FormApplication {
     };
 
     // Add listener
-    document.addEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+    document.addEventListener('cpa-update', this._conversationUpdateHandler);
   }
 
   /**
@@ -737,8 +737,8 @@ class AgentApplication extends FormApplication {
    * Activate home view listeners
    */
   _activateHomeListeners(html) {
-    html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
-    html.find('.cp-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
+    html.find('.cpa-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
+    html.find('.cpa-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
 
     // Add context menu for home screen
     html.find('[data-action="home-context-menu"]').on('contextmenu', this._onHomeContextMenu.bind(this));
@@ -748,22 +748,22 @@ class AgentApplication extends FormApplication {
  * Activate Chat7 listeners
  */
   _activateChat7Listeners(html) {
-    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cpa-back-button').click(this._onBackClick.bind(this));
 
     // The template renders contact items, so we need to use event delegation
-    html.find('.cp-contact-item').click(this._onContactChatClick.bind(this));
-    html.find('.cp-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
+    html.find('.cpa-contact-item').click(this._onContactChatClick.bind(this));
+    html.find('.cpa-contact-item').on('contextmenu', this._onContactContextMenu.bind(this));
 
     // Add context menu for contacts list background (only when not clicking on contacts)
-    html.find('.cp-contacts-container').on('contextmenu', (event) => {
+    html.find('.cpa-contacts-container').on('contextmenu', (event) => {
       // Only show background context menu if we're not clicking on a contact item
-      if (!$(event.target).closest('.cp-contact-item').length) {
+      if (!$(event.target).closest('.cpa-contact-item').length) {
         this._onContactsBackgroundContextMenu(event);
       }
     });
 
     // Setup document click for context menu
-    $(document).off('click.cyberpunk-agent-context').on('click.cyberpunk-agent-context', this._onDocumentClick.bind(this));
+    $(document).off('click.cpa-context').on('click.cpa-context', this._onDocumentClick.bind(this));
   }
 
   /**
@@ -773,17 +773,17 @@ class AgentApplication extends FormApplication {
     console.log("AgentApplication | Activating conversation listeners");
 
     // Back button
-    const backButton = html.find('.cp-back-button');
+    const backButton = html.find('.cpa-back-button');
     console.log("AgentApplication | Found back button:", backButton.length);
     backButton.click(this._onBackClick.bind(this));
 
     // Send message button
-    const sendButton = html.find('.cp-send-message');
+    const sendButton = html.find('.cpa-send-message');
     console.log("AgentApplication | Found send button:", sendButton.length);
     sendButton.click(this._onSendMessage.bind(this));
 
     // Message input
-    const messageInput = html.find('.cp-message-input');
+    const messageInput = html.find('.cpa-message-input');
     console.log("AgentApplication | Found message input:", messageInput.length);
     messageInput.keypress(this._onMessageInputKeypress.bind(this));
 
@@ -793,7 +793,7 @@ class AgentApplication extends FormApplication {
     });
 
     // Message context menu
-    const messageElements = html.find('.cp-message[data-action="message-context-menu"]');
+    const messageElements = html.find('.cpa-message[data-action="message-context-menu"]');
     console.log("AgentApplication | Found message elements:", messageElements.length);
     messageElements.contextmenu(this._onMessageContextMenu.bind(this));
 
@@ -804,14 +804,14 @@ class AgentApplication extends FormApplication {
    * Activate add contact listeners
    */
   _activateAddContactListeners(html) {
-    html.find('.cp-back-button').click(this._onBackClick.bind(this));
-    html.find('.cp-phone-input').on('input', this._onPhoneInput.bind(this));
-    html.find('.cp-phone-input').on('keypress', this._onPhoneKeypress.bind(this));
-    html.find('.cp-search-btn').click(this._onSearchClick.bind(this));
-    html.find('.cp-search-result').click(this._onAddContactClick.bind(this));
+    html.find('.cpa-back-button').click(this._onBackClick.bind(this));
+    html.find('.cpa-phone-input').on('input', this._onPhoneInput.bind(this));
+    html.find('.cpa-phone-input').on('keypress', this._onPhoneKeypress.bind(this));
+    html.find('.cpa-search-btn').click(this._onSearchClick.bind(this));
+    html.find('.cpa-search-result').click(this._onAddContactClick.bind(this));
 
     // Apply mask to phone input if it has a value
-    const phoneInput = html.find('.cp-phone-input');
+    const phoneInput = html.find('.cpa-phone-input');
     if (phoneInput.val() && this.addContactState?.phoneNumber) {
       const maskedValue = this._applyPhoneMask(this.addContactState.phoneNumber);
       phoneInput.val(maskedValue);
@@ -858,11 +858,11 @@ class AgentApplication extends FormApplication {
         ui.notifications.info(`Número ${phoneNumber} copiado para a área de transferência!`);
 
         // Add visual feedback
-        phoneElement.addClass('cp-copied');
+        phoneElement.addClass('cpa-copied');
 
         // Remove the copied class after animation
         setTimeout(() => {
-          phoneElement.removeClass('cp-copied');
+          phoneElement.removeClass('cpa-copied');
         }, 1000);
 
       }).catch(err => {
@@ -883,14 +883,14 @@ class AgentApplication extends FormApplication {
     console.log("Home context menu requested");
 
     // Remove any existing context menu
-    $('.cp-context-menu').remove();
+    $('.cpa-context-menu').remove();
 
     const contextMenu = $(`
-      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
-        <button class="cp-context-menu-item" data-action="sync-device">
+      <div class="cpa-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+        <button class="cpa-context-menu-item" data-action="sync-device">
           <i class="fas fa-sync-alt"></i>Sincronizar com Servidor
         </button>
-        <button class="cp-context-menu-item" data-action="device-info">
+        <button class="cpa-context-menu-item" data-action="device-info">
           <i class="fas fa-info-circle"></i>Informações do Dispositivo
         </button>
       </div>
@@ -898,12 +898,12 @@ class AgentApplication extends FormApplication {
 
     // Add event listeners with menu removal
     contextMenu.find('[data-action="sync-device"]').click(async () => {
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
       await this._performDeviceSync();
     });
 
     contextMenu.find('[data-action="device-info"]').click(() => {
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
       this._showDeviceInfo();
     });
 
@@ -912,7 +912,7 @@ class AgentApplication extends FormApplication {
 
     // Remove context menu when clicking outside
     $(document).one('click', () => {
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
 
     // Prevent the context menu from being removed immediately
@@ -1173,24 +1173,24 @@ class AgentApplication extends FormApplication {
    */
   _showContextMenu(event, contact) {
     // Remove any existing context menu
-    $('.cp-context-menu').remove();
+    $('.cpa-context-menu').remove();
 
     const isMuted = window.CyberpunkAgent?.instance?.isContactMuted(this.device.id, contact.id) || false;
     const muteIcon = isMuted ? 'fa-volume-mute' : 'fa-volume-up';
     const muteText = isMuted ? 'Ativar Notificações' : 'Silenciar Contato';
 
     const contextMenu = $(`
-      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
-        <button class="cp-context-menu-item" data-action="mute" data-contact-id="${contact.id}">
+      <div class="cpa-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+        <button class="cpa-context-menu-item" data-action="mute" data-contact-id="${contact.id}">
           <i class="fas ${muteIcon}"></i>${muteText}
         </button>
-        <button class="cp-context-menu-item" data-action="mark-read" data-contact-id="${contact.id}">
+        <button class="cpa-context-menu-item" data-action="mark-read" data-contact-id="${contact.id}">
           <i class="fas fa-check-double"></i>Marcar Todos como Lidos
         </button>
-        <button class="cp-context-menu-item" data-action="clear-history" data-contact-id="${contact.id}">
+        <button class="cpa-context-menu-item" data-action="clear-history" data-contact-id="${contact.id}">
           <i class="fas fa-trash"></i>Limpar Histórico
         </button>
-        <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
+        <button class="cpa-context-menu-item" data-action="info" data-contact-id="${contact.id}">
           <i class="fas fa-info-circle"></i>Informações do Contato
         </button>
       </div>
@@ -1199,19 +1199,19 @@ class AgentApplication extends FormApplication {
     // Add event listeners with menu removal
     contextMenu.find('[data-action="mute"]').click(() => {
       this._toggleContactMute(contact.id);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="mark-read"]').click(() => {
       this._markAllMessagesAsRead(contact.id);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="clear-history"]').click(() => {
       this._clearConversationHistory(contact.id);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="info"]').click(() => {
       this._showContactInfo(contact.id);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
 
     $('body').append(contextMenu);
@@ -1227,20 +1227,20 @@ class AgentApplication extends FormApplication {
    */
   _showMessageContextMenu(event, messageId, messageText, messageTime, isOwnMessage) {
     // Remove any existing context menu
-    $('.cp-context-menu').remove();
+    $('.cpa-context-menu').remove();
 
     // Build context menu options based on permissions
     let menuItems = [];
 
     // Copy and Info are available to everyone
     menuItems.push(`
-      <button class="cp-context-menu-item" data-action="copy-message" data-message-id="${messageId}">
+      <button class="cpa-context-menu-item" data-action="copy-message" data-message-id="${messageId}">
         <i class="fas fa-copy"></i>Copiar Texto
       </button>
     `);
 
     menuItems.push(`
-      <button class="cp-context-menu-item" data-action="message-info" data-message-id="${messageId}">
+      <button class="cpa-context-menu-item" data-action="message-info" data-message-id="${messageId}">
         <i class="fas fa-info-circle"></i>Informações da Mensagem
       </button>
     `);
@@ -1249,7 +1249,7 @@ class AgentApplication extends FormApplication {
     if (game.user.isGM || isOwnMessage) {
       const editLabel = game.user.isGM && !isOwnMessage ? 'Editar Mensagem (GM)' : 'Editar Mensagem';
       menuItems.unshift(`
-        <button class="cp-context-menu-item" data-action="edit-message" data-message-id="${messageId}">
+        <button class="cpa-context-menu-item" data-action="edit-message" data-message-id="${messageId}">
           <i class="fas fa-edit"></i>${editLabel}
         </button>
       `);
@@ -1259,14 +1259,14 @@ class AgentApplication extends FormApplication {
     if (game.user.isGM || isOwnMessage) {
       const deleteLabel = game.user.isGM && !isOwnMessage ? 'Deletar Mensagem (GM)' : 'Deletar Mensagem';
       menuItems.unshift(`
-        <button class="cp-context-menu-item" data-action="delete-message" data-message-id="${messageId}">
+        <button class="cpa-context-menu-item" data-action="delete-message" data-message-id="${messageId}">
           <i class="fas fa-trash"></i>${deleteLabel}
         </button>
       `);
     }
 
     const contextMenu = $(`
-      <div class="cp-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
+      <div class="cpa-context-menu" style="position: absolute; top: ${event.pageY}px; left: ${event.pageX}px; z-index: 1000;">
         ${menuItems.join('')}
       </div>
     `);
@@ -1274,19 +1274,19 @@ class AgentApplication extends FormApplication {
     // Add event listeners with menu removal
     contextMenu.find('[data-action="edit-message"]').click(() => {
       this._editMessage(messageId, messageText);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="delete-message"]').click(() => {
       this._deleteMessage(messageId);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="copy-message"]').click(() => {
       this._copyMessageText(messageText);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
     contextMenu.find('[data-action="message-info"]').click(() => {
       this._showMessageInfo(messageId, messageText, messageTime);
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
 
     $('body').append(contextMenu);
@@ -1297,11 +1297,11 @@ class AgentApplication extends FormApplication {
    */
   _showContactsBackgroundContextMenu(event) {
     // Remove any existing context menus
-    $('.cp-context-menu').remove();
+    $('.cpa-context-menu').remove();
 
     const contextMenu = $(`
-      <div class="cp-context-menu" style="position: fixed; z-index: 10000; background: var(--cp-bg-secondary); border: 1px solid var(--cp-border); border-radius: 8px; box-shadow: var(--cp-shadow-strong); padding: 8px 0; min-width: 200px;">
-        <button class="cp-context-menu-item" data-action="add-contact">
+      <div class="cpa-context-menu" style="position: fixed; z-index: 10000; background: var(--cpa-bg-secondary); border: 1px solid var(--cpa-border); border-radius: 8px; box-shadow: var(--cpa-shadow-strong); padding: 8px 0; min-width: 200px;">
+        <button class="cpa-context-menu-item" data-action="add-contact">
           <i class="fas fa-user-plus"></i>Adicionar Contato
         </button>
       </div>
@@ -1316,7 +1316,7 @@ class AgentApplication extends FormApplication {
     // Add event listener for add contact
     contextMenu.find('[data-action="add-contact"]').click(() => {
       this._openContactSearchModal();
-      $('.cp-context-menu').remove();
+      $('.cpa-context-menu').remove();
     });
 
     $('body').append(contextMenu);
@@ -1357,7 +1357,7 @@ class AgentApplication extends FormApplication {
       this.render(true);
 
       // Strategy 3: Dispatch custom event for real-time updates
-      document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+      document.dispatchEvent(new CustomEvent('cpa-update', {
         detail: {
           timestamp: Date.now(),
           type: 'contactMuteToggle',
@@ -1444,15 +1444,15 @@ class AgentApplication extends FormApplication {
       new Dialog({
         title: `Informações do Contato - ${contactDevice.deviceName || 'Contato'}`,
         content: `
-          <div class="cp-contact-info-dialog">
-            <div class="cp-contact-info-section">
+          <div class="cpa-contact-info-dialog">
+            <div class="cpa-contact-info-section">
               <h3><i class="fas fa-user"></i> Informações Básicas</h3>
               <p><strong>Nome:</strong> ${contactDevice.deviceName || 'Contato'}</p>
               <p><strong>Telefone:</strong> ${formattedPhone}</p>
               <p><strong>Status:</strong> ${isMuted ? '<span style="color: #ff6b6b;"><i class="fas fa-volume-mute"></i> Silenciado</span>' : '<span style="color: #51cf66;"><i class="fas fa-volume-up"></i> Ativo</span>'}</p>
             </div>
             
-            <div class="cp-contact-info-section">
+            <div class="cpa-contact-info-section">
               <h3><i class="fas fa-comments"></i> Estatísticas de Mensagens</h3>
               <p><strong>Total de Mensagens:</strong> ${totalMessages}</p>
               <p><strong>Mensagens Enviadas:</strong> ${sentMessages}</p>
@@ -1460,7 +1460,7 @@ class AgentApplication extends FormApplication {
               <p><strong>Não Lidas:</strong> ${unreadCount > 0 ? `<span style="color: #ff6b6b;">${unreadCount}</span>` : '0'}</p>
             </div>
             
-            <div class="cp-contact-info-section">
+            <div class="cpa-contact-info-section">
               <h3><i class="fas fa-clock"></i> Histórico</h3>
               <p><strong>Primeira Mensagem:</strong> ${firstMessageDate}</p>
               <p><strong>Última Mensagem:</strong> ${lastMessageDate}</p>
@@ -1502,7 +1502,7 @@ class AgentApplication extends FormApplication {
       this._renderChat7View();
 
       // Strategy 3: Dispatch custom event
-      document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+      document.dispatchEvent(new CustomEvent('cpa-update', {
         detail: {
           timestamp: Date.now(),
           type: 'messagesMarkedAsRead',
@@ -1530,7 +1530,7 @@ class AgentApplication extends FormApplication {
         new Dialog({
           title: "Limpar Histórico",
           content: `
-            <div class="cp-clear-history-dialog">
+            <div class="cpa-clear-history-dialog">
               <p>Tem certeza que deseja limpar todo o histórico de conversa com <strong>${contact.name}</strong>?</p>
               <p><small>Esta ação só afetará o seu histórico. O histórico do outro contato permanecerá intacto.</small></p>
             </div>
@@ -1566,8 +1566,8 @@ class AgentApplication extends FormApplication {
    * Handle document click for context menu
    */
   _onDocumentClick(event) {
-    if (!$(event.target).closest('.cp-context-menu').length) {
-      $('.cp-context-menu').remove();
+    if (!$(event.target).closest('.cpa-context-menu').length) {
+      $('.cpa-context-menu').remove();
     }
   }
 
@@ -1652,38 +1652,38 @@ class AgentApplication extends FormApplication {
    */
   _showMessageEditModal(messageId, currentText, contactId) {
     // Remove any existing edit modal
-    $('.cp-edit-modal').remove();
+    $('.cpa-edit-modal').remove();
 
     // Create the cyberpunk-styled modal
     const modal = $(`
-      <div class="cp-edit-modal">
-        <div class="cp-edit-modal-backdrop"></div>
-        <div class="cp-edit-modal-container">
-          <div class="cp-edit-modal-header">
-            <div class="cp-edit-modal-title">
+      <div class="cpa-edit-modal">
+        <div class="cpa-edit-modal-backdrop"></div>
+        <div class="cpa-edit-modal-container">
+          <div class="cpa-edit-modal-header">
+            <div class="cpa-edit-modal-title">
               <i class="fas fa-edit"></i>
               <span>EDITAR MENSAGEM</span>
             </div>
-            <div class="cp-edit-modal-protocol">NEURO_EDIT_PROTOCOL_v2.1</div>
+            <div class="cpa-edit-modal-protocol">NEURO_EDIT_PROTOCOL_v2.1</div>
           </div>
           
-          <div class="cp-edit-modal-body">
-            <div class="cp-edit-input-label">CONTEÚDO DA MENSAGEM:</div>
-            <div class="cp-edit-input-wrapper">
-              <textarea class="cp-edit-textarea" placeholder="Digite sua mensagem..." maxlength="500">${currentText}</textarea>
-              <div class="cp-edit-char-counter">
-                <span class="cp-edit-char-count">${currentText.length}</span>/500
+          <div class="cpa-edit-modal-body">
+            <div class="cpa-edit-input-label">CONTEÚDO DA MENSAGEM:</div>
+            <div class="cpa-edit-input-wrapper">
+              <textarea class="cpa-edit-textarea" placeholder="Digite sua mensagem..." maxlength="500">${currentText}</textarea>
+              <div class="cpa-edit-char-counter">
+                <span class="cpa-edit-char-count">${currentText.length}</span>/500
               </div>
             </div>
-            <div class="cp-edit-hint">SHIFT+ENTER para quebra de linha • CTRL+ENTER para salvar • ESC para cancelar</div>
+            <div class="cpa-edit-hint">SHIFT+ENTER para quebra de linha • CTRL+ENTER para salvar • ESC para cancelar</div>
           </div>
           
-          <div class="cp-edit-modal-footer">
-            <button class="cp-edit-btn cp-edit-btn-cancel">
+          <div class="cpa-edit-modal-footer">
+            <button class="cpa-edit-btn cpa-edit-btn-cancel">
               <i class="fas fa-times"></i>
               CANCELAR
             </button>
-            <button class="cp-edit-btn cp-edit-btn-save">
+            <button class="cpa-edit-btn cpa-edit-btn-save">
               <i class="fas fa-save"></i>
               SALVAR ALTERAÇÕES
             </button>
@@ -1696,10 +1696,10 @@ class AgentApplication extends FormApplication {
     this.element.append(modal);
 
     // Get references to elements
-    const textarea = modal.find('.cp-edit-textarea');
-    const charCount = modal.find('.cp-edit-char-count');
-    const saveBtn = modal.find('.cp-edit-btn-save');
-    const cancelBtn = modal.find('.cp-edit-btn-cancel');
+    const textarea = modal.find('.cpa-edit-textarea');
+    const charCount = modal.find('.cpa-edit-char-count');
+    const saveBtn = modal.find('.cpa-edit-btn-save');
+    const cancelBtn = modal.find('.cpa-edit-btn-cancel');
 
     // Auto-resize textarea and update character count
     const updateTextarea = () => {
@@ -1714,8 +1714,8 @@ class AgentApplication extends FormApplication {
       // Update character count
       const currentLength = textarea.val().length;
       charCount.text(currentLength);
-      charCount.toggleClass('cp-edit-char-warning', currentLength > 450);
-      charCount.toggleClass('cp-edit-char-limit', currentLength >= 500);
+      charCount.toggleClass('cpa-edit-char-warning', currentLength > 450);
+      charCount.toggleClass('cpa-edit-char-limit', currentLength >= 500);
     };
 
     // Initial textarea setup
@@ -1739,12 +1739,12 @@ class AgentApplication extends FormApplication {
 
     // Cancel button
     cancelBtn.click(() => {
-      modal.addClass('cp-edit-modal-closing');
+      modal.addClass('cpa-edit-modal-closing');
       setTimeout(() => modal.remove(), 300);
     });
 
     // Backdrop click to cancel
-    modal.find('.cp-edit-modal-backdrop').click(() => {
+    modal.find('.cpa-edit-modal-backdrop').click(() => {
       cancelBtn.click();
     });
 
@@ -1773,7 +1773,7 @@ class AgentApplication extends FormApplication {
 
         if (success) {
           ui.notifications.info("Mensagem editada com sucesso!");
-          modal.addClass('cp-edit-modal-closing');
+          modal.addClass('cpa-edit-modal-closing');
           setTimeout(() => modal.remove(), 300);
 
           // Refresh the conversation view
@@ -1794,7 +1794,7 @@ class AgentApplication extends FormApplication {
     });
 
     // Show modal with animation
-    setTimeout(() => modal.addClass('cp-edit-modal-show'), 10);
+    setTimeout(() => modal.addClass('cpa-edit-modal-show'), 10);
   }
 
   /**
@@ -1890,7 +1890,7 @@ class AgentApplication extends FormApplication {
    * Send message
    */
   async _sendMessage() {
-    const input = this.element.find('.cp-message-input');
+    const input = this.element.find('.cpa-message-input');
     const text = input.val();
 
     // Only trim whitespace at the beginning and end, preserve internal line breaks
@@ -2107,7 +2107,7 @@ class AgentApplication extends FormApplication {
         setTimeout(() => {
           if (this.addContactState.successMessage === result.message) {
             // Add fading class for smooth transition
-            const successElement = this.element?.find('.cp-success-message');
+            const successElement = this.element?.find('.cpa-success-message');
             if (successElement) {
               successElement.addClass('fading');
               // Clear success message after fade animation completes (but don't navigate)
@@ -2137,7 +2137,7 @@ class AgentApplication extends FormApplication {
    * Update search button state
    */
   _updateSearchButton() {
-    const searchBtn = this.element?.find('.cp-search-btn');
+    const searchBtn = this.element?.find('.cpa-search-btn');
     if (searchBtn) {
       const hasPhoneNumber = this.addContactState.phoneNumber.trim().length > 0;
       searchBtn.prop('disabled', !hasPhoneNumber);
@@ -2157,7 +2157,7 @@ class AgentApplication extends FormApplication {
     setTimeout(() => {
       if (this.addContactState.errorMessage === message) {
         // Add fading class for smooth transition
-        const errorElement = this.element?.find('.cp-error-message');
+        const errorElement = this.element?.find('.cpa-error-message');
         if (errorElement) {
           errorElement.addClass('fading');
           // Remove message after fade animation completes

@@ -1,9 +1,9 @@
-<div class="cp-chat7-phone">
+<div class="cpa-chat7-phone">
   <!-- Phone Header -->
-  <div class="cp-phone-header">
-    <div class="cp-phone-status">
-      <span class="cp-time">{{currentTime}}</span>
-      <div class="cp-status-icons">
+  <div class="cpa-phone-header">
+    <div class="cpa-phone-status">
+      <span class="cpa-time">{{currentTime}}</span>
+      <div class="cpa-status-icons">
         <i class="fas fa-signal"></i>
         <i class="fas fa-wifi"></i>
         <i class="fas fa-battery-three-quarters"></i>
@@ -12,48 +12,48 @@
   </div>
 
   <!-- App Header -->
-  <div class="cp-app-header">
-    <button class="cp-back-button" data-action="home" title="Voltar ao Agent Home">
+  <div class="cpa-app-header">
+    <button class="cpa-back-button" data-action="home" title="Voltar ao Agent Home">
       <i class="fas fa-arrow-left"></i>
     </button>
-    <div class="cp-app-title">
+    <div class="cpa-app-title">
       <h3>CHAT7</h3>
-      <span class="cp-app-subtitle">Mensagens</span>
+      <span class="cpa-app-subtitle">Mensagens</span>
     </div>
   </div>
 
   <!-- Contacts List -->
-  <div class="cp-contacts-container" data-action="contacts-background">
+  <div class="cpa-contacts-container" data-action="contacts-background">
     {{#if contacts.length}}
-    <div class="cp-contacts-list">
+    <div class="cpa-contacts-list">
       {{#each contacts}}
-      <div class="cp-contact-item {{#if this.isMuted}}muted{{/if}}" data-contact-id="{{this.id}}"
+      <div class="cpa-contact-item {{#if this.isMuted}}muted{{/if}}" data-contact-id="{{this.id}}"
         title="Conversar com {{this.name}}{{#if this.isMuted}} (Notificações mutadas){{/if}}">
-        <div class="cp-contact-avatar">
+        <div class="cpa-contact-avatar">
           <img src="{{this.img}}" alt="{{this.name}}" />
           {{#if this.isMuted}}
-          <div class="cp-mute-indicator">
+          <div class="cpa-mute-indicator">
             <i class="fas fa-volume-mute"></i>
           </div>
           {{/if}}
         </div>
-        <div class="cp-contact-info">
-          <span class="cp-contact-name">{{this.name}}</span>
+        <div class="cpa-contact-info">
+          <span class="cpa-contact-name">{{this.name}}</span>
           {{#if this.isMuted}}
-          <span class="cp-contact-status muted">MUTADO</span>
+          <span class="cpa-contact-status muted">MUTADO</span>
           {{/if}}
         </div>
-        <div class="cp-contact-unread">
+        <div class="cpa-contact-unread">
           {{#if this.unreadCount}}
-          <span class="cp-unread-count">{{this.unreadCount}}</span>
+          <span class="cpa-unread-count">{{this.unreadCount}}</span>
           {{/if}}
         </div>
       </div>
       {{/each}}
     </div>
     {{else}}
-    <div class="cp-no-contacts">
-      <div class="cp-no-contacts-icon">
+    <div class="cpa-no-contacts">
+      <div class="cpa-no-contacts-icon">
         <i class="fas fa-users"></i>
       </div>
       <h3>NENHUM CONTATO</h3>
@@ -66,7 +66,7 @@
   </div>
 
   <!-- Footer -->
-  <div class="cp-phone-footer">
-    <div class="cp-home-indicator"></div>
+  <div class="cpa-phone-footer">
+    <div class="cpa-home-indicator"></div>
   </div>
 </div>

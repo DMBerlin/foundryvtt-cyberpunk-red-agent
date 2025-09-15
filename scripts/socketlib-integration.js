@@ -594,8 +594,8 @@ async function handleAllMessagesCleared(data) {
       window.CyberpunkAgent.instance.lastReadTimestamps.clear();
 
       // Clear localStorage for current user
-      const messagesStorageKey = `cyberpunk-agent-messages-${game.user.id}`;
-      const timestampsStorageKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+      const messagesStorageKey = `cpa-messages-${game.user.id}`;
+      const timestampsStorageKey = `cpa-read-timestamps-${game.user.id}`;
       localStorage.removeItem(messagesStorageKey);
       localStorage.removeItem(timestampsStorageKey);
 
@@ -1702,7 +1702,7 @@ async function handlePerformMasterMessageSync(data) {
 
       // Clear localStorage for each user device
       for (const deviceId of userDevices) {
-        const storageKey = `cyberpunk-agent-messages-${deviceId}`;
+        const storageKey = `cpa-messages-${deviceId}`;
         localStorage.removeItem(storageKey);
       }
 
@@ -1942,8 +1942,8 @@ async function handleCyberpunkAgentMasterReset(data) {
 
     // Clear localStorage
     console.log("💾 Limpando localStorage do cliente...");
-    const userMessagesKey = `cyberpunk-agent-messages-${game.user.id}`;
-    const userTimestampsKey = `cyberpunk-agent-read-timestamps-${game.user.id}`;
+    const userMessagesKey = `cpa-messages-${game.user.id}`;
+    const userTimestampsKey = `cpa-read-timestamps-${game.user.id}`;
     localStorage.removeItem(userMessagesKey);
     localStorage.removeItem(userTimestampsKey);
     console.log("✅ localStorage limpo");
@@ -2825,7 +2825,7 @@ async function handleReadStatusUpdate(data) {
       });
 
       // Update localStorage cache
-      const storageKey = `cyberpunk-agent-read-status-${userId}`;
+      const storageKey = `cpa-read-status-${userId}`;
       const existingData = JSON.parse(localStorage.getItem(storageKey) || '{}');
       existingData[conversationKey] = {
         lastReadTimestamp: timestamp,
@@ -2915,7 +2915,7 @@ async function handleReadStatusSyncResponse(data) {
       });
 
       // Update localStorage cache
-      const storageKey = `cyberpunk-agent-read-status-${game.user.id}`;
+      const storageKey = `cpa-read-status-${game.user.id}`;
       localStorage.setItem(storageKey, JSON.stringify(data.readStatus));
 
       // Clear unread count cache
