@@ -10278,8 +10278,11 @@ class CyberpunkAgent {
 
     /**
      * Play notification sound if enabled, contact is not muted, and not for active conversation
+     * @param {string|null} senderId - Sender ID for CHAT7 messages
+     * @param {string|null} receiverId - Receiver ID for CHAT7 messages  
+     * @param {string} type - Type of notification ('chat7', 'zmail', etc.)
      */
-    playNotificationSound(senderId = null, receiverId = null) {
+    playNotificationSound(senderId = null, receiverId = null, type = 'chat7') {
         try {
             // Check if notification sounds are enabled in localStorage (default to true)
             const soundEnabled = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
@@ -10289,8 +10292,15 @@ class CyberpunkAgent {
                 return;
             }
 
-            // If we have sender and receiver IDs, check if the contact is muted
-            if (senderId && receiverId) {
+            // For ZMail notifications, always play sound (no muting or active conversation checks)
+            if (type === 'zmail') {
+                this.playSoundEffect('notification-message');
+                console.log("Cyberpunk Agent | ZMail notification sound played");
+                return;
+            }
+
+            // For CHAT7 messages, apply the existing logic
+            if (type === 'chat7' && senderId && receiverId) {
                 // Check if this is a device conversation (device IDs contain hyphens)
                 const isDeviceConversation = senderId.includes('-') || receiverId.includes('-');
 
