@@ -2304,6 +2304,11 @@ class AgentApplication extends FormApplication {
     const message = messages.find(msg => msg.id === messageId);
 
     if (message) {
+      // Play opening sound effect (same as opening a chat conversation)
+      if (window.CyberpunkAgent?.instance) {
+        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+      }
+
       // Mark as read
       window.CyberpunkAgent?.instance?.markZMailMessageAsRead(this.device.id, messageId);
 
