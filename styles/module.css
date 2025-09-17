@@ -5602,3 +5602,68 @@
   color: var(--cp-text-blue);
   font-size: 1.2em;
 }
+
+/* ZMail Link Dialog */
+.cp-zmail-link-dialog {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--cp-text);
+}
+
+.cp-zmail-link-display {
+  background: var(--cp-gradient-dark);
+  border: 2px solid var(--cp-border-weak);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  word-break: break-all;
+}
+
+.cp-zmail-link-display code {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  color: var(--cp-text-blue);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.cp-zmail-link-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: var(--cp-text-dim);
+  margin: 12px 0 0 0;
+}
+
+.cp-zmail-link-hint i {
+  color: var(--cp-text-blue);
+}
+
+/* ZMail Links in CHAT7 Messages */
+.cp-zmail-link {
+  display: inline-block;
+  background: var(--cp-gradient-primary);
+  color: var(--cp-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--cp-border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  text-decoration: none;
+  margin: 0 2px;
+  font-size: 0.9em;
+}
+
+.cp-zmail-link:hover {
+  background: var(--cp-gradient-primary-hover);
+  border-color: var(--cp-border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--cp-shadow);
+}
+
+.cp-zmail-link:active {
+  transform: translateY(0);
+  box-shadow: var(--cp-shadow-weak);
+}

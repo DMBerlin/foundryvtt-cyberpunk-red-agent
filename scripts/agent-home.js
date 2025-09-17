@@ -210,15 +210,20 @@ class AgentApplication extends FormApplication {
           messageIds.add(message.id);
           return true;
         })
-        .map(message => ({
-          ...message,
-          text: message.text || message.message, // Use 'text' property, fallback to 'message' for compatibility
-          isOwn: message.senderId === this.device.id,
-          time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        }))
+        .map(message => {
+          const messageText = message.text || message.message; // Use 'text' property, fallback to 'message' for compatibility
+
+          return {
+            ...message,
+            text: messageText, // Keep original text for data attributes
+            formattedText: window.CyberpunkAgent?.instance?.parseZMailLinks(messageText) || messageText, // Parse ZMail links for display
+            isOwn: message.senderId === this.device.id,
+            time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+        })
         .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
 
       templateData.messages = formattedMessages;
@@ -855,6 +860,11 @@ class AgentApplication extends FormApplication {
     const messageElements = html.find('.cp-message[data-action="message-context-menu"]');
     console.log("AgentApplication | Found message elements:", messageElements.length);
     messageElements.contextmenu(this._onMessageContextMenu.bind(this));
+
+    // ZMail link clicks
+    const zmailLinks = html.find('.cp-zmail-link[data-action="open-zmail-link"]');
+    console.log("AgentApplication | Found ZMail links:", zmailLinks.length);
+    zmailLinks.click(this._onZMailLinkClick.bind(this));
 
     console.log("AgentApplication | Conversation listeners activated successfully");
   }
@@ -2315,6 +2325,37 @@ class AgentApplication extends FormApplication {
       // Set current message and navigate
       this.currentZMailMessage = message;
       this.navigateTo('zmail-message');
+    }
+  }
+
+  /**
+   * Handle ZMail link click in CHAT7 conversation
+   */
+  _onZMailLinkClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const messageId = event.currentTarget.dataset.zmailId;
+    console.log("ZMail link clicked:", messageId);
+
+    // Find the ZMail message
+    const messages = window.CyberpunkAgent?.instance?.getZMailMessages(this.device.id) || [];
+    const message = messages.find(msg => msg.id === messageId);
+
+    if (message) {
+      // Play opening sound effect
+      if (window.CyberpunkAgent?.instance) {
+        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+      }
+
+      // Mark as read
+      window.CyberpunkAgent?.instance?.markZMailMessageAsRead(this.device.id, messageId);
+
+      // Set current message and navigate to ZMail
+      this.currentZMailMessage = message;
+      this.navigateTo('zmail-message');
+    } else {
+      ui.notifications.warn("ZMail message not found or you don't have access to it.");
     }
   }
 

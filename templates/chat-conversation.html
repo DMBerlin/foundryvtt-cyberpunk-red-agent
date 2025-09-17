@@ -34,7 +34,7 @@
       <div class="cp-message {{#if this.isOwn}}own{{else}}other{{/if}}" data-message-id="{{this.id}}"
         data-message-text="{{this.text}}" data-message-time="{{this.time}}" data-action="message-context-menu">
         <div class="cp-message-content">
-          <div class="cp-message-text">{{this.text}}</div>
+          <div class="cp-message-text">{{{this.formattedText}}}</div>
           <div class="cp-message-time">
             {{this.time}}
             {{#if this.edited}}<span class="cp-message-edited">(editada)</span>{{/if}}

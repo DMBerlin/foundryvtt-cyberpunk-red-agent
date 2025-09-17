@@ -1672,6 +1672,7 @@ class GMZMailManagementMenu extends FormApplication {
 
         // Recent message actions
         html.find('.zmail-recent-action[data-action="view-message"]').click(this._onViewMessageClick.bind(this));
+        html.find('.zmail-recent-action[data-action="copy-link"]').click(this._onCopyZMailLinkClick.bind(this));
         html.find('.zmail-recent-action[data-action="delete-message"]').click(this._onDeleteMessageClick.bind(this));
 
         // Recipient selection display
@@ -2033,6 +2034,69 @@ class GMZMailManagementMenu extends FormApplication {
         // Add active class to clicked tab and corresponding content
         event.currentTarget.classList.add('active');
         this.element.find(`#${tabName}-tab`).addClass('active');
+    }
+
+    /**
+     * Handle copy ZMail link click
+     */
+    async _onCopyZMailLinkClick(event) {
+        event.preventDefault();
+        const messageId = event.currentTarget.dataset.messageId;
+        console.log("Copy ZMail link clicked:", messageId);
+
+        // Find the message to get its details
+        let message = null;
+        let recipientName = 'Unknown';
+
+        if (window.CyberpunkAgent?.instance) {
+            for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
+                const foundMessage = messages.find(msg => msg.id === messageId);
+                if (foundMessage) {
+                    message = foundMessage;
+                    const device = window.CyberpunkAgent.instance.devices.get(deviceId);
+                    recipientName = device ? device.deviceName : `Device ${deviceId}`;
+                    break;
+                }
+            }
+        }
+
+        if (!message) {
+            ui.notifications.error("ZMail message not found!");
+            return;
+        }
+
+        // Generate the ZMail link
+        const zmailLink = `@ZMAIL[${messageId}]{${message.subject}}`;
+
+        try {
+            // Copy to clipboard
+            await navigator.clipboard.writeText(zmailLink);
+            ui.notifications.info(`ZMail link copied to clipboard: ${message.subject}`);
+            console.log("ZMail link copied:", zmailLink);
+        } catch (error) {
+            console.error("Error copying to clipboard:", error);
+            // Fallback: show the link in a dialog
+            new Dialog({
+                title: "ZMail Link",
+                content: `
+                    <div class="cp-zmail-link-dialog">
+                        <p>Copy this link to share the ZMail message:</p>
+                        <div class="cp-zmail-link-display">
+                            <code>${zmailLink}</code>
+                        </div>
+                        <p class="cp-zmail-link-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Paste this in CHAT7 to create a clickable link to this ZMail message.
+                        </p>
+                    </div>
+                `,
+                buttons: {
+                    close: {
+                        label: "Close"
+                    }
+                }
+            }).render(true);
+        }
     }
 
     /**
@@ -10964,6 +11028,30 @@ class CyberpunkAgent {
             console.error("Cyberpunk Agent | Error deleting ZMail:", error);
             return false;
         }
+    }
+
+    /**
+     * Parse ZMail links in message text and convert them to clickable elements
+     * @param {string} text - The message text to parse
+     * @returns {string} - HTML with ZMail links converted to clickable elements
+     */
+    parseZMailLinks(text) {
+        if (!text) return text;
+
+        // Regex to match @ZMAIL[messageId]{displayText}
+        const zmailLinkRegex = /@ZMAIL\[([^\]]+)\]\{([^}]+)\}/g;
+
+        return text.replace(zmailLinkRegex, (match, messageId, displayText) => {
+            // Escape HTML in display text
+            const escapedDisplayText = displayText
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            return `<span class="cp-zmail-link" data-zmail-id="${messageId}" data-action="open-zmail-link" title="Click to open ZMail message">${escapedDisplayText}</span>`;
+        });
     }
 
     /**
