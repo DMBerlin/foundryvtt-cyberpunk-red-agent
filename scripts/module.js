@@ -1598,6 +1598,422 @@ class UIController {
  */
 window.CyberpunkAgentUIController = new UIController();
 
+/**
+ * GM ZMail Management Menu
+ */
+class GMZMailManagementMenu extends FormApplication {
+    constructor(object = {}, options = {}) {
+        super(object, options);
+    }
+
+    static get defaultOptions() {
+        return mergeObject(super.defaultOptions, {
+            id: "gm-zmail-management-menu",
+            title: "ZMail Management",
+            template: "modules/cyberpunk-agent/templates/gm-zmail-management.html",
+            width: 800,
+            height: 600,
+            resizable: true,
+            minimizable: true
+        });
+    }
+
+    async getData(options = {}) {
+        const data = super.getData(options);
+
+        // Get all registered devices (players only)
+        const players = [];
+        if (window.CyberpunkAgent?.instance) {
+            for (const [deviceId, device] of window.CyberpunkAgent.instance.devices) {
+                const user = window.CyberpunkAgent.instance._getUserForDevice(deviceId);
+                if (user && !user.isGM) {
+                    players.push({
+                        deviceId: deviceId,
+                        deviceName: device.deviceName,
+                        actorName: device.ownerName || 'Unknown Actor'
+                    });
+                }
+            }
+        }
+
+        // Get ZMail statistics
+        const stats = window.CyberpunkAgent?.instance?.getZMailStatistics() || {
+            totalMessages: 0,
+            unreadMessages: 0,
+            activePlayers: 0
+        };
+
+        // Get recent ZMail messages
+        const recentMessages = window.CyberpunkAgent?.instance?.getRecentZMailMessages(10) || [];
+
+        return {
+            ...data,
+            players: players,
+            totalMessages: stats.totalMessages,
+            unreadMessages: stats.unreadMessages,
+            activePlayers: stats.activePlayers,
+            recentMessages: recentMessages
+        };
+    }
+
+    activateListeners(html) {
+        super.activateListeners(html);
+
+        // Send ZMail button
+        html.find('.send-zmail-btn').click(this._onSendZMailClick.bind(this));
+
+        // ZMail management action buttons
+        html.find('.zmail-action-btn[data-action="view-all-messages"]').click(this._onViewAllMessagesClick.bind(this));
+        html.find('.zmail-action-btn[data-action="mark-all-read"]').click(this._onMarkAllReadClick.bind(this));
+        html.find('.zmail-action-btn[data-action="clear-old-messages"]').click(this._onClearOldMessagesClick.bind(this));
+
+        // Recent message actions
+        html.find('.zmail-recent-action[data-action="view-message"]').click(this._onViewMessageClick.bind(this));
+        html.find('.zmail-recent-action[data-action="delete-message"]').click(this._onDeleteMessageClick.bind(this));
+    }
+
+    /**
+     * Handle send ZMail button click
+     */
+    async _onSendZMailClick(event) {
+        event.preventDefault();
+
+        const recipientDeviceId = this.element.find('#zmail-recipient').val();
+        const sender = this.element.find('#zmail-sender').val().trim();
+        const subject = this.element.find('#zmail-subject').val().trim();
+        const content = this.element.find('#zmail-content').val().trim();
+
+        // Validate inputs
+        if (!recipientDeviceId) {
+            ui.notifications.error("Selecione um destinatário!");
+            return;
+        }
+
+        if (!sender) {
+            ui.notifications.error("Digite o nome do remetente!");
+            return;
+        }
+
+        if (!subject) {
+            ui.notifications.error("Digite o assunto da mensagem!");
+            return;
+        }
+
+        if (!content) {
+            ui.notifications.error("Digite o conteúdo da mensagem!");
+            return;
+        }
+
+        // Disable button during sending
+        const sendBtn = this.element.find('.send-zmail-btn');
+        const originalText = sendBtn.html();
+        sendBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enviando...');
+
+        try {
+            // Send ZMail message
+            const success = await window.CyberpunkAgent?.instance?.sendZMailMessage(
+                recipientDeviceId,
+                sender,
+                subject,
+                content
+            );
+
+            if (success) {
+                ui.notifications.info("ZMail enviado com sucesso!");
+
+                // Clear form
+                this.element.find('#zmail-sender').val('');
+                this.element.find('#zmail-subject').val('');
+                this.element.find('#zmail-content').val('');
+
+                // Refresh the application
+                this.render(true);
+            } else {
+                ui.notifications.error("Erro ao enviar ZMail!");
+            }
+        } catch (error) {
+            console.error("Error sending ZMail:", error);
+            ui.notifications.error("Erro ao enviar ZMail: " + error.message);
+        } finally {
+            // Re-enable button
+            sendBtn.prop('disabled', false).html(originalText);
+        }
+    }
+
+    /**
+     * Handle view all messages click
+     */
+    _onViewAllMessagesClick(event) {
+        event.preventDefault();
+        console.log("View all messages clicked");
+
+        // Show all ZMail messages in a dialog
+        this._showAllMessagesDialog();
+    }
+
+    /**
+     * Handle mark all as read click
+     */
+    async _onMarkAllReadClick(event) {
+        event.preventDefault();
+        console.log("Mark all as read clicked");
+
+        const confirmed = await new Promise((resolve) => {
+            new Dialog({
+                title: "Marcar Todas como Lidas",
+                content: `
+                  <div class="cp-mark-all-read-dialog">
+                    <p>Tem certeza que deseja marcar todas as mensagens ZMail como lidas?</p>
+                    <p><small>Esta ação afetará todos os jogadores.</small></p>
+                  </div>
+                `,
+                buttons: {
+                    cancel: {
+                        label: "Cancelar",
+                        callback: () => resolve(false)
+                    },
+                    confirm: {
+                        label: "Marcar como Lidas",
+                        callback: () => resolve(true)
+                    }
+                }
+            }).render(true);
+        });
+
+        if (confirmed) {
+            // Mark all messages as read
+            let markedCount = 0;
+            if (window.CyberpunkAgent?.instance) {
+                for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
+                    for (const message of messages) {
+                        if (!message.isRead) {
+                            message.isRead = true;
+                            markedCount++;
+                        }
+                    }
+                }
+                await window.CyberpunkAgent.instance.saveZMailData();
+            }
+
+            ui.notifications.info(`${markedCount} mensagens marcadas como lidas!`);
+            this.render(true);
+        }
+    }
+
+    /**
+     * Handle clear old messages click
+     */
+    async _onClearOldMessagesClick(event) {
+        event.preventDefault();
+        console.log("Clear old messages clicked");
+
+        const confirmed = await new Promise((resolve) => {
+            new Dialog({
+                title: "Limpar Mensagens Antigas",
+                content: `
+                  <div class="cp-clear-old-messages-dialog">
+                    <p>Tem certeza que deseja limpar mensagens ZMail antigas (mais de 30 dias)?</p>
+                    <p><small>Esta ação não pode ser desfeita.</small></p>
+                  </div>
+                `,
+                buttons: {
+                    cancel: {
+                        label: "Cancelar",
+                        callback: () => resolve(false)
+                    },
+                    confirm: {
+                        label: "Limpar Mensagens",
+                        callback: () => resolve(true)
+                    }
+                }
+            }).render(true);
+        });
+
+        if (confirmed) {
+            const success = await window.CyberpunkAgent?.instance?.clearOldZMailMessages(30);
+            if (success) {
+                ui.notifications.info("Mensagens antigas limpas com sucesso!");
+                this.render(true);
+            } else {
+                ui.notifications.error("Erro ao limpar mensagens antigas!");
+            }
+        }
+    }
+
+    /**
+     * Handle view message click
+     */
+    _onViewMessageClick(event) {
+        event.preventDefault();
+        const messageId = event.currentTarget.dataset.messageId;
+        console.log("View message clicked:", messageId);
+
+        // Find and show the message
+        this._showMessageDialog(messageId);
+    }
+
+    /**
+     * Handle delete message click
+     */
+    async _onDeleteMessageClick(event) {
+        event.preventDefault();
+        const messageId = event.currentTarget.dataset.messageId;
+        console.log("Delete message clicked:", messageId);
+
+        const confirmed = await new Promise((resolve) => {
+            new Dialog({
+                title: "Deletar ZMail",
+                content: `
+                  <div class="cp-delete-zmail-dialog">
+                    <p>Tem certeza que deseja deletar esta mensagem ZMail?</p>
+                    <p><small>Esta ação não pode ser desfeita.</small></p>
+                  </div>
+                `,
+                buttons: {
+                    cancel: {
+                        label: "Cancelar",
+                        callback: () => resolve(false)
+                    },
+                    confirm: {
+                        label: "Deletar",
+                        callback: () => resolve(true)
+                    }
+                }
+            }).render(true);
+        });
+
+        if (confirmed) {
+            // Find the message and delete it
+            let deleted = false;
+            if (window.CyberpunkAgent?.instance) {
+                for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
+                    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+                    if (messageIndex !== -1) {
+                        messages.splice(messageIndex, 1);
+                        deleted = true;
+                        break;
+                    }
+                }
+                if (deleted) {
+                    await window.CyberpunkAgent.instance.saveZMailData();
+                    ui.notifications.info("ZMail deletado com sucesso!");
+                    this.render(true);
+                } else {
+                    ui.notifications.error("Mensagem não encontrada!");
+                }
+            }
+        }
+    }
+
+    /**
+     * Show all messages dialog
+     */
+    _showAllMessagesDialog() {
+        const allMessages = [];
+
+        if (window.CyberpunkAgent?.instance) {
+            for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
+                const device = window.CyberpunkAgent.instance.devices.get(deviceId);
+                for (const message of messages) {
+                    allMessages.push({
+                        ...message,
+                        recipientDeviceId: deviceId,
+                        recipientName: device ? device.deviceName : `Device ${deviceId}`
+                    });
+                }
+            }
+        }
+
+        // Sort by timestamp (newest first)
+        allMessages.sort((a, b) => b.timestamp - a.timestamp);
+
+        const content = `
+          <div class="cp-all-messages-dialog">
+            <h3>Total de Mensagens ZMail: ${allMessages.length}</h3>
+            <div class="cp-messages-list" style="max-height: 400px; overflow-y: auto;">
+              ${allMessages.map(msg => `
+                <div class="cp-message-item" style="border: 1px solid var(--cp-border-weak); border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong>${msg.sender}</strong>
+                    <span style="font-size: 0.9em; color: var(--cp-text-muted);">${msg.time}</span>
+                  </div>
+                  <div style="font-weight: 600; margin-bottom: 4px;">${msg.subject}</div>
+                  <div style="font-size: 0.9em; color: var(--cp-text-dim);">Para: ${msg.recipientName}</div>
+                  <div style="font-size: 0.9em; color: var(--cp-text-dim); margin-top: 4px;">
+                    ${msg.isRead ? '<span style="color: var(--cp-success);">✓ Lida</span>' : '<span style="color: var(--cp-primary);">● Não lida</span>'}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        new Dialog({
+            title: "Todas as Mensagens ZMail",
+            content: content,
+            buttons: {
+                close: {
+                    label: "Fechar"
+                }
+            }
+        }).render(true);
+    }
+
+    /**
+     * Show message dialog
+     */
+    _showMessageDialog(messageId) {
+        let message = null;
+        let recipientName = 'Unknown';
+
+        if (window.CyberpunkAgent?.instance) {
+            for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
+                const foundMessage = messages.find(msg => msg.id === messageId);
+                if (foundMessage) {
+                    message = foundMessage;
+                    const device = window.CyberpunkAgent.instance.devices.get(deviceId);
+                    recipientName = device ? device.deviceName : `Device ${deviceId}`;
+                    break;
+                }
+            }
+        }
+
+        if (!message) {
+            ui.notifications.error("Mensagem não encontrada!");
+            return;
+        }
+
+        const content = `
+          <div class="cp-message-dialog">
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong>De: ${message.sender}</strong>
+                <span style="font-size: 0.9em; color: var(--cp-text-muted);">${message.time}</span>
+              </div>
+              <div style="font-weight: 600; margin-bottom: 4px;">Assunto: ${message.subject}</div>
+              <div style="font-size: 0.9em; color: var(--cp-text-dim);">Para: ${recipientName}</div>
+            </div>
+            <div style="background: var(--cp-gradient-message); border: 1px solid var(--cp-border-weak); border-radius: 8px; padding: 16px; white-space: pre-wrap;">
+              ${message.content}
+            </div>
+            <div style="margin-top: 12px; font-size: 0.9em; color: var(--cp-text-dim);">
+              Status: ${message.isRead ? '<span style="color: var(--cp-success);">✓ Lida</span>' : '<span style="color: var(--cp-primary);">● Não lida</span>'}
+            </div>
+          </div>
+        `;
+
+        new Dialog({
+            title: `ZMail: ${message.subject}`,
+            content: content,
+            buttons: {
+                close: {
+                    label: "Fechar"
+                }
+            }
+        }).render(true);
+    }
+}
+
 class CyberpunkAgent {
     constructor() {
         this.id = "cyberpunk-agent";
@@ -1637,6 +2053,10 @@ class CyberpunkAgent {
         this.socketLibIntegration = null;
         this._socketLibAvailable = false;
         this._socketLibReadyHookSet = false;
+
+        // ZMail system - GM to player messaging
+        this.zmailMessages = new Map(); // deviceId -> [zmailMessages]
+        this.zmailSettings = new Map(); // deviceId -> {settings}
 
         // Store instance for global access
         CyberpunkAgent.instance = this;
@@ -1718,6 +2138,16 @@ class CyberpunkAgent {
             default: []
         });
 
+        // Register ZMail data setting
+        game.settings.register('cyberpunk-agent', 'zmail-data', {
+            name: 'ZMail Data',
+            hint: 'Internal storage for ZMail messages and settings',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: { messages: {}, settings: {} }
+        });
+
         // Register a custom settings menu for GM Data Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
             name: 'GM Data Management',
@@ -1725,6 +2155,16 @@ class CyberpunkAgent {
             label: 'GM Data Management',
             icon: 'fas fa-database',
             type: GMDataManagementMenu,
+            restricted: true
+        });
+
+        // Register a custom settings menu for GM ZMail Management
+        game.settings.registerMenu('cyberpunk-agent', 'gm-zmail-management-menu', {
+            name: 'GM ZMail Management',
+            hint: 'Manage ZMail messages - send and manage one-way messages to players',
+            label: 'ZMail Management',
+            icon: 'fas fa-envelope',
+            type: GMZMailManagementMenu,
             restricted: true
         });
 
@@ -1855,6 +2295,10 @@ class CyberpunkAgent {
         // Load messages
         await this.loadMessages();
         // Messages loaded
+
+        // Load ZMail data
+        await this.loadZMailData();
+        // ZMail data loaded
 
         // Initialize device discovery for existing agent items
         this.initializeDeviceDiscovery();
@@ -10273,6 +10717,296 @@ class CyberpunkAgent {
         }
 
         console.log(`\n🎉 Conversation history listing complete!`);
+    }
+
+    // ===== ZMAIL SYSTEM METHODS =====
+
+    /**
+     * Load ZMail data from server settings
+     */
+    async loadZMailData() {
+        try {
+            console.log("Cyberpunk Agent | Loading ZMail data from server...");
+
+            const zmailData = game.settings.get('cyberpunk-agent', 'zmail-data') || { messages: {}, settings: {} };
+
+            // Load messages
+            this.zmailMessages.clear();
+            for (const [deviceId, messages] of Object.entries(zmailData.messages || {})) {
+                this.zmailMessages.set(deviceId, messages || []);
+            }
+
+            // Load settings
+            this.zmailSettings.clear();
+            for (const [deviceId, settings] of Object.entries(zmailData.settings || {})) {
+                this.zmailSettings.set(deviceId, settings || {});
+            }
+
+            console.log(`Cyberpunk Agent | ZMail data loaded: ${this.zmailMessages.size} devices with messages`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading ZMail data:", error);
+        }
+    }
+
+    /**
+     * Save ZMail data to server settings
+     */
+    async saveZMailData() {
+        try {
+            console.log("Cyberpunk Agent | Saving ZMail data to server...");
+
+            // Only GMs can save ZMail data to world settings
+            if (!game.user.isGM) {
+                console.log("Cyberpunk Agent | Non-GM user, skipping ZMail data save");
+                return;
+            }
+
+            const zmailData = {
+                messages: {},
+                settings: {}
+            };
+
+            // Convert messages Map to Object
+            for (const [deviceId, messages] of this.zmailMessages) {
+                zmailData.messages[deviceId] = messages;
+            }
+
+            // Convert settings Map to Object
+            for (const [deviceId, settings] of this.zmailSettings) {
+                zmailData.settings[deviceId] = settings;
+            }
+
+            await game.settings.set('cyberpunk-agent', 'zmail-data', zmailData);
+            console.log("Cyberpunk Agent | ZMail data saved successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving ZMail data:", error);
+        }
+    }
+
+    /**
+     * Send ZMail message from GM to player
+     */
+    async sendZMailMessage(recipientDeviceId, sender, subject, content) {
+        try {
+            if (!game.user.isGM) {
+                console.error("Cyberpunk Agent | Only GM can send ZMail messages");
+                return false;
+            }
+
+            console.log(`Cyberpunk Agent | Sending ZMail to device ${recipientDeviceId}`);
+
+            // Create ZMail message
+            const zmailMessage = {
+                id: `zmail-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                sender: sender,
+                subject: subject,
+                content: content,
+                timestamp: Date.now(),
+                time: new Date().toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }),
+                isRead: false,
+                recipientDeviceId: recipientDeviceId
+            };
+
+            // Add to device's ZMail messages
+            if (!this.zmailMessages.has(recipientDeviceId)) {
+                this.zmailMessages.set(recipientDeviceId, []);
+            }
+            this.zmailMessages.get(recipientDeviceId).push(zmailMessage);
+
+            // Save to server
+            await this.saveZMailData();
+
+            // Notify recipient if online
+            const recipientUser = this._getUserForDevice(recipientDeviceId);
+            if (recipientUser && recipientUser.active) {
+                // Send real-time notification via SocketLib
+                if (this.socketLibIntegration && this.socketLibIntegration.isAvailable) {
+                    try {
+                        await this.socketLibIntegration.sendSystemResponseToUser(recipientUser.id, 'zmailUpdate', {
+                            type: 'newMessage',
+                            message: zmailMessage
+                        });
+                        console.log(`Cyberpunk Agent | ZMail notification sent to user ${recipientUser.id}`);
+                    } catch (error) {
+                        console.error("Cyberpunk Agent | Error sending ZMail notification:", error);
+                    }
+                } else {
+                    console.warn("Cyberpunk Agent | SocketLib not available for ZMail notification");
+                }
+            }
+
+            console.log(`Cyberpunk Agent | ZMail sent successfully to ${recipientDeviceId}`);
+            return true;
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending ZMail:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Get ZMail messages for a device
+     */
+    getZMailMessages(deviceId) {
+        return this.zmailMessages.get(deviceId) || [];
+    }
+
+    /**
+     * Mark ZMail message as read
+     */
+    async markZMailMessageAsRead(deviceId, messageId) {
+        try {
+            const messages = this.zmailMessages.get(deviceId);
+            if (!messages) return false;
+
+            const message = messages.find(msg => msg.id === messageId);
+            if (message) {
+                message.isRead = true;
+
+                // If user is GM, save directly. If not, request GM to save
+                if (game.user.isGM) {
+                    await this.saveZMailData();
+                } else {
+                    // Request GM to update the message status
+                    await this._requestZMailUpdate('markRead', { deviceId, messageId });
+                }
+
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error marking ZMail as read:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Delete ZMail message
+     */
+    async deleteZMailMessage(deviceId, messageId) {
+        try {
+            const messages = this.zmailMessages.get(deviceId);
+            if (!messages) return false;
+
+            const messageIndex = messages.findIndex(msg => msg.id === messageId);
+            if (messageIndex !== -1) {
+                messages.splice(messageIndex, 1);
+
+                // If user is GM, save directly. If not, request GM to save
+                if (game.user.isGM) {
+                    await this.saveZMailData();
+                } else {
+                    // Request GM to delete the message
+                    await this._requestZMailUpdate('delete', { deviceId, messageId });
+                }
+
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error deleting ZMail:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Request GM to update ZMail data (for non-GM users)
+     */
+    async _requestZMailUpdate(action, data) {
+        try {
+            if (this.socketLibIntegration && this.socketLibIntegration.isAvailable) {
+                await this.socketLibIntegration.sendMessageToGM('zmailUpdateRequest', {
+                    action: action,
+                    data: data,
+                    userId: game.user.id,
+                    userName: game.user.name
+                });
+                console.log(`Cyberpunk Agent | ZMail update request sent to GM: ${action}`, data);
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available for ZMail update request");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending ZMail update request:", error);
+        }
+    }
+
+    /**
+     * Get ZMail statistics for GM
+     */
+    getZMailStatistics() {
+        let totalMessages = 0;
+        let unreadMessages = 0;
+        let activePlayers = 0;
+
+        for (const [deviceId, messages] of this.zmailMessages) {
+            if (messages.length > 0) {
+                activePlayers++;
+                totalMessages += messages.length;
+                unreadMessages += messages.filter(msg => !msg.isRead).length;
+            }
+        }
+
+        return {
+            totalMessages,
+            unreadMessages,
+            activePlayers
+        };
+    }
+
+    /**
+     * Get recent ZMail messages for GM panel
+     */
+    getRecentZMailMessages(limit = 10) {
+        const allMessages = [];
+
+        for (const [deviceId, messages] of this.zmailMessages) {
+            for (const message of messages) {
+                const device = this.devices.get(deviceId);
+                allMessages.push({
+                    ...message,
+                    recipientDeviceId: deviceId,
+                    recipientName: device ? device.deviceName : `Device ${deviceId}`
+                });
+            }
+        }
+
+        // Sort by timestamp (newest first) and limit
+        return allMessages
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, limit);
+    }
+
+    /**
+     * Clear old ZMail messages (older than specified days)
+     */
+    async clearOldZMailMessages(daysOld = 30) {
+        try {
+            if (!game.user.isGM) {
+                console.error("Cyberpunk Agent | Only GM can clear ZMail messages");
+                return false;
+            }
+
+            const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+            let clearedCount = 0;
+
+            for (const [deviceId, messages] of this.zmailMessages) {
+                const originalLength = messages.length;
+                const filteredMessages = messages.filter(msg => msg.timestamp > cutoffTime);
+                this.zmailMessages.set(deviceId, filteredMessages);
+                clearedCount += originalLength - filteredMessages.length;
+            }
+
+            await this.saveZMailData();
+            console.log(`Cyberpunk Agent | Cleared ${clearedCount} old ZMail messages`);
+            return true;
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error clearing old ZMail messages:", error);
+            return false;
+        }
     }
 }
 

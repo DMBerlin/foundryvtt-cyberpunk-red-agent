@@ -109,6 +109,10 @@ function initializeSocketLib() {
     socket.register("requestReadStatusSync", handleRequestReadStatusSync);
     socket.register("readStatusSyncResponse", handleReadStatusSyncResponse);
 
+    // Register ZMail update handler
+    socket.register("zmailUpdate", handleZMailUpdate);
+    socket.register("zmailUpdateRequest", handleZMailUpdateRequest);
+
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
     console.log("Cyberpunk Agent | SocketLib module and functions registered successfully");
@@ -1014,6 +1018,83 @@ async function handleBroadcastUpdate(data) {
     await handleAllContactListsCleared(data);
   } else if (data.type === 'allDevicesSynchronized') {
     await handleAllDevicesSynchronized(data);
+  }
+}
+
+/**
+ * Handle ZMail update notifications
+ */
+async function handleZMailUpdate(data) {
+  console.log("Cyberpunk Agent | Received ZMail update via SocketLib:", data);
+
+  try {
+    if (data.type === 'newMessage' && data.message) {
+      // Refresh ZMail data for the current user
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        await window.CyberpunkAgent.instance.loadZMailData();
+
+        // If the user has an agent application open, refresh it
+        const agentApps = Object.values(ui.windows).filter(app =>
+          app instanceof AgentApplication && app.device && app.device.id === data.deviceId
+        );
+
+        for (const app of agentApps) {
+          if (app.currentView === 'zmail' || app.currentView === 'home') {
+            app.render(true);
+          }
+        }
+
+        // Show notification for new ZMail
+        ui.notifications.info(`Nova mensagem ZMail recebida de ${data.message.sender}`);
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling ZMail update:", error);
+  }
+}
+
+/**
+ * Handle ZMail update requests from players (GM only)
+ */
+async function handleZMailUpdateRequest(data) {
+  console.log("Cyberpunk Agent | Received ZMail update request via SocketLib:", data);
+
+  try {
+    // Only GMs can handle these requests
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received ZMail update request, ignoring");
+      return;
+    }
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { action, data: requestData, userId, userName } = data;
+
+      if (action === 'markRead') {
+        const { deviceId, messageId } = requestData;
+        const messages = window.CyberpunkAgent.instance.zmailMessages.get(deviceId);
+        if (messages) {
+          const message = messages.find(msg => msg.id === messageId);
+          if (message) {
+            message.isRead = true;
+            await window.CyberpunkAgent.instance.saveZMailData();
+            console.log(`Cyberpunk Agent | GM marked ZMail ${messageId} as read for user ${userName}`);
+          }
+        }
+      } else if (action === 'delete') {
+        const { deviceId, messageId } = requestData;
+        const messages = window.CyberpunkAgent.instance.zmailMessages.get(deviceId);
+        if (messages) {
+          const messageIndex = messages.findIndex(msg => msg.id === messageId);
+          if (messageIndex !== -1) {
+            messages.splice(messageIndex, 1);
+            await window.CyberpunkAgent.instance.saveZMailData();
+            console.log(`Cyberpunk Agent | GM deleted ZMail ${messageId} for user ${userName}`);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling ZMail update request:", error);
   }
 }
 

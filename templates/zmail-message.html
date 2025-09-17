@@ -1,0 +1,82 @@
+<div class="cp-agent-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZMail Message Header -->
+  <div class="cp-zmail-message-header">
+    <button class="cp-back-button" title="Voltar para ZMail">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="cp-zmail-message-title">
+      <h2>ZMAIL</h2>
+      <p>Ziggurart Mail System</p>
+    </div>
+    <div class="cp-zmail-message-actions">
+      <button class="cp-zmail-action-btn" data-action="delete-message" data-message-id="{{message.id}}" title="Deletar">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ZMail Message Content -->
+  <div class="cp-zmail-message-content">
+    <div class="cp-zmail-message-details">
+      <div class="cp-zmail-message-meta">
+        <div class="cp-zmail-message-sender">
+          <i class="fas fa-user-secret"></i>
+          <span class="cp-zmail-sender-label">De:</span>
+          <span class="cp-zmail-sender-name">{{message.sender}}</span>
+        </div>
+        <div class="cp-zmail-message-date">
+          <i class="fas fa-clock"></i>
+          <span>{{message.time}}</span>
+        </div>
+      </div>
+
+      <div class="cp-zmail-message-subject">
+        <span class="cp-zmail-subject-label">Assunto:</span>
+        <span class="cp-zmail-subject-text">{{message.subject}}</span>
+      </div>
+    </div>
+
+    <div class="cp-zmail-message-body">
+      <div class="cp-zmail-message-text">
+        {{{message.content}}}
+      </div>
+    </div>
+
+    <div class="cp-zmail-message-footer">
+      <div class="cp-zmail-message-info">
+        <i class="fas fa-shield-alt"></i>
+        <span>Mensagem ZMail - Sistema Ziggurart</span>
+      </div>
+      <div class="cp-zmail-message-status">
+        {{#if message.isRead}}
+        <span class="cp-zmail-read-status">
+          <i class="fas fa-check-double"></i>
+          Lida
+        </span>
+        {{else}}
+        <span class="cp-zmail-unread-status">
+          <i class="fas fa-circle"></i>
+          Não lida
+        </span>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="cp-phone-footer">
+    <div class="cp-home-indicator"></div>
+  </div>
+</div>

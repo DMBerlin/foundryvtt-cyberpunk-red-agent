@@ -1,0 +1,86 @@
+<div class="cp-agent-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZMail Header -->
+  <div class="cp-zmail-message-header">
+    <button class="cp-back-button" title="Voltar">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="cp-zmail-message-title">
+      <h2>ZMAIL</h2>
+      <p>Ziggurart Mail System</p>
+    </div>
+    <div class="cp-zmail-message-actions">
+      <button class="cp-zmail-action-btn" data-action="refresh" title="Atualizar">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ZMail Content -->
+  <div class="cp-zmail-content">
+    {{#if messages.length}}
+    <!-- Messages List -->
+    <div class="cp-zmail-messages">
+      {{#each messages}}
+      <div class="cp-zmail-message-item {{#unless isRead}}unread{{/unless}}" data-message-id="{{id}}"
+        data-action="open-message">
+        <div class="cp-zmail-message-header">
+          <div class="cp-zmail-sender">
+            <i class="fas fa-user-secret"></i>
+            <span class="cp-zmail-sender-name">{{sender}}</span>
+            {{#unless isRead}}
+            <span class="cp-zmail-unread-indicator">
+              <i class="fas fa-circle"></i>
+            </span>
+            {{/unless}}
+          </div>
+          <div class="cp-zmail-message-time">
+            {{time}}
+          </div>
+        </div>
+        <div class="cp-zmail-message-subject">
+          {{subject}}
+        </div>
+        <div class="cp-zmail-message-preview">
+          {{preview}}
+        </div>
+        <div class="cp-zmail-message-actions">
+          <button class="cp-zmail-delete-btn" data-action="delete-message" data-message-id="{{id}}" title="Deletar">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <!-- Empty State -->
+    <div class="cp-zmail-empty">
+      <div class="cp-zmail-empty-icon">
+        <i class="fas fa-inbox"></i>
+      </div>
+      <h3>Caixa de Entrada Vazia</h3>
+      <p>Nenhuma mensagem ZMail recebida ainda.</p>
+      <p class="cp-zmail-empty-note">
+        <i class="fas fa-shield-alt"></i>
+        Sistema de mensagens corporativas seguras. Aguardando comunicações autorizadas.
+      </p>
+    </div>
+    {{/if}}
+  </div>
+
+  <!-- Footer -->
+  <div class="cp-phone-footer">
+    <div class="cp-home-indicator"></div>
+  </div>
+</div>

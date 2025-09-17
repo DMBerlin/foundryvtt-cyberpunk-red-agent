@@ -13,13 +13,16 @@ class AgentApplication extends FormApplication {
   constructor(device, options = {}) {
     super(device, options);
     this.device = device;
-    this.currentView = 'home'; // 'home', 'chat7', 'conversation'
+    this.currentView = 'home'; // 'home', 'chat7', 'conversation', 'zmail', 'zmail-message'
     this.currentContact = null;
+    this.currentZMailMessage = null;
     this.views = {
       home: this._renderHomeView.bind(this),
       chat7: this._renderChat7View.bind(this),
       conversation: this._renderConversationView.bind(this),
-      'add-contact': this._renderAddContactView.bind(this)
+      'add-contact': this._renderAddContactView.bind(this),
+      zmail: this._renderZMailView.bind(this),
+      'zmail-message': this._renderZMailMessageView.bind(this)
     };
     this.componentId = `agent-${device.id}`;
     console.log("AgentApplication constructor called with device:", device);
@@ -242,6 +245,33 @@ class AgentApplication extends FormApplication {
         successMessage: templateData.successMessage,
         isSearching: templateData.isSearching,
         phoneNumber: templateData.phoneNumber
+      });
+    } else if (this.currentView === 'zmail') {
+      // Get ZMail messages for the device
+      const zmailMessages = window.CyberpunkAgent?.instance?.getZMailMessages(this.device.id) || [];
+
+      // Format messages for template
+      const formattedMessages = zmailMessages.map(message => ({
+        ...message,
+        preview: message.content.length > 100 ? message.content.substring(0, 100) + '...' : message.content
+      })).sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+
+      templateData.messages = formattedMessages;
+
+      console.log("AgentApplication | Template data for ZMail:", {
+        messagesCount: formattedMessages.length,
+        deviceId: this.device.id
+      });
+    } else if (this.currentView === 'zmail-message' && this.currentZMailMessage) {
+      // Format the current ZMail message for display
+      templateData.message = {
+        ...this.currentZMailMessage,
+        content: this.currentZMailMessage.content.replace(/\n/g, '<br>') // Convert line breaks to HTML
+      };
+
+      console.log("AgentApplication | Template data for ZMail message:", {
+        messageId: this.currentZMailMessage.id,
+        subject: this.currentZMailMessage.subject
       });
     }
 
@@ -476,6 +506,12 @@ class AgentApplication extends FormApplication {
       case 'add-contact':
         templatePath = "modules/cyberpunk-agent/templates/add-contact.html";
         break;
+      case 'zmail':
+        templatePath = "modules/cyberpunk-agent/templates/zmail.html";
+        break;
+      case 'zmail-message':
+        templatePath = "modules/cyberpunk-agent/templates/zmail-message.html";
+        break;
       default:
         templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
     }
@@ -575,6 +611,22 @@ class AgentApplication extends FormApplication {
     }
 
     console.log("AgentApplication | Add contact view setup completed");
+  }
+
+  /**
+   * Render ZMail view
+   */
+  _renderZMailView() {
+    console.log("AgentApplication | Rendering ZMail view for device:", this.device.id);
+    console.log("AgentApplication | ZMail view setup completed");
+  }
+
+  /**
+   * Render ZMail message view
+   */
+  _renderZMailMessageView() {
+    console.log("AgentApplication | Rendering ZMail message view for message:", this.currentZMailMessage?.id);
+    console.log("AgentApplication | ZMail message view setup completed");
   }
 
   /**
@@ -730,6 +782,12 @@ class AgentApplication extends FormApplication {
       case 'add-contact':
         this._activateAddContactListeners(html);
         break;
+      case 'zmail':
+        this._activateZMailListeners(html);
+        break;
+      case 'zmail-message':
+        this._activateZMailMessageListeners(html);
+        break;
     }
   }
 
@@ -738,6 +796,7 @@ class AgentApplication extends FormApplication {
    */
   _activateHomeListeners(html) {
     html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
+    html.find('.cp-app-icon[data-app="zmail"]').click(this._onZMailClick.bind(this));
     html.find('.cp-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
 
     // Add context menu for home screen
@@ -832,6 +891,22 @@ class AgentApplication extends FormApplication {
 
     // Navigate to Chat7 view
     this.navigateTo('chat7');
+  }
+
+  /**
+   * Handle ZMail app click
+   */
+  _onZMailClick(event) {
+    event.preventDefault();
+    console.log("ZMail app clicked for device:", this.device.name);
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
+    // Navigate to ZMail view
+    this.navigateTo('zmail');
   }
 
   /**
@@ -1035,6 +1110,12 @@ class AgentApplication extends FormApplication {
         break;
       case 'add-contact':
         this.navigateTo('chat7');
+        break;
+      case 'zmail':
+        this.navigateTo('home');
+        break;
+      case 'zmail-message':
+        this.navigateTo('zmail');
         break;
       default:
         this.navigateTo('home');
@@ -2171,6 +2252,105 @@ class AgentApplication extends FormApplication {
         }
       }
     }, 5000);
+  }
+
+  /**
+   * Activate ZMail listeners
+   */
+  _activateZMailListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-zmail-action-btn[data-action="refresh"]').click(this._onZMailRefreshClick.bind(this));
+    html.find('.cp-zmail-message-item[data-action="open-message"]').click(this._onZMailMessageClick.bind(this));
+    html.find('.cp-zmail-delete-btn[data-action="delete-message"]').click(this._onZMailDeleteClick.bind(this));
+  }
+
+  /**
+   * Activate ZMail message listeners
+   */
+  _activateZMailMessageListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-zmail-action-btn[data-action="delete-message"]').click(this._onZMailDeleteClick.bind(this));
+  }
+
+  /**
+   * Handle ZMail refresh click
+   */
+  _onZMailRefreshClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    console.log("ZMail refresh clicked");
+
+    // Refresh ZMail data
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.loadZMailData().then(() => {
+        this.render(true);
+        ui.notifications.info("ZMail atualizado!");
+      });
+    }
+  }
+
+  /**
+   * Handle ZMail message click
+   */
+  _onZMailMessageClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const messageId = event.currentTarget.dataset.messageId;
+    console.log("ZMail message clicked:", messageId);
+
+    // Find the message
+    const messages = window.CyberpunkAgent?.instance?.getZMailMessages(this.device.id) || [];
+    const message = messages.find(msg => msg.id === messageId);
+
+    if (message) {
+      // Mark as read
+      window.CyberpunkAgent?.instance?.markZMailMessageAsRead(this.device.id, messageId);
+
+      // Set current message and navigate
+      this.currentZMailMessage = message;
+      this.navigateTo('zmail-message');
+    }
+  }
+
+  /**
+   * Handle ZMail delete click
+   */
+  _onZMailDeleteClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const messageId = event.currentTarget.dataset.messageId;
+    console.log("ZMail delete clicked:", messageId);
+
+    // Show confirmation dialog
+    new Dialog({
+      title: "Deletar ZMail",
+      content: `
+        <div class="cp-delete-zmail-dialog">
+          <p>Tem certeza que deseja deletar esta mensagem ZMail?</p>
+          <p><small>Esta ação não pode ser desfeita.</small></p>
+        </div>
+      `,
+      buttons: {
+        cancel: {
+          label: "Cancelar",
+          callback: () => console.log("ZMail deletion cancelled")
+        },
+        confirm: {
+          label: "Deletar",
+          callback: async () => {
+            const success = await window.CyberpunkAgent?.instance?.deleteZMailMessage(this.device.id, messageId);
+            if (success) {
+              ui.notifications.info("ZMail deletado com sucesso!");
+              this.render(true);
+            } else {
+              ui.notifications.error("Erro ao deletar ZMail!");
+            }
+          }
+        }
+      }
+    }).render(true);
   }
 }
 
