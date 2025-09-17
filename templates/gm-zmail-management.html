@@ -1,130 +1,212 @@
-<form class="gm-zmail-management-form">
-  <div class="form-group">
-    <h2>ZMail Management</h2>
-    <p class="notes">Manage ZMail messages for all players. ZMail is a one-way messaging system from GM to players.</p>
-  </div>
-
-  <!-- Send New ZMail -->
-  <div class="form-group">
-    <h3>Send New ZMail</h3>
-    <div class="zmail-compose-section">
-      <div class="form-group">
-        <label for="zmail-recipient">Recipient:</label>
-        <select id="zmail-recipient" name="recipient" required>
-          <option value="">Select a player...</option>
-          {{#each players}}
-          <option value="{{deviceId}}" data-actor-name="{{actorName}}">
-            {{actorName}} ({{deviceName}})
-          </option>
-          {{/each}}
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="zmail-sender">Sender (Display Name):</label>
-        <input type="text" id="zmail-sender" name="sender" placeholder="e.g., Corporate Security, NetWatch, etc."
-          required>
-      </div>
-
-      <div class="form-group">
-        <label for="zmail-subject">Subject:</label>
-        <input type="text" id="zmail-subject" name="subject" placeholder="Enter message subject..." required>
-      </div>
-
-      <div class="form-group">
-        <label for="zmail-content">Message Content:</label>
-        <textarea id="zmail-content" name="content" rows="8" placeholder="Enter your ZMail message content..."
-          required></textarea>
-        <div class="zmail-content-hint">
-          <i class="fas fa-info-circle"></i>
-          You can use HTML formatting. Players cannot reply to ZMail messages.
-        </div>
-      </div>
-
-      <div class="form-group">
-        <button type="button" class="send-zmail-btn"
-          style="background-color: #2ed573; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-          <i class="fas fa-paper-plane"></i> Send ZMail
-        </button>
-      </div>
+<div class="gm-zmail-management">
+  <!-- Header -->
+  <div class="zmail-header">
+    <div class="zmail-header-icon">
+      <i class="fas fa-envelope"></i>
+    </div>
+    <div class="zmail-header-content">
+      <h1>ZMail Management</h1>
+      <p>Corporate messaging system for secure GM-to-player communications</p>
     </div>
   </div>
 
-  <!-- ZMail Statistics -->
-  <div class="form-group">
-    <h3>ZMail Statistics</h3>
-    <div class="zmail-stats-grid">
-      <div class="zmail-stat-item">
+  <!-- Quick Stats -->
+  <div class="zmail-quick-stats">
+    <div class="zmail-stat-card">
+      <div class="zmail-stat-icon">
+        <i class="fas fa-envelope"></i>
+      </div>
+      <div class="zmail-stat-content">
         <div class="zmail-stat-number">{{totalMessages}}</div>
         <div class="zmail-stat-label">Total Messages</div>
       </div>
-      <div class="zmail-stat-item">
-        <div class="zmail-stat-number">{{unreadMessages}}</div>
-        <div class="zmail-stat-label">Unread Messages</div>
+    </div>
+    <div class="zmail-stat-card">
+      <div class="zmail-stat-icon">
+        <i class="fas fa-envelope-open"></i>
       </div>
-      <div class="zmail-stat-item">
+      <div class="zmail-stat-content">
+        <div class="zmail-stat-number">{{unreadMessages}}</div>
+        <div class="zmail-stat-label">Unread</div>
+      </div>
+    </div>
+    <div class="zmail-stat-card">
+      <div class="zmail-stat-icon">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="zmail-stat-content">
         <div class="zmail-stat-number">{{activePlayers}}</div>
         <div class="zmail-stat-label">Active Players</div>
       </div>
     </div>
   </div>
 
-  <!-- ZMail Management Actions -->
-  <div class="form-group">
-    <h3>ZMail Management</h3>
-    <div class="zmail-management-actions">
-      <button type="button" class="zmail-action-btn" data-action="view-all-messages"
-        style="background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
-        <i class="fas fa-list"></i> View All Messages
+  <!-- Main Content Tabs -->
+  <div class="zmail-tabs">
+    <div class="zmail-tab-nav">
+      <button class="zmail-tab-btn active" data-tab="compose">
+        <i class="fas fa-edit"></i> Compose
       </button>
-      <button type="button" class="zmail-action-btn" data-action="mark-all-read"
-        style="background-color: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
-        <i class="fas fa-check-double"></i> Mark All as Read
+      <button class="zmail-tab-btn" data-tab="manage">
+        <i class="fas fa-cog"></i> Manage
       </button>
-      <button type="button" class="zmail-action-btn" data-action="clear-old-messages"
-        style="background-color: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
-        <i class="fas fa-trash"></i> Clear Old Messages
+      <button class="zmail-tab-btn" data-tab="recent">
+        <i class="fas fa-history"></i> Recent
       </button>
     </div>
-  </div>
 
-  <!-- Recent ZMail Messages -->
-  <div class="form-group">
-    <h3>Recent ZMail Messages</h3>
-    <div class="zmail-recent-messages">
-      {{#if recentMessages.length}}
-      {{#each recentMessages}}
-      <div class="zmail-recent-item">
-        <div class="zmail-recent-header">
-          <span class="zmail-recent-sender">{{sender}}</span>
-          <span class="zmail-recent-time">{{time}}</span>
+    <!-- Compose Tab -->
+    <div class="zmail-tab-content active" id="compose-tab">
+      <form class="zmail-compose-form">
+        <div class="zmail-compose-grid">
+          <!-- Recipient Selection -->
+          <div class="zmail-form-group zmail-form-group-wide">
+            <label for="zmail-recipient">
+              <i class="fas fa-user"></i> Recipient
+            </label>
+            <div class="zmail-select-wrapper">
+              <select id="zmail-recipient" name="recipient" required>
+                <option value="">Choose a player...</option>
+                {{#each players}}
+                <option value="{{deviceId}}" data-actor-name="{{actorName}}">
+                  {{actorName}} ({{deviceName}})
+                </option>
+                {{/each}}
+              </select>
+              <div class="zmail-selected-recipient" id="selected-recipient-display">
+                <i class="fas fa-user-circle"></i>
+                <span>No recipient selected</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sender -->
+          <div class="zmail-form-group">
+            <label for="zmail-sender">
+              <i class="fas fa-building"></i> Sender
+            </label>
+            <input type="text" id="zmail-sender" name="sender" placeholder="e.g., Corporate Security" required>
+          </div>
+
+          <!-- Subject -->
+          <div class="zmail-form-group">
+            <label for="zmail-subject">
+              <i class="fas fa-tag"></i> Subject
+            </label>
+            <input type="text" id="zmail-subject" name="subject" placeholder="Message subject..." required>
+          </div>
+
+          <!-- Message Content -->
+          <div class="zmail-form-group zmail-form-group-wide">
+            <label for="zmail-content">
+              <i class="fas fa-align-left"></i> Message Content
+            </label>
+            <textarea id="zmail-content" name="content" rows="6" placeholder="Enter your ZMail message content..."
+              required></textarea>
+            <div class="zmail-content-hint">
+              <i class="fas fa-info-circle"></i>
+              HTML formatting supported. Players cannot reply to ZMail messages.
+            </div>
+          </div>
         </div>
-        <div class="zmail-recent-subject">{{subject}}</div>
-        <div class="zmail-recent-recipient">To: {{recipientName}}</div>
-        <div class="zmail-recent-actions">
-          <button class="zmail-recent-action" data-action="view-message" data-message-id="{{id}}">
-            <i class="fas fa-eye"></i> View
+
+        <div class="zmail-compose-actions">
+          <button type="button" class="zmail-send-btn" id="send-zmail-btn">
+            <i class="fas fa-paper-plane"></i>
+            <span>Send ZMail</span>
           </button>
-          <button class="zmail-recent-action" data-action="delete-message" data-message-id="{{id}}">
-            <i class="fas fa-trash"></i> Delete
+        </div>
+      </form>
+    </div>
+
+    <!-- Manage Tab -->
+    <div class="zmail-tab-content" id="manage-tab">
+      <div class="zmail-management-section">
+        <h3>ZMail Management Actions</h3>
+        <div class="zmail-management-grid">
+          <button type="button" class="zmail-management-btn" data-action="view-all-messages">
+            <div class="zmail-management-icon">
+              <i class="fas fa-list"></i>
+            </div>
+            <div class="zmail-management-content">
+              <div class="zmail-management-title">View All Messages</div>
+              <div class="zmail-management-desc">Browse all sent ZMail messages</div>
+            </div>
+          </button>
+
+          <button type="button" class="zmail-management-btn" data-action="mark-all-read">
+            <div class="zmail-management-icon">
+              <i class="fas fa-check-double"></i>
+            </div>
+            <div class="zmail-management-content">
+              <div class="zmail-management-title">Mark All as Read</div>
+              <div class="zmail-management-desc">Mark all messages as read for all players</div>
+            </div>
+          </button>
+
+          <button type="button" class="zmail-management-btn" data-action="clear-old-messages">
+            <div class="zmail-management-icon">
+              <i class="fas fa-trash"></i>
+            </div>
+            <div class="zmail-management-content">
+              <div class="zmail-management-title">Clear Old Messages</div>
+              <div class="zmail-management-desc">Remove messages older than 30 days</div>
+            </div>
           </button>
         </div>
       </div>
-      {{/each}}
-      {{else}}
-      <div class="zmail-no-recent">
-        <i class="fas fa-inbox"></i>
-        <p>No ZMail messages sent yet.</p>
+    </div>
+
+    <!-- Recent Tab -->
+    <div class="zmail-tab-content" id="recent-tab">
+      <div class="zmail-recent-section">
+        <h3>Recent ZMail Messages</h3>
+        <div class="zmail-recent-messages">
+          {{#if recentMessages.length}}
+          {{#each recentMessages}}
+          <div class="zmail-recent-item">
+            <div class="zmail-recent-header">
+              <div class="zmail-recent-sender">
+                <i class="fas fa-building"></i>
+                <span>{{sender}}</span>
+              </div>
+              <div class="zmail-recent-time">{{time}}</div>
+            </div>
+            <div class="zmail-recent-subject">{{subject}}</div>
+            <div class="zmail-recent-recipient">
+              <i class="fas fa-user"></i>
+              <span>To: {{recipientName}}</span>
+            </div>
+            <div class="zmail-recent-actions">
+              <button class="zmail-recent-action" data-action="view-message" data-message-id="{{id}}">
+                <i class="fas fa-eye"></i> View
+              </button>
+              <button class="zmail-recent-action" data-action="delete-message" data-message-id="{{id}}">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+          {{/each}}
+          {{else}}
+          <div class="zmail-no-recent">
+            <div class="zmail-no-recent-icon">
+              <i class="fas fa-inbox"></i>
+            </div>
+            <h4>No ZMail messages sent yet</h4>
+            <p>Start by composing your first ZMail message in the Compose tab.</p>
+          </div>
+          {{/if}}
+        </div>
       </div>
-      {{/if}}
     </div>
   </div>
 
-  <div class="form-group">
-    <p class="notes" style="color: #7f8c8d;">
-      <i class="fas fa-info-circle"></i>
-      ZMail messages are one-way communications from GM to players. Players can read, mark as read, and delete messages,
-      but cannot reply.
-    </p>
+  <!-- Footer Info -->
+  <div class="zmail-footer">
+    <div class="zmail-footer-info">
+      <i class="fas fa-shield-alt"></i>
+      <span>ZMail is a secure, one-way messaging system. Players can read, mark as read, and delete messages, but cannot
+        reply.</span>
+    </div>
   </div>
-</form>
+</div>

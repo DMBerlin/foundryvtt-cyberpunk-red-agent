@@ -1659,17 +1659,23 @@ class GMZMailManagementMenu extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
+        // Tab navigation
+        html.find('.zmail-tab-btn').click(this._onTabClick.bind(this));
+
         // Send ZMail button
-        html.find('.send-zmail-btn').click(this._onSendZMailClick.bind(this));
+        html.find('.zmail-send-btn, #send-zmail-btn').click(this._onSendZMailClick.bind(this));
 
         // ZMail management action buttons
-        html.find('.zmail-action-btn[data-action="view-all-messages"]').click(this._onViewAllMessagesClick.bind(this));
-        html.find('.zmail-action-btn[data-action="mark-all-read"]').click(this._onMarkAllReadClick.bind(this));
-        html.find('.zmail-action-btn[data-action="clear-old-messages"]').click(this._onClearOldMessagesClick.bind(this));
+        html.find('.zmail-management-btn[data-action="view-all-messages"]').click(this._onViewAllMessagesClick.bind(this));
+        html.find('.zmail-management-btn[data-action="mark-all-read"]').click(this._onMarkAllReadClick.bind(this));
+        html.find('.zmail-management-btn[data-action="clear-old-messages"]').click(this._onClearOldMessagesClick.bind(this));
 
         // Recent message actions
         html.find('.zmail-recent-action[data-action="view-message"]').click(this._onViewMessageClick.bind(this));
         html.find('.zmail-recent-action[data-action="delete-message"]').click(this._onDeleteMessageClick.bind(this));
+
+        // Recipient selection display
+        html.find('#zmail-recipient').change(this._onRecipientChange.bind(this));
     }
 
     /**
@@ -2011,6 +2017,44 @@ class GMZMailManagementMenu extends FormApplication {
                 }
             }
         }).render(true);
+    }
+
+    /**
+     * Handle tab navigation
+     */
+    _onTabClick(event) {
+        event.preventDefault();
+        const tabName = event.currentTarget.dataset.tab;
+
+        // Remove active class from all tabs and content
+        this.element.find('.zmail-tab-btn').removeClass('active');
+        this.element.find('.zmail-tab-content').removeClass('active');
+
+        // Add active class to clicked tab and corresponding content
+        event.currentTarget.classList.add('active');
+        this.element.find(`#${tabName}-tab`).addClass('active');
+    }
+
+    /**
+     * Handle recipient selection change
+     */
+    _onRecipientChange(event) {
+        const select = event.currentTarget;
+        const selectedOption = select.options[select.selectedIndex];
+        const displayElement = this.element.find('#selected-recipient-display');
+
+        if (selectedOption.value) {
+            const actorName = selectedOption.dataset.actorName;
+            displayElement.html(`
+                <i class="fas fa-user-circle"></i>
+                <span>${actorName}</span>
+            `).addClass('selected');
+        } else {
+            displayElement.html(`
+                <i class="fas fa-user-circle"></i>
+                <span>No recipient selected</span>
+            `).removeClass('selected');
+        }
     }
 }
 
