@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.0] - 2025-09-18
+
+### Fixed
+- **ZMail Inbox Sorting**: Fixed ZMail message sorting to ensure newest messages appear at the top
+  - **Server Data Loading**: Messages now sorted by newest first when loading from server
+  - **Real-time Sync**: SocketLib sync now maintains newest-first sorting
+  - **New Message Creation**: New ZMails are immediately sorted to appear at the top
+  - **Consistent Experience**: All clients see messages in the same order (newest first)
+
+- **Contact Deletion Functionality**: Added ability to delete contacts from agent contact list
+  - **Context Menu Option**: Right-click on any contact to access "Remover Contato" option
+  - **Confirmation Dialog**: Clear explanation that deletion only affects the user's list
+  - **Immediate UI Refresh**: Contact disappears immediately after confirmation with fade-out animation
+  - **Message Preservation**: Deleted contacts can still send messages, and message history is preserved
+  - **Auto-Re-addition**: If deleted contact sends a message, they're automatically re-added to the list
+  - **Real-time Updates**: All clients see contact deletions in real-time
+
+### Enhanced
+- **Contact Deletion UX**: Improved user experience for contact management
+  - **Visual Feedback**: Smooth fade-out animation when deleting contacts
+  - **Smart Navigation**: If viewing deleted contact's conversation, automatically returns to main chat
+  - **Error Handling**: Better error messages and validation for contact operations
+  - **Persistence**: Contact deletions are properly saved and persist across client refreshes
+
+### Technical Improvements
+- **ZMail Sorting Logic**: Enhanced sorting algorithms for consistent message ordering
+  - **Merge Operations**: Fixed sorting in message merge operations during sync
+  - **Array Management**: Proper sorting after adding new messages to ensure correct order
+  - **Cross-Client Consistency**: All clients maintain the same message order
+
+- **Contact Management**: Improved contact deletion system
+  - **Data Validation**: Enhanced contact lookup using device registry instead of contact list
+  - **Real-time Events**: Added local contact update events for immediate UI refresh
+  - **Error Recovery**: Better error handling for edge cases in contact operations
+
 ## [4.0.0] - 2025-09-17
 
 ### Added
