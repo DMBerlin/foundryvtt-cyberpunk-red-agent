@@ -1212,7 +1212,7 @@ console.log("  - cyberpunkAgentCheckStatus() - Verifica status do sistema");
 console.log("  - cyberpunkAgentFixTokenControls() - Corrige controles de token se necessário");
 
 /**
- * GM Data Management Menu - FormApplication for managing all Cyberpunk Agent data
+ * GM Chat7 Management Menu - FormApplication for managing all Cyberpunk Agent data
  */
 class GMDataManagementMenu extends FormApplication {
     constructor(options = {}) {
@@ -1223,7 +1223,7 @@ class GMDataManagementMenu extends FormApplication {
         return mergeObject(super.defaultOptions, {
             id: "gm-data-management",
             template: "modules/cyberpunk-agent/templates/gm-data-management.html",
-            title: "GM Data Management",
+            title: "GM Chat7 Management",
             width: 600,
             height: "auto",
             resizable: true,
@@ -2290,11 +2290,11 @@ class CyberpunkAgent {
             default: { messages: {}, settings: {} }
         });
 
-        // Register a custom settings menu for GM Data Management
+        // Register a custom settings menu for GM Chat7 Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
-            name: 'GM Data Management',
+            name: 'GM Chat7 Management',
             hint: 'Manage all chat messages, contact connections, and device registry for all actors',
-            label: 'GM Data Management',
+            label: 'GM Chat7 Management',
             icon: 'fas fa-database',
             type: GMDataManagementMenu,
             restricted: true
