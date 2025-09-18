@@ -113,6 +113,7 @@ function initializeSocketLib() {
     socket.register("zmailUpdate", handleZMailUpdate);
     socket.register("requestZMailSync", handleRequestZMailSync);
     socket.register("zmailSyncResponse", handleZMailSyncResponse);
+    socket.register("zmailReadStatusNotification", handleZMailReadStatusNotification);
 
     // Register read status update request handler
     socket.register("readStatusUpdateRequest", handleReadStatusUpdateRequest);
@@ -1172,6 +1173,44 @@ async function handleZMailSyncResponse(data) {
     }
   } catch (error) {
     console.error("Cyberpunk Agent | Error handling ZMail sync response:", error);
+  }
+}
+
+
+/**
+ * Handle ZMail read status notifications from players (GM only)
+ */
+async function handleZMailReadStatusNotification(data) {
+  console.log("Cyberpunk Agent | Received ZMail read status notification via SocketLib:", data);
+
+  try {
+    // Only GMs can handle these notifications
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received ZMail read status notification, ignoring");
+      return;
+    }
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { deviceId, messageId, isRead, userId, userName, timestamp } = data;
+
+      // Update GM's local ZMail data with the read status change
+      const messages = window.CyberpunkAgent.instance.zmailMessages.get(deviceId);
+      if (messages) {
+        const message = messages.find(msg => msg.id === messageId);
+        if (message) {
+          message.isRead = isRead;
+          console.log(`Cyberpunk Agent | Updated ZMail read status from player ${userName}: ${messageId} = ${isRead ? 'read' : 'unread'}`);
+        }
+      }
+
+      // Refresh the GM ZMail manager if it's open
+      if (window.CyberpunkAgent.instance.gmZMailManagementMenu &&
+        window.CyberpunkAgent.instance.gmZMailManagementMenu.rendered) {
+        window.CyberpunkAgent.instance.gmZMailManagementMenu.render();
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling ZMail read status notification:", error);
   }
 }
 

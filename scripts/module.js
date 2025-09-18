@@ -1614,12 +1614,18 @@ class GMZMailManagementMenu extends FormApplication {
             width: 800,
             height: 600,
             resizable: true,
-            minimizable: true
+            minimizable: true,
+            tabs: [
+                { navSelector: ".tabs", contentSelector: ".content", initial: "compose" }
+            ]
         });
     }
 
     async getData(options = {}) {
         const data = super.getData(options);
+
+        // Note: Read status is now updated via event-driven notifications from players
+        // No need to poll for read status when GM opens ZMail manager
 
         // Get all registered devices (players only)
         const players = [];
@@ -1654,6 +1660,34 @@ class GMZMailManagementMenu extends FormApplication {
             activePlayers: stats.activePlayers,
             recentMessages: recentMessages
         };
+    }
+
+    _getHeaderButtons() {
+        const buttons = super._getHeaderButtons();
+
+        // Add refresh button before close button
+        buttons.unshift({
+            class: "zmail-refresh-button",
+            icon: "fas fa-sync-alt",
+            label: "Refresh",
+            onclick: () => this._onRefreshClick()
+        });
+
+        return buttons;
+    }
+
+    async _onRefreshClick() {
+        try {
+            console.log("Cyberpunk Agent | Refreshing ZMail management UI...");
+
+            // Simply re-render the application with current data
+            await this.render();
+
+            ui.notifications.info("ZMail UI refreshed");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error refreshing ZMail UI:", error);
+            ui.notifications.error("Failed to refresh ZMail UI");
+        }
     }
 
     activateListeners(html) {
@@ -11160,6 +11194,9 @@ class CyberpunkAgent {
                 // Save locally first (like CHAT7 messages)
                 await this.saveZMailData();
 
+                // Notify GM of read status change (IoC approach)
+                await this._notifyGMZMailReadStatus(deviceId, messageId, true);
+
                 return true;
             }
             return false;
@@ -11268,7 +11305,7 @@ class CyberpunkAgent {
 
 
     /**
-     * Get ZMail statistics for GM
+     * Get ZMail statistics for GM (with real-time read status from players)
      */
     getZMailStatistics() {
         let totalMessages = 0;
@@ -11289,6 +11326,33 @@ class CyberpunkAgent {
             activePlayers
         };
     }
+
+    /**
+     * Notify GM of ZMail read status change (IoC approach)
+     */
+    async _notifyGMZMailReadStatus(deviceId, messageId, isRead) {
+        try {
+            if (!this.socketLibIntegration || !this.socketLibIntegration.isAvailable) {
+                console.warn("Cyberpunk Agent | SocketLib not available for ZMail read status notification");
+                return;
+            }
+
+            // Send read status notification to GM
+            await this.socketLibIntegration.sendMessageToGM('zmailReadStatusNotification', {
+                deviceId: deviceId,
+                messageId: messageId,
+                isRead: isRead,
+                userId: game.user.id,
+                userName: game.user.name,
+                timestamp: Date.now()
+            });
+
+            console.log(`Cyberpunk Agent | ZMail read status notification sent to GM: ${messageId} = ${isRead ? 'read' : 'unread'}`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error notifying GM of ZMail read status:", error);
+        }
+    }
+
 
     /**
      * Get recent ZMail messages for GM panel
