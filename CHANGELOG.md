@@ -2,6 +2,82 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.0] - 2025-09-17
+
+### Added
+- **ZMail System**: Complete one-way messaging system from GM to players
+  - **ZMail App**: New app icon on agent home screen with envelope icon
+  - **Inbox Interface**: Player inbox showing received ZMails with sender, subject, and preview
+  - **Message Reading**: Full message view with sender, timestamp, and content
+  - **Read Status Tracking**: Messages can be marked as read and persist across sessions
+  - **Delete Functionality**: Players can delete ZMails they no longer need
+  - **Empty State**: Cyberpunk-themed empty inbox with immersive messaging
+  - **Sound Effects**: Notification sound for new ZMails and opening sound for reading
+
+- **GM ZMail Management**: Comprehensive management interface for GMs
+  - **Send ZMail**: Form to compose and send ZMails to specific players
+  - **Message Statistics**: Real-time stats showing total messages, unread count, and active players
+  - **Recent Messages**: List of recent ZMails with copy link functionality
+  - **Tabbed Interface**: Organized tabs for composing, managing, and viewing messages
+  - **Copy ZMail Links**: Generate clickable links to specific ZMails for use in CHAT7
+  - **Refresh Button**: Manual refresh button in window header for real-time updates
+
+- **CHAT7-ZMail Integration**: Seamless integration between CHAT7 and ZMail systems
+  - **ZMail Links**: Custom `@ZMAIL[messageId]{displayText}` tag format for linking
+  - **Clickable Links**: ZMail links in CHAT7 messages open directly to the ZMail
+  - **Color-Coded Styling**: Own messages (blue), other messages (golden) with mail icons
+  - **Link Generation**: GM can copy ZMail links from management interface
+  - **Message Parsing**: Automatic parsing and rendering of ZMail links in CHAT7
+
+### Enhanced
+- **Event-Driven Architecture**: Implemented IoC (Inversion of Control) pattern for real-time updates
+  - **Player Notifications**: Players automatically notify GM when they read ZMails
+  - **Real-Time Updates**: GM sees read status changes instantly without polling
+  - **Efficient Network**: Only sends data when changes occur, not constant requests
+  - **Consistent Pattern**: Same event-driven approach as CHAT7 read status system
+
+- **Data Persistence**: Hybrid storage system for optimal performance
+  - **Local Storage First**: All users can save changes locally for immediate feedback
+  - **Server Sync**: GMs sync data to server for cross-client synchronization
+  - **Smart Merging**: Server data merges with local changes, preserving user actions
+  - **Permission Handling**: Proper GM/Player separation for data operations
+
+### Technical Improvements
+- **SocketLib Integration**: Complete real-time communication system
+  - **ZMail Notifications**: `zmailUpdate`, `zmailSyncResponse`, `zmailReadStatusNotification` handlers
+  - **Cross-Client Sync**: Players receive new ZMails and updates in real-time
+  - **Read Status Sync**: Event-driven read status notifications from players to GM
+  - **Error Handling**: Robust error handling and fallback mechanisms
+
+- **UI/UX Enhancements**: Modern, cyberpunk-themed interface
+  - **Consistent Headers**: Matching header design across ZMail inbox and message views
+  - **App Icon Grid**: 4x4 grid layout for future app expansion
+  - **Visual Feedback**: Unread indicators, hover effects, and smooth transitions
+  - **Responsive Design**: Optimized for different screen sizes and devices
+
+### Fixed
+- **Permission Errors**: Resolved "User lacks permission to update Setting" errors
+  - **GM-Only Operations**: Server settings operations restricted to GMs only
+  - **Player Request System**: Players request GM to save changes via SocketLib
+  - **Proper Separation**: Clear distinction between GM and player data operations
+
+- **Read Status Persistence**: Fixed ZMail read status not persisting across reloads
+  - **Smart Merging**: Server data merges with local read status changes
+  - **Event-Driven Updates**: Real-time read status notifications to GM
+  - **Cross-Session Persistence**: Read status survives browser reloads and sessions
+
+### Code Quality
+- **Consistent Naming**: Updated GM management interfaces for clarity
+  - **GM Chat7 Management**: Renamed from "GM Data Management" for specificity
+  - **GM ZMail Management**: Dedicated interface for ZMail operations
+  - **Scalable Pattern**: Ready for future app management interfaces
+
+- **Architecture Improvements**: Clean, maintainable code structure
+  - **Event-Driven Design**: Consistent IoC pattern across all systems
+  - **Modular Components**: Separated concerns for ZMail, CHAT7, and management
+  - **Error Handling**: Comprehensive error handling and user feedback
+  - **Performance Optimization**: Efficient data structures and minimal network traffic
+
 ## [2.2.2] - 2025-01-27
 
 ### Enhanced
