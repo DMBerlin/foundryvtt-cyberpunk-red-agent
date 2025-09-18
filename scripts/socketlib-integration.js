@@ -1152,8 +1152,8 @@ async function handleZMailSyncResponse(data) {
           }
         }
 
-        // Sort by timestamp to maintain order
-        mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+        // Sort by timestamp (newest first)
+        mergedMessages.sort((a, b) => b.timestamp - a.timestamp);
 
         // Update the local ZMail messages
         window.CyberpunkAgent.instance.zmailMessages.set(deviceId, mergedMessages);

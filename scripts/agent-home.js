@@ -1219,22 +1219,33 @@ class AgentApplication extends FormApplication {
     event.preventDefault();
 
     const contactId = event.currentTarget.dataset.contactId;
+    console.log(`AgentApplication | Contact context menu triggered for contact: ${contactId}`);
 
     // Get contact device data directly from the devices map
     const contactDevice = window.CyberpunkAgent?.instance?.devices?.get(contactId);
 
     if (!contactDevice) {
       console.error(`Cyberpunk Agent | Contact device ${contactId} not found in devices map`);
+      ui.notifications.error("Contato não encontrado no sistema");
+      return;
+    }
+
+    // Verify contact is actually in the device's contact list
+    const contacts = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id);
+    if (!contacts.includes(contactId)) {
+      console.warn(`AgentApplication | Contact ${contactId} not found in device ${this.device.id} contact list`);
+      ui.notifications.error("Contato não está na sua lista de contatos");
       return;
     }
 
     // Create contact object with the required fields
     const contact = {
       id: contactId,
-      name: contactDevice.deviceName || `Device ${contactId}`,
+      name: contactDevice.deviceName || contactDevice.ownerName || `Device ${contactId}`,
       img: contactDevice.img || 'icons/svg/mystery-man.svg'
     };
 
+    console.log(`AgentApplication | Showing context menu for contact: ${contact.name}`);
     this._showContextMenu(event, contact);
   }
 
@@ -1285,6 +1296,9 @@ class AgentApplication extends FormApplication {
         <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
           <i class="fas fa-info-circle"></i>Informações do Contato
         </button>
+        <button class="cp-context-menu-item" data-action="delete-contact" data-contact-id="${contact.id}" style="color: #ff6b6b; border-top: 1px solid var(--cp-border);">
+          <i class="fas fa-user-minus"></i>Remover Contato
+        </button>
       </div>
     `);
 
@@ -1303,6 +1317,10 @@ class AgentApplication extends FormApplication {
     });
     contextMenu.find('[data-action="info"]').click(() => {
       this._showContactInfo(contact.id);
+      $('.cp-context-menu').remove();
+    });
+    contextMenu.find('[data-action="delete-contact"]').click(() => {
+      this._deleteContact(contact.id);
       $('.cp-context-menu').remove();
     });
 
@@ -1649,6 +1667,117 @@ class AgentApplication extends FormApplication {
           } else if (this.currentView === 'conversation' && this.currentContact?.id === contactId) {
             this._renderConversationView();
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * Delete contact from device
+   */
+  async _deleteContact(contactId) {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      // Get contact information from device registry instead of contact list
+      const contactDevice = window.CyberpunkAgent.instance.devices.get(contactId);
+
+      if (!contactDevice) {
+        ui.notifications.error("Contato não encontrado");
+        return;
+      }
+
+      // Check if contact is actually in the device's contact list
+      const contacts = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id);
+      if (!contacts.includes(contactId)) {
+        ui.notifications.error("Contato não está na sua lista de contatos");
+        return;
+      }
+
+      // Create contact object for display
+      const contact = {
+        id: contactId,
+        name: contactDevice.deviceName || contactDevice.ownerName || `Device ${contactId}`,
+        deviceName: contactDevice.deviceName,
+        ownerName: contactDevice.ownerName
+      };
+
+      const confirmed = await new Promise((resolve) => {
+        new Dialog({
+          title: "Remover Contato",
+          content: `
+            <div class="cp-delete-contact-dialog">
+              <p>Tem certeza que deseja remover <strong>${contact.name}</strong> da sua lista de contatos?</p>
+              <p><small>Esta ação só removerá o contato da sua lista. O contato ainda poderá enviar mensagens para você, e o histórico de mensagens será preservado.</small></p>
+            </div>
+          `,
+          buttons: {
+            cancel: {
+              label: "Cancelar",
+              callback: () => resolve(false)
+            },
+            confirm: {
+              label: "Remover Contato",
+              callback: () => resolve(true)
+            }
+          }
+        }).render(true);
+      });
+
+      if (confirmed) {
+        console.log(`AgentApplication | Attempting to delete contact ${contactId} from device ${this.device.id}`);
+
+        const success = await window.CyberpunkAgent.instance.removeContactFromDevice(this.device.id, contactId);
+        if (success) {
+          ui.notifications.info(`Contato ${contact.name} removido da sua lista`);
+          console.log(`AgentApplication | Successfully deleted contact ${contactId}`);
+
+          // Immediate UI refresh - always refresh the contact list
+          console.log(`AgentApplication | Refreshing UI immediately after contact deletion`);
+
+          if (this.currentView === 'chat7') {
+            // If we're in chat7 view, refresh it to show updated contact list
+            this._renderChat7View();
+          } else if (this.currentView === 'conversation' && this.currentContact?.id === contactId) {
+            // If we're viewing the conversation with the deleted contact, go back to chat7
+            console.log(`AgentApplication | Navigating back to chat7 after deleting current contact`);
+            this.currentView = 'chat7';
+            this.currentContact = null;
+            this._renderChat7View();
+          } else if (this.currentView === 'conversation') {
+            // If we're in a conversation with a different contact, just refresh the chat7 view
+            // This ensures the contact list is updated even if we're not viewing the deleted contact
+            console.log(`AgentApplication | Refreshing chat7 view while in conversation with different contact`);
+            this._renderChat7View();
+          }
+
+          // Force a complete re-render to ensure UI is updated
+          console.log(`AgentApplication | Forcing complete re-render after contact deletion`);
+          this.render(true);
+
+          // Add visual feedback to show the deletion was successful
+          setTimeout(() => {
+            // Trigger a brief visual effect to confirm the deletion
+            const contactElement = $(`.cp-contact-item[data-contact-id="${contactId}"]`);
+            if (contactElement.length > 0) {
+              contactElement.fadeOut(300, function () {
+                $(this).remove();
+              });
+            }
+          }, 100);
+
+          // Dispatch local contact update event for immediate UI refresh
+          document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
+            detail: {
+              type: 'contactUpdate',
+              action: 'remove',
+              deviceId: this.device.id,
+              contactId: contactId,
+              contactName: contact.name,
+              timestamp: Date.now()
+            }
+          }));
+        } else {
+          console.error(`AgentApplication | Failed to delete contact ${contactId}`);
+          ui.notifications.error("Erro ao remover contato");
         }
       }
     }

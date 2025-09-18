@@ -11009,8 +11009,8 @@ class CyberpunkAgent {
                     }
                 }
 
-                // Sort by timestamp to maintain order
-                mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+                // Sort by timestamp (newest first)
+                mergedMessages.sort((a, b) => b.timestamp - a.timestamp);
 
                 // Update the local ZMail messages
                 this.zmailMessages.set(deviceId, mergedMessages);
@@ -11140,6 +11140,9 @@ class CyberpunkAgent {
                 this.zmailMessages.set(recipientDeviceId, []);
             }
             this.zmailMessages.get(recipientDeviceId).push(zmailMessage);
+
+            // Sort messages by timestamp (newest first) to ensure new messages appear at the top
+            this.zmailMessages.get(recipientDeviceId).sort((a, b) => b.timestamp - a.timestamp);
 
             // Save to server
             await this.saveZMailData();
