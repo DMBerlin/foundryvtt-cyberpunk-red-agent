@@ -212,12 +212,13 @@ class AgentApplication extends FormApplication {
         })
         .map(message => {
           const messageText = message.text || message.message; // Use 'text' property, fallback to 'message' for compatibility
+          const isOwn = message.senderId === this.device.id;
 
           return {
             ...message,
             text: messageText, // Keep original text for data attributes
-            formattedText: window.CyberpunkAgent?.instance?.parseZMailLinks(messageText) || messageText, // Parse ZMail links for display
-            isOwn: message.senderId === this.device.id,
+            formattedText: window.CyberpunkAgent?.instance?.parseZMailLinks(messageText, isOwn) || messageText, // Parse ZMail links for display with ownership context
+            isOwn: isOwn,
             time: message.time || new Date(message.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
               minute: '2-digit'

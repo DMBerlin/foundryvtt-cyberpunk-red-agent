@@ -5642,28 +5642,62 @@
 
 /* ZMail Links in CHAT7 Messages */
 .cp-zmail-link {
-  display: inline-block;
-  background: var(--cp-gradient-primary);
-  color: var(--cp-text);
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--cp-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 500;
   text-decoration: none;
   margin: 0 2px;
-  font-size: 0.9em;
+  font-size: 0.85em;
+  line-height: 1.2;
 }
 
-.cp-zmail-link:hover {
-  background: var(--cp-gradient-primary-hover);
-  border-color: var(--cp-border-strong);
+.cp-zmail-link i {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+/* ZMail links in own messages (blueish theme) */
+.cp-zmail-link-own {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: #ecf0f1;
+  border-color: #1f4e79;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+.cp-zmail-link-own:hover {
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  border-color: #2980b9;
   transform: translateY(-1px);
-  box-shadow: var(--cp-shadow);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
 }
 
-.cp-zmail-link:active {
+.cp-zmail-link-own:active {
   transform: translateY(0);
-  box-shadow: var(--cp-shadow-weak);
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+/* ZMail links in other messages (golden theme) */
+.cp-zmail-link-other {
+  background: linear-gradient(135deg, #f4d03f 0%, #f39c12 100%);
+  color: #2c3e50;
+  border-color: #e67e22;
+  box-shadow: 0 2px 4px rgba(243, 156, 18, 0.3);
+}
+
+.cp-zmail-link-other:hover {
+  background: linear-gradient(135deg, #f7dc6f 0%, #f4d03f 100%);
+  border-color: #d68910;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(243, 156, 18, 0.4);
+}
+
+.cp-zmail-link-other:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(243, 156, 18, 0.3);
 }

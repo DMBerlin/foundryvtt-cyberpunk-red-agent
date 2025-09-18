@@ -111,7 +111,11 @@ function initializeSocketLib() {
 
     // Register ZMail update handler
     socket.register("zmailUpdate", handleZMailUpdate);
-    socket.register("zmailUpdateRequest", handleZMailUpdateRequest);
+    socket.register("requestZMailSync", handleRequestZMailSync);
+    socket.register("zmailSyncResponse", handleZMailSyncResponse);
+
+    // Register read status update request handler
+    socket.register("readStatusUpdateRequest", handleReadStatusUpdateRequest);
 
     console.log("Cyberpunk Agent | SocketLib functions registered successfully");
 
@@ -1059,49 +1063,115 @@ async function handleZMailUpdate(data) {
 }
 
 /**
- * Handle ZMail update requests from players (GM only)
+ * Handle ZMail sync requests from players (GM only)
  */
-async function handleZMailUpdateRequest(data) {
-  console.log("Cyberpunk Agent | Received ZMail update request via SocketLib:", data);
+async function handleRequestZMailSync(data) {
+  console.log("Cyberpunk Agent | Received ZMail sync request via SocketLib:", data);
 
   try {
     // Only GMs can handle these requests
     if (!game.user.isGM) {
-      console.warn("Cyberpunk Agent | Non-GM user received ZMail update request, ignoring");
+      console.warn("Cyberpunk Agent | Non-GM user received ZMail sync request, ignoring");
       return;
     }
 
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      const { action, data: requestData, userId, userName } = data;
+      const { deviceId, requestingUserId, requestingUserName } = data;
 
-      if (action === 'markRead') {
-        const { deviceId, messageId } = requestData;
-        const messages = window.CyberpunkAgent.instance.zmailMessages.get(deviceId);
-        if (messages) {
-          const message = messages.find(msg => msg.id === messageId);
-          if (message) {
-            message.isRead = true;
-            await window.CyberpunkAgent.instance.saveZMailData();
-            console.log(`Cyberpunk Agent | GM marked ZMail ${messageId} as read for user ${userName}`);
+      // Get ZMail data from server for the requested device
+      const zmailData = game.settings.get('cyberpunk-agent', 'zmail-data') || { messages: {}, settings: {} };
+      const deviceMessages = zmailData.messages[deviceId] || [];
+
+      if (deviceMessages.length > 0) {
+        // Send ZMail data to the requesting user
+        await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+          requestingUserId,
+          'zmailSyncResponse',
+          {
+            deviceId: deviceId,
+            messages: deviceMessages,
+            settings: zmailData.settings[deviceId] || {}
           }
-        }
-      } else if (action === 'delete') {
-        const { deviceId, messageId } = requestData;
-        const messages = window.CyberpunkAgent.instance.zmailMessages.get(deviceId);
-        if (messages) {
-          const messageIndex = messages.findIndex(msg => msg.id === messageId);
-          if (messageIndex !== -1) {
-            messages.splice(messageIndex, 1);
-            await window.CyberpunkAgent.instance.saveZMailData();
-            console.log(`Cyberpunk Agent | GM deleted ZMail ${messageId} for user ${userName}`);
-          }
-        }
+        );
+
+        console.log(`Cyberpunk Agent | ZMail sync response sent to user ${requestingUserName} for device ${deviceId} (${deviceMessages.length} messages)`);
+      } else {
+        console.log(`Cyberpunk Agent | No ZMail messages found for device ${deviceId}, skipping sync response`);
       }
     }
   } catch (error) {
-    console.error("Cyberpunk Agent | Error handling ZMail update request:", error);
+    console.error("Cyberpunk Agent | Error handling ZMail sync request:", error);
   }
 }
+
+/**
+ * Handle ZMail sync response from GM (for players)
+ */
+async function handleZMailSyncResponse(data) {
+  console.log("Cyberpunk Agent | Received ZMail sync response via SocketLib:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { deviceId, messages, settings } = data;
+
+      // Update local ZMail data with server data
+      if (messages && messages.length > 0) {
+        window.CyberpunkAgent.instance.zmailMessages.set(deviceId, messages);
+        console.log(`Cyberpunk Agent | ZMail sync received: ${messages.length} messages for device ${deviceId}`);
+      }
+
+      if (settings) {
+        window.CyberpunkAgent.instance.zmailSettings.set(deviceId, settings);
+      }
+
+      // Refresh the agent application if it's open
+      if (window.CyberpunkAgent.instance.agentApplication &&
+        window.CyberpunkAgent.instance.agentApplication.rendered) {
+        window.CyberpunkAgent.instance.agentApplication.render();
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling ZMail sync response:", error);
+  }
+}
+
+/**
+ * Handle read status update requests from players (GM only)
+ */
+async function handleReadStatusUpdateRequest(data) {
+  console.log("Cyberpunk Agent | Received read status update request via SocketLib:", data);
+
+  try {
+    // Only GMs can handle these requests
+    if (!game.user.isGM) {
+      console.warn("Cyberpunk Agent | Non-GM user received read status update request, ignoring");
+      return;
+    }
+
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { conversationKey, userId, timestamp, readMessageIds, requestingUserId, requestingUserName } = data;
+
+      // Update the read status in the GM's system
+      if (!window.CyberpunkAgent.instance.readStatus.has(conversationKey)) {
+        window.CyberpunkAgent.instance.readStatus.set(conversationKey, new Map());
+      }
+
+      const conversationReadStatus = window.CyberpunkAgent.instance.readStatus.get(conversationKey);
+      conversationReadStatus.set(userId, {
+        lastReadTimestamp: timestamp,
+        readMessages: readMessageIds
+      });
+
+      // Save to server
+      await window.CyberpunkAgent.instance._saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds);
+
+      console.log(`Cyberpunk Agent | GM updated read status for user ${requestingUserName} in conversation ${conversationKey}`);
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling read status update request:", error);
+  }
+}
+
 
 /**
  * Handle ping from other clients

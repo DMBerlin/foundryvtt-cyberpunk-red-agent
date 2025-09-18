@@ -2291,6 +2291,8 @@ class CyberpunkAgent {
                 try {
                     console.log("Cyberpunk Agent | Player requesting initial message sync from GM");
                     await this.requestMessageSyncFromGM();
+                    // Also sync ZMail data
+                    await this.requestZMailSyncFromGM();
                 } catch (error) {
                     console.error("Cyberpunk Agent | Error requesting initial sync:", error);
                 }
@@ -3233,6 +3235,8 @@ class CyberpunkAgent {
                 setTimeout(async () => {
                     try {
                         await this.requestMessageSyncFromGM();
+                        // Also sync ZMail data
+                        await this.requestZMailSyncFromGM();
                     } catch (error) {
                         console.error("Cyberpunk Agent | Error syncing on agent open:", error);
                     }
@@ -4782,8 +4786,13 @@ class CyberpunkAgent {
 
             console.log(`Cyberpunk Agent | Updated read status for user ${userId} in conversation ${conversationKey}`);
 
-            // Save to server
-            await this._saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds);
+            // Save to server (with permission check)
+            if (game.user.isGM) {
+                await this._saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds);
+            } else {
+                // Request GM to save read status
+                await this._requestReadStatusUpdate(conversationKey, userId, timestamp, readMessageIds);
+            }
 
             // Broadcast update to other clients
             await this._broadcastReadStatusUpdate(conversationKey, userId, timestamp, readMessageIds);
@@ -4820,10 +4829,39 @@ class CyberpunkAgent {
     }
 
     /**
+     * Request GM to update read status (for non-GM users)
+     */
+    async _requestReadStatusUpdate(conversationKey, userId, timestamp, readMessageIds) {
+        try {
+            if (this.socketLibIntegration && this.socketLibIntegration.isAvailable) {
+                await this.socketLibIntegration.sendMessageToGM('readStatusUpdateRequest', {
+                    conversationKey: conversationKey,
+                    userId: userId,
+                    timestamp: timestamp,
+                    readMessageIds: readMessageIds,
+                    requestingUserId: game.user.id,
+                    requestingUserName: game.user.name
+                });
+                console.log(`Cyberpunk Agent | Read status update request sent to GM for conversation ${conversationKey}`);
+            } else {
+                console.warn("Cyberpunk Agent | SocketLib not available for read status update request");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending read status update request:", error);
+        }
+    }
+
+    /**
      * Save read status to server (following message persistence pattern)
      */
     async _saveReadStatusToServer(conversationKey, userId, timestamp, readMessageIds) {
         try {
+            // Only GMs can save to server settings
+            if (!game.user.isGM) {
+                console.log("Cyberpunk Agent | Non-GM user cannot save read status to server, skipping");
+                return;
+            }
+
             // Use server settings for read status (same pattern as messages)
             const serverReadStatus = game.settings.get('cyberpunk-agent', 'server-read-status') || {};
 
@@ -5000,8 +5038,10 @@ class CyberpunkAgent {
                 });
             }
 
-            // Save migrated data
-            await this._saveReadStatusToServer('', game.user.id, Date.now(), []);
+            // Save migrated data (only if user is GM)
+            if (game.user.isGM) {
+                await this._saveReadStatusToServer('', game.user.id, Date.now(), []);
+            }
 
             console.log("Cyberpunk Agent | Legacy read timestamps migrated successfully");
 
@@ -10840,24 +10880,21 @@ class CyberpunkAgent {
     // ===== ZMAIL SYSTEM METHODS =====
 
     /**
-     * Load ZMail data from server settings
+     * Load ZMail data (local storage first, then server sync for all users)
      */
     async loadZMailData() {
         try {
-            console.log("Cyberpunk Agent | Loading ZMail data from server...");
+            console.log("Cyberpunk Agent | Loading ZMail data...");
 
-            const zmailData = game.settings.get('cyberpunk-agent', 'zmail-data') || { messages: {}, settings: {} };
+            // Load from localStorage first (like CHAT7 messages)
+            await this._loadZMailDataFromLocal();
 
-            // Load messages
-            this.zmailMessages.clear();
-            for (const [deviceId, messages] of Object.entries(zmailData.messages || {})) {
-                this.zmailMessages.set(deviceId, messages || []);
-            }
-
-            // Load settings
-            this.zmailSettings.clear();
-            for (const [deviceId, settings] of Object.entries(zmailData.settings || {})) {
-                this.zmailSettings.set(deviceId, settings || {});
+            // If user is GM, sync directly from server
+            if (game.user.isGM) {
+                await this._loadZMailDataFromServer();
+            } else {
+                // If user is player, request sync from GM (like CHAT7 messages)
+                await this.requestZMailSyncFromGM();
             }
 
             console.log(`Cyberpunk Agent | ZMail data loaded: ${this.zmailMessages.size} devices with messages`);
@@ -10867,18 +10904,111 @@ class CyberpunkAgent {
     }
 
     /**
-     * Save ZMail data to server settings
+     * Load ZMail data from local storage
+     */
+    async _loadZMailDataFromLocal() {
+        try {
+            const storageKey = `cyberpunk-agent-zmail-${game.user.id}`;
+            const localData = localStorage.getItem(storageKey);
+
+            if (localData) {
+                const zmailData = JSON.parse(localData);
+
+                // Load messages
+                for (const [deviceId, messages] of Object.entries(zmailData.messages || {})) {
+                    this.zmailMessages.set(deviceId, messages || []);
+                }
+
+                // Load settings
+                for (const [deviceId, settings] of Object.entries(zmailData.settings || {})) {
+                    this.zmailSettings.set(deviceId, settings || {});
+                }
+
+                console.log("Cyberpunk Agent | ZMail data loaded from localStorage");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading ZMail data from localStorage:", error);
+        }
+    }
+
+    /**
+     * Load ZMail data from server settings (GM only)
+     */
+    async _loadZMailDataFromServer() {
+        try {
+            const zmailData = game.settings.get('cyberpunk-agent', 'zmail-data') || { messages: {}, settings: {} };
+
+            // Load messages from server (server data takes precedence)
+            for (const [deviceId, messages] of Object.entries(zmailData.messages || {})) {
+                this.zmailMessages.set(deviceId, messages || []);
+            }
+
+            // Load settings from server
+            for (const [deviceId, settings] of Object.entries(zmailData.settings || {})) {
+                this.zmailSettings.set(deviceId, settings || {});
+            }
+
+            console.log("Cyberpunk Agent | ZMail data synced from server");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading ZMail data from server:", error);
+        }
+    }
+
+    /**
+     * Save ZMail data (local storage for all users, server sync for GMs)
      */
     async saveZMailData() {
         try {
-            console.log("Cyberpunk Agent | Saving ZMail data to server...");
+            console.log("Cyberpunk Agent | Saving ZMail data...");
 
-            // Only GMs can save ZMail data to world settings
-            if (!game.user.isGM) {
-                console.log("Cyberpunk Agent | Non-GM user, skipping ZMail data save");
-                return;
+            // Save to local storage first (like CHAT7 messages)
+            await this._saveZMailDataToLocal();
+
+            // If user is GM, also save to server for cross-client sync
+            if (game.user.isGM) {
+                await this._saveZMailDataToServer();
             }
 
+            console.log("Cyberpunk Agent | ZMail data saved successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving ZMail data:", error);
+        }
+    }
+
+    /**
+     * Save ZMail data to local storage (like CHAT7 messages)
+     */
+    async _saveZMailDataToLocal() {
+        try {
+            const zmailData = {
+                messages: {},
+                settings: {}
+            };
+
+            // Convert messages Map to Object
+            for (const [deviceId, messages] of this.zmailMessages) {
+                zmailData.messages[deviceId] = messages;
+            }
+
+            // Convert settings Map to Object
+            for (const [deviceId, settings] of this.zmailSettings) {
+                zmailData.settings[deviceId] = settings;
+            }
+
+            // Save to localStorage (like CHAT7 messages)
+            const storageKey = `cyberpunk-agent-zmail-${game.user.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(zmailData));
+            console.log("Cyberpunk Agent | ZMail data saved to localStorage for user:", game.user.name);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving ZMail data to localStorage:", error);
+        }
+    }
+
+    /**
+     * Save ZMail data to server settings (GM only, for cross-client sync)
+     */
+    async _saveZMailDataToServer() {
+        try {
             const zmailData = {
                 messages: {},
                 settings: {}
@@ -10895,9 +11025,9 @@ class CyberpunkAgent {
             }
 
             await game.settings.set('cyberpunk-agent', 'zmail-data', zmailData);
-            console.log("Cyberpunk Agent | ZMail data saved successfully");
+            console.log("Cyberpunk Agent | ZMail data saved to server");
         } catch (error) {
-            console.error("Cyberpunk Agent | Error saving ZMail data:", error);
+            console.error("Cyberpunk Agent | Error saving ZMail data to server:", error);
         }
     }
 
@@ -10984,13 +11114,8 @@ class CyberpunkAgent {
             if (message) {
                 message.isRead = true;
 
-                // If user is GM, save directly. If not, request GM to save
-                if (game.user.isGM) {
-                    await this.saveZMailData();
-                } else {
-                    // Request GM to update the message status
-                    await this._requestZMailUpdate('markRead', { deviceId, messageId });
-                }
+                // Save locally first (like CHAT7 messages)
+                await this.saveZMailData();
 
                 return true;
             }
@@ -11013,13 +11138,8 @@ class CyberpunkAgent {
             if (messageIndex !== -1) {
                 messages.splice(messageIndex, 1);
 
-                // If user is GM, save directly. If not, request GM to save
-                if (game.user.isGM) {
-                    await this.saveZMailData();
-                } else {
-                    // Request GM to delete the message
-                    await this._requestZMailUpdate('delete', { deviceId, messageId });
-                }
+                // Save locally first (like CHAT7 messages)
+                await this.saveZMailData();
 
                 return true;
             }
@@ -11031,11 +11151,57 @@ class CyberpunkAgent {
     }
 
     /**
+     * Request ZMail sync from GM (for players)
+     */
+    async requestZMailSyncFromGM() {
+        try {
+            if (game.user.isGM) {
+                console.log("Cyberpunk Agent | GM doesn't need to request ZMail sync from self");
+                return;
+            }
+
+            if (!this.socketLibIntegration) {
+                console.warn("Cyberpunk Agent | SocketLib not available for ZMail sync request");
+                return;
+            }
+
+            // Get user's device IDs
+            const userDevices = this.getUserActors()
+                .flatMap(actor => this.deviceMappings.get(actor.id) || []);
+
+            if (userDevices.length === 0) {
+                console.log("Cyberpunk Agent | No devices found for user, skipping ZMail sync request");
+                return;
+            }
+
+            console.log(`Cyberpunk Agent | Requesting ZMail sync from GM for ${userDevices.length} devices`);
+
+            // Request ZMail sync for each device
+            for (const deviceId of userDevices) {
+                try {
+                    await this.socketLibIntegration.sendMessageToGM('requestZMailSync', {
+                        deviceId: deviceId,
+                        requestingUserId: game.user.id,
+                        requestingUserName: game.user.name
+                    });
+                } catch (error) {
+                    console.error(`Cyberpunk Agent | Error requesting ZMail sync for device ${deviceId}:`, error);
+                }
+            }
+
+            console.log("Cyberpunk Agent | ZMail sync requests sent to GM");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error requesting ZMail sync from GM:", error);
+        }
+    }
+
+    /**
      * Parse ZMail links in message text and convert them to clickable elements
      * @param {string} text - The message text to parse
+     * @param {boolean} isOwn - Whether the message is from the current user (for color styling)
      * @returns {string} - HTML with ZMail links converted to clickable elements
      */
-    parseZMailLinks(text) {
+    parseZMailLinks(text, isOwn = false) {
         if (!text) return text;
 
         // Regex to match @ZMAIL[messageId]{displayText}
@@ -11050,30 +11216,13 @@ class CyberpunkAgent {
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
 
-            return `<span class="cp-zmail-link" data-zmail-id="${messageId}" data-action="open-zmail-link" title="Click to open ZMail message">${escapedDisplayText}</span>`;
+            // Apply color class based on message ownership
+            const colorClass = isOwn ? 'cp-zmail-link-own' : 'cp-zmail-link-other';
+
+            return `<span class="cp-zmail-link ${colorClass}" data-zmail-id="${messageId}" data-action="open-zmail-link" title="Click to open ZMail message"><i class="fas fa-envelope"></i> ${escapedDisplayText}</span>`;
         });
     }
 
-    /**
-     * Request GM to update ZMail data (for non-GM users)
-     */
-    async _requestZMailUpdate(action, data) {
-        try {
-            if (this.socketLibIntegration && this.socketLibIntegration.isAvailable) {
-                await this.socketLibIntegration.sendMessageToGM('zmailUpdateRequest', {
-                    action: action,
-                    data: data,
-                    userId: game.user.id,
-                    userName: game.user.name
-                });
-                console.log(`Cyberpunk Agent | ZMail update request sent to GM: ${action}`, data);
-            } else {
-                console.warn("Cyberpunk Agent | SocketLib not available for ZMail update request");
-            }
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error sending ZMail update request:", error);
-        }
-    }
 
     /**
      * Get ZMail statistics for GM
