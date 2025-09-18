@@ -1,4 +1,4 @@
-# Cyberpunk Agent v4.0.0
+# Cyberpunk Agent v4.0.1
 
 **Transform your Cyberpunk RED sessions with authentic in-character messaging**
 
