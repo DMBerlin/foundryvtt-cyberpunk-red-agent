@@ -10938,9 +10938,52 @@ class CyberpunkAgent {
         try {
             const zmailData = game.settings.get('cyberpunk-agent', 'zmail-data') || { messages: {}, settings: {} };
 
-            // Load messages from server (server data takes precedence)
-            for (const [deviceId, messages] of Object.entries(zmailData.messages || {})) {
-                this.zmailMessages.set(deviceId, messages || []);
+            // Merge server messages with local messages (preserve local read status)
+            for (const [deviceId, serverMessages] of Object.entries(zmailData.messages || {})) {
+                const localMessages = this.zmailMessages.get(deviceId) || [];
+                const localMessageIds = new Set(localMessages.map(msg => msg.id));
+
+                // Create a map of local messages by ID for quick lookup
+                const localMessagesMap = new Map();
+                localMessages.forEach(msg => localMessagesMap.set(msg.id, msg));
+
+                // Merge server messages with local messages
+                const mergedMessages = [...localMessages];
+                let newMessages = 0;
+
+                for (const serverMessage of serverMessages) {
+                    if (!localMessageIds.has(serverMessage.id)) {
+                        // New message from server, add it
+                        mergedMessages.push(serverMessage);
+                        newMessages++;
+                    } else {
+                        // Message exists locally, preserve local read status but update other fields
+                        const localMessage = localMessagesMap.get(serverMessage.id);
+                        if (localMessage) {
+                            // Keep local read status, but update other fields from server
+                            const mergedMessage = {
+                                ...serverMessage,
+                                isRead: localMessage.isRead // Preserve local read status
+                            };
+
+                            // Update the message in the merged array
+                            const index = mergedMessages.findIndex(msg => msg.id === serverMessage.id);
+                            if (index !== -1) {
+                                mergedMessages[index] = mergedMessage;
+                            }
+                        }
+                    }
+                }
+
+                // Sort by timestamp to maintain order
+                mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+                // Update the local ZMail messages
+                this.zmailMessages.set(deviceId, mergedMessages);
+
+                if (newMessages > 0) {
+                    console.log(`Cyberpunk Agent | ZMail merge: ${newMessages} new messages for device ${deviceId}`);
+                }
             }
 
             // Load settings from server
