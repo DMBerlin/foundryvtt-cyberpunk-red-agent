@@ -3540,6 +3540,20 @@
   box-shadow: none !important;
 }
 
+/* Disabled context menu item */
+.cp-context-menu-item-disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  color: var(--cp-text-muted) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.cp-context-menu-item-disabled:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: none !important;
+  color: var(--cp-text-muted) !important;
+}
+
 .cp-context-menu-item i {
   width: 16px;
   text-align: center;

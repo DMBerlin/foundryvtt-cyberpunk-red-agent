@@ -1290,7 +1290,7 @@ class AgentApplication extends FormApplication {
         <button class="cp-context-menu-item" data-action="mark-read" data-contact-id="${contact.id}">
           <i class="fas fa-check-double"></i>Marcar Todos como Lidos
         </button>
-        <button class="cp-context-menu-item" data-action="clear-history" data-contact-id="${contact.id}">
+        <button class="cp-context-menu-item cp-context-menu-item-disabled" data-action="clear-history" data-contact-id="${contact.id}" disabled title="Coming Soon - This feature is under development">
           <i class="fas fa-trash"></i>Limpar Histórico
         </button>
         <button class="cp-context-menu-item" data-action="info" data-contact-id="${contact.id}">
@@ -1311,10 +1311,11 @@ class AgentApplication extends FormApplication {
       this._markAllMessagesAsRead(contact.id);
       $('.cp-context-menu').remove();
     });
-    contextMenu.find('[data-action="clear-history"]').click(() => {
-      this._clearConversationHistory(contact.id);
-      $('.cp-context-menu').remove();
-    });
+    // Clear history is disabled - coming soon feature
+    // contextMenu.find('[data-action="clear-history"]').click(() => {
+    //   this._clearConversationHistory(contact.id);
+    //   $('.cp-context-menu').remove();
+    // });
     contextMenu.find('[data-action="info"]').click(() => {
       this._showContactInfo(contact.id);
       $('.cp-context-menu').remove();
