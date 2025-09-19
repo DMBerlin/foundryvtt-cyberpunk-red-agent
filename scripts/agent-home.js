@@ -1628,23 +1628,44 @@ class AgentApplication extends FormApplication {
    */
   async _clearConversationHistory(contactId) {
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
-      // Show confirmation dialog
-      const contact = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id).find(c => c.id === contactId);
+      // Try to find contact in multiple ways
+      let contact = window.CyberpunkAgent.instance.getContactsForDevice(this.device.id).find(c => c.id === contactId);
 
+      // If not found in contacts, try to get contact info from device data
       if (!contact) {
-        ui.notifications.error("Contato não encontrado");
-        return;
+        console.log("Cyberpunk Agent | Contact not found in device contacts, trying alternative lookup");
+        const device = window.CyberpunkAgent.instance.devices.get(this.device.id);
+        if (device && device.contacts) {
+          contact = device.contacts.find(c => c.id === contactId);
+        }
       }
+
+      // If still not found, create a basic contact object for the dialog
+      if (!contact) {
+        console.log("Cyberpunk Agent | Contact not found, creating basic contact info");
+        contact = {
+          id: contactId,
+          name: "Unknown Contact",
+          deviceName: "Unknown Device"
+        };
+      }
+
+      const isGM = game.user.isGM;
+      const dialogTitle = isGM ? "Limpar Histórico (GM)" : "Limpar Histórico";
+      const dialogContent = isGM
+        ? `<div class="cp-clear-history-dialog">
+             <p>Tem certeza que deseja limpar todo o histórico de conversa com <strong>${contact.name}</strong>?</p>
+             <p><small><strong>ATENÇÃO:</strong> Como GM, esta ação afetará o histórico de AMBOS os dispositivos e será propagada para todos os jogadores.</small></p>
+           </div>`
+        : `<div class="cp-clear-history-dialog">
+             <p>Tem certeza que deseja limpar todo o histórico de conversa com <strong>${contact.name}</strong>?</p>
+             <p><small>Esta ação só afetará o seu histórico. O histórico do outro contato permanecerá intacto.</small></p>
+           </div>`;
 
       const confirmed = await new Promise((resolve) => {
         new Dialog({
-          title: "Limpar Histórico",
-          content: `
-            <div class="cp-clear-history-dialog">
-              <p>Tem certeza que deseja limpar todo o histórico de conversa com <strong>${contact.name}</strong>?</p>
-              <p><small>Esta ação só afetará o seu histórico. O histórico do outro contato permanecerá intacto.</small></p>
-            </div>
-          `,
+          title: dialogTitle,
+          content: dialogContent,
           buttons: {
             cancel: {
               label: "Cancelar",
@@ -1659,7 +1680,7 @@ class AgentApplication extends FormApplication {
       });
 
       if (confirmed) {
-        const success = await window.CyberpunkAgent.instance.clearDeviceConversationHistory(this.device.id, contactId);
+        const success = await window.CyberpunkAgent.instance.clearDeviceConversationHistory(this.device.id, contactId, isGM);
         if (success) {
           // Refresh the view
           if (this.currentView === 'chat7') {

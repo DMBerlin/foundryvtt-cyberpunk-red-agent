@@ -90,6 +90,7 @@ function initializeSocketLib() {
     socket.register("editMessageOnServer", handleEditMessageOnServer);
     socket.register("requestServerMessageSync", handleRequestServerMessageSync);
     socket.register("syncMessagesFromServer", handleSyncMessagesFromServer);
+    socket.register("playerConversationCleared", handlePlayerConversationCleared);
     socket.register("messagesDeletedFromServer", handleMessagesDeletedFromServer);
     socket.register("messageEditedOnServer", handleMessageEditedOnServer);
     socket.register("performMasterMessageSync", handlePerformMasterMessageSync);
@@ -1692,7 +1693,7 @@ async function handleEditMessageOnServer(data) {
  * Handle server message sync request from clients (enhanced broker)
  */
 async function handleRequestServerMessageSync(data) {
-  console.log("Cyberpunk Agent | GM received message sync request:", data);
+  console.log("Cyberpunk Agent | GM received request:", data);
 
   // Only GM can handle this
   if (!game.user.isGM) {
@@ -1700,6 +1701,36 @@ async function handleRequestServerMessageSync(data) {
   }
 
   try {
+    // Check if this is a clear conversation request
+    if (data.type === 'clearPlayerConversation') {
+      console.log("Cyberpunk Agent | GM handling player conversation clear request");
+
+      const { deviceId, contactDeviceId, requestingUserId, requestingUserName } = data.data;
+
+      if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+        // Clear server storage for the player's conversation
+        await window.CyberpunkAgent.instance._updateServerStorageForClearedConversation(deviceId, contactDeviceId);
+
+        console.log(`Cyberpunk Agent | GM cleared server storage for player ${requestingUserName} conversation`);
+
+        // Notify the player that the clear was successful
+        await window.CyberpunkAgent.instance.socketLibIntegration.sendSystemResponseToUser(
+          requestingUserId,
+          'playerConversationCleared',
+          {
+            deviceId,
+            contactDeviceId,
+            clearedAt: Date.now(),
+            clearedBy: 'GM'
+          }
+        );
+
+        console.log(`Cyberpunk Agent | Notified player ${requestingUserName} that conversation was cleared`);
+      }
+      return;
+    }
+
+    // Original message sync logic
     const { requestingUserId, deviceId } = data;
 
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
@@ -1731,7 +1762,55 @@ async function handleRequestServerMessageSync(data) {
       console.log(`Cyberpunk Agent | Sent message sync to user ${requestingUserId} for device ${deviceId}`);
     }
   } catch (error) {
-    console.error("Cyberpunk Agent | Error handling message sync request:", error);
+    console.error("Cyberpunk Agent | Error handling request:", error);
+  }
+}
+
+/**
+ * Handle player conversation cleared response from GM
+ */
+async function handlePlayerConversationCleared(data) {
+  console.log("Cyberpunk Agent | Received player conversation cleared confirmation:", data);
+
+  try {
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      const { deviceId, contactDeviceId, clearedAt, clearedBy, gmName, message, clearedConversation } = data;
+
+      console.log(`Cyberpunk Agent | Player conversation cleared by ${clearedBy} at ${new Date(clearedAt).toLocaleString()}`);
+
+      // If GM cleared the conversation, update the player's local state
+      if (clearedBy === 'GM' && clearedConversation) {
+        console.log("Cyberpunk Agent | Updating player's local conversation state");
+
+        // Clear the conversation from player's local memory
+        const conversationKey = clearedConversation.conversationKey;
+        window.CyberpunkAgent.instance.messages.set(conversationKey, []);
+
+        // Save the cleared state to localStorage
+        await window.CyberpunkAgent.instance.saveMessagesForDevice(deviceId);
+
+        // Clear unread count cache for this conversation
+        const unreadCacheKey = `${deviceId}-${contactDeviceId}`;
+        window.CyberpunkAgent.instance.unreadCounts.delete(unreadCacheKey);
+
+        console.log("Cyberpunk Agent | Player's local conversation state updated");
+      }
+
+      // Update UI to reflect the cleared state
+      window.CyberpunkAgent.instance._updateChatInterfacesImmediately();
+
+      // Show appropriate notification based on who cleared it
+      if (clearedBy === 'GM') {
+        const notificationMessage = gmName
+          ? `Histórico de conversa limpo pelo GM ${gmName}!`
+          : "Histórico de conversa limpo pelo GM!";
+        ui.notifications.info(notificationMessage);
+      } else {
+        ui.notifications.info("Histórico de conversa limpo com sucesso!");
+      }
+    }
+  } catch (error) {
+    console.error("Cyberpunk Agent | Error handling player conversation cleared:", error);
   }
 }
 
