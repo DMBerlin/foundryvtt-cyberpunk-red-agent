@@ -2,6 +2,94 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0] - 2025-01-27
+
+### Added
+- **Memo App**: Complete personal notes system for Cyberpunk Agent
+  - **Neural Notes Interface**: New app icon on agent home screen with sticky note icon
+  - **Note Management**: Create, edit, view, and delete personal notes
+  - **Rich Text Editor**: Full-featured note editor with title and content fields
+  - **Character Counter**: Real-time character count with 2000 character limit
+  - **Auto-resize Textarea**: Textarea automatically adjusts height based on content
+  - **Timestamps**: Creation and modification timestamps for all notes
+  - **Note Previews**: List view shows note previews with truncated content
+  - **Empty State**: Cyberpunk-themed empty state with neural interface messaging
+  - **Sound Effects**: Opening sound effects for note creation and editing
+
+- **Server-side Data Persistence**: Complete data storage and synchronization system
+  - **Cross-client Sync**: Notes sync across all connected clients and browsers
+  - **Local Storage Backup**: Offline access with localStorage backup
+  - **Device-based Storage**: Each character's device maintains separate notes
+  - **Real-time Updates**: Notes appear immediately on all connected clients
+  - **Data Validation**: Comprehensive error handling and data validation
+  - **Settings Integration**: Notes stored in FoundryVTT world settings for persistence
+
+- **3x2 Grid Layout**: Updated agent home screen layout
+  - **Responsive Grid**: Changed from 4x4 to 3x2 grid layout for better app organization
+  - **Three Apps Per Row**: CHAT7, ZMAIL, and MEMO apps now display in 3-column layout
+  - **Improved Spacing**: Better visual balance with updated grid spacing
+  - **Future-ready**: Layout accommodates additional apps in the future
+
+### Enhanced
+- **Cyberpunk Aesthetics**: Authentic Cyberpunk 2077 design language
+  - **Neural Interface Branding**: "Neural Notes Interface" subtitle for immersive experience
+  - **Consistent Header Design**: Unified header style across memo list and edit views
+  - **Cyberpunk Typography**: Orbitron and Rajdhani fonts for futuristic feel
+  - **Color Scheme**: Authentic cyberpunk colors with glows and gradients
+  - **Icon Design**: Brain, microchip, and sticky note icons for thematic consistency
+  - **Hover Effects**: Smooth transitions and scale effects on interactive elements
+
+- **User Experience**: Intuitive note-taking interface
+  - **Seamless Navigation**: Smooth transitions between memo list and edit views
+  - **Visual Feedback**: Hover effects, loading states, and success notifications
+  - **Keyboard Shortcuts**: Enter to save, Escape to cancel functionality
+  - **Form Validation**: Required field validation with helpful error messages
+  - **Auto-save Indicators**: Visual feedback for save operations
+
+### Technical Improvements
+- **Data Architecture**: Robust backend system for note management
+  - **CRUD Operations**: Complete Create, Read, Update, Delete functionality
+  - **Async Operations**: All note operations are asynchronous for better performance
+  - **Error Handling**: Comprehensive error handling with user-friendly messages
+  - **Memory Management**: Efficient data structures and cleanup
+  - **SocketLib Integration**: Real-time synchronization across clients
+
+- **Code Organization**: Clean, maintainable codebase
+  - **Modular Design**: Separate templates and styles for memo functionality
+  - **Event Handling**: Proper event delegation and cleanup
+  - **State Management**: Consistent state management across views
+  - **Template System**: Handlebars templates for dynamic content rendering
+  - **CSS Architecture**: Organized styles with clear naming conventions
+
+### Fixed
+- **Grid Layout Issues**: Resolved app grid layout for better organization
+  - **Responsive Design**: Grid now properly adapts to different screen sizes
+  - **App Spacing**: Improved spacing between app icons for better visual hierarchy
+  - **Touch Targets**: Better touch targets for mobile and tablet users
+
+### Technical Details
+- **New Files Created**:
+  - `templates/memo.html` - Main memo notes list interface
+  - `templates/memo-note.html` - Note editor interface
+  - Updated `templates/agent-home.html` - Added memo app icon
+  - Updated `scripts/agent-home.js` - Added memo app functionality
+  - Updated `scripts/module.js` - Added memo data management
+  - Updated `styles/module.css` - Added memo app styles and 3x2 grid layout
+
+- **Backend Methods Added**:
+  - `getMemoNotes(deviceId)` - Retrieve notes for a device
+  - `createMemoNote(deviceId, title, content)` - Create new note
+  - `updateMemoNote(deviceId, noteId, title, content)` - Update existing note
+  - `deleteMemoNote(deviceId, noteId)` - Delete note
+  - `saveMemoData()` - Save notes to storage
+  - `loadMemoData()` - Load notes from storage
+  - `requestMemoSyncFromGM()` - Sync notes across clients
+
+- **Settings Integration**:
+  - Added `memo-data` setting for server-side storage
+  - Local storage backup with user-specific keys
+  - Cross-client synchronization via SocketLib
+
 ## [4.1.0] - 2025-09-18
 
 ### Fixed
