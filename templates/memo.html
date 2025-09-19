@@ -1,0 +1,80 @@
+<div class="cp-agent-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memo Header -->
+  <div class="cp-memo-header">
+    <button class="cp-back-button" title="Voltar">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="cp-memo-title">
+      <h2>MEMO</h2>
+      <p>Neural Notes Interface</p>
+    </div>
+    <div class="cp-memo-actions">
+      <button class="cp-memo-action-btn" data-action="new-note" title="Nova Nota">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Memo Content -->
+  <div class="cp-memo-content">
+    {{#if notes.length}}
+    <!-- Notes List -->
+    <div class="cp-memo-notes">
+      {{#each notes}}
+      <div class="cp-memo-note-item" data-note-id="{{id}}" data-action="open-note">
+        <div class="cp-memo-note-header">
+          <div class="cp-memo-note-title">
+            <i class="fas fa-sticky-note"></i>
+            <span class="cp-memo-note-name">{{title}}</span>
+          </div>
+          <div class="cp-memo-note-time">
+            {{time}}
+          </div>
+        </div>
+        <div class="cp-memo-note-preview">
+          {{preview}}
+        </div>
+        <div class="cp-memo-note-actions">
+          <button class="cp-memo-edit-btn" data-action="edit-note" data-note-id="{{id}}" title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="cp-memo-delete-btn" data-action="delete-note" data-note-id="{{id}}" title="Deletar">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <!-- Empty State -->
+    <div class="cp-memo-empty">
+      <div class="cp-memo-empty-icon">
+        <i class="fas fa-brain"></i>
+      </div>
+      <h3>NENHUMA NOTA</h3>
+      <p>Suas anotações neurais estão vazias</p>
+      <p class="cp-memo-empty-note">
+        <i class="fas fa-microchip"></i>
+        Sistema de memória neural ativo. Crie sua primeira nota para começar.
+      </p>
+    </div>
+    {{/if}}
+  </div>
+
+  <!-- Footer -->
+  <div class="cp-phone-footer">
+    <div class="cp-home-indicator"></div>
+  </div>
+</div>

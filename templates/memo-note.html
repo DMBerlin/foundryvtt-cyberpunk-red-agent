@@ -1,0 +1,67 @@
+<div class="cp-agent-phone">
+  <!-- Phone Header -->
+  <div class="cp-phone-header">
+    <div class="cp-phone-status">
+      <span class="cp-time">{{currentTime}}</span>
+      <div class="cp-status-icons">
+        <i class="fas fa-signal"></i>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memo Note Header -->
+  <div class="cp-memo-header">
+    <button class="cp-back-button" title="Voltar">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="cp-memo-title">
+      <h2>EDIT</h2>
+      <p>Neural Notes Interface</p>
+    </div>
+    <div class="cp-memo-actions">
+      <button class="cp-memo-save-btn" data-action="save-note" title="Salvar">
+        <i class="fas fa-save"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Memo Note Content -->
+  <div class="cp-memo-note-content">
+    <div class="cp-memo-note-form">
+      <div class="cp-memo-input-group">
+        <label class="cp-memo-label">TÍTULO DA NOTA</label>
+        <input type="text" class="cp-memo-title-input" placeholder="Digite o título da nota..." value="{{note.title}}"
+          maxlength="100" />
+      </div>
+
+      <div class="cp-memo-input-group">
+        <label class="cp-memo-label">CONTEÚDO</label>
+        <textarea class="cp-memo-content-input" placeholder="Digite o conteúdo da sua nota..."
+          maxlength="2000">{{note.content}}</textarea>
+        <div class="cp-memo-char-counter">
+          <span class="cp-memo-char-count">{{note.content.length}}</span>/2000
+        </div>
+      </div>
+
+      <div class="cp-memo-note-info">
+        <div class="cp-memo-info-item">
+          <i class="fas fa-clock"></i>
+          <span>Criado: {{note.createdTime}}</span>
+        </div>
+        {{#if note.modifiedTime}}
+        <div class="cp-memo-info-item">
+          <i class="fas fa-edit"></i>
+          <span>Modificado: {{note.modifiedTime}}</span>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="cp-phone-footer">
+    <div class="cp-home-indicator"></div>
+  </div>
+</div>

@@ -13,16 +13,19 @@ class AgentApplication extends FormApplication {
   constructor(device, options = {}) {
     super(device, options);
     this.device = device;
-    this.currentView = 'home'; // 'home', 'chat7', 'conversation', 'zmail', 'zmail-message'
+    this.currentView = 'home'; // 'home', 'chat7', 'conversation', 'zmail', 'zmail-message', 'memo', 'memo-note'
     this.currentContact = null;
     this.currentZMailMessage = null;
+    this.currentMemoNote = null;
     this.views = {
       home: this._renderHomeView.bind(this),
       chat7: this._renderChat7View.bind(this),
       conversation: this._renderConversationView.bind(this),
       'add-contact': this._renderAddContactView.bind(this),
       zmail: this._renderZMailView.bind(this),
-      'zmail-message': this._renderZMailMessageView.bind(this)
+      'zmail-message': this._renderZMailMessageView.bind(this),
+      memo: this._renderMemoView.bind(this),
+      'memo-note': this._renderMemoNoteView.bind(this)
     };
     this.componentId = `agent-${device.id}`;
     console.log("AgentApplication constructor called with device:", device);
@@ -279,6 +282,50 @@ class AgentApplication extends FormApplication {
         messageId: this.currentZMailMessage.id,
         subject: this.currentZMailMessage.subject
       });
+    } else if (this.currentView === 'memo') {
+      // Get Memo notes for the device
+      const memoNotes = window.CyberpunkAgent?.instance?.getMemoNotes(this.device.id) || [];
+
+      // Format notes for template
+      const formattedNotes = memoNotes.map(note => ({
+        ...note,
+        preview: note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content,
+        time: new Date(note.timestamp).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      })).sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+
+      templateData.notes = formattedNotes;
+
+      console.log("AgentApplication | Template data for Memo:", {
+        notesCount: formattedNotes.length,
+        deviceId: this.device.id
+      });
+    } else if (this.currentView === 'memo-note' && this.currentMemoNote) {
+      // Format the current Memo note for display
+      templateData.note = {
+        ...this.currentMemoNote,
+        createdTime: new Date(this.currentMemoNote.timestamp).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        modifiedTime: this.currentMemoNote.modifiedTimestamp ? new Date(this.currentMemoNote.modifiedTimestamp).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : null
+      };
+
+      console.log("AgentApplication | Template data for Memo note:", {
+        noteId: this.currentMemoNote.id,
+        title: this.currentMemoNote.title
+      });
     }
 
     return templateData;
@@ -518,6 +565,12 @@ class AgentApplication extends FormApplication {
       case 'zmail-message':
         templatePath = "modules/cyberpunk-agent/templates/zmail-message.html";
         break;
+      case 'memo':
+        templatePath = "modules/cyberpunk-agent/templates/memo.html";
+        break;
+      case 'memo-note':
+        templatePath = "modules/cyberpunk-agent/templates/memo-note.html";
+        break;
       default:
         templatePath = "modules/cyberpunk-agent/templates/agent-home.html";
     }
@@ -633,6 +686,22 @@ class AgentApplication extends FormApplication {
   _renderZMailMessageView() {
     console.log("AgentApplication | Rendering ZMail message view for message:", this.currentZMailMessage?.id);
     console.log("AgentApplication | ZMail message view setup completed");
+  }
+
+  /**
+   * Render Memo view
+   */
+  _renderMemoView() {
+    console.log("AgentApplication | Rendering Memo view for device:", this.device.id);
+    console.log("AgentApplication | Memo view setup completed");
+  }
+
+  /**
+   * Render Memo note view
+   */
+  _renderMemoNoteView() {
+    console.log("AgentApplication | Rendering Memo note view for note:", this.currentMemoNote?.id);
+    console.log("AgentApplication | Memo note view setup completed");
   }
 
   /**
@@ -794,6 +863,12 @@ class AgentApplication extends FormApplication {
       case 'zmail-message':
         this._activateZMailMessageListeners(html);
         break;
+      case 'memo':
+        this._activateMemoListeners(html);
+        break;
+      case 'memo-note':
+        this._activateMemoNoteListeners(html);
+        break;
     }
   }
 
@@ -803,6 +878,7 @@ class AgentApplication extends FormApplication {
   _activateHomeListeners(html) {
     html.find('.cp-app-icon[data-app="chat7"]').click(this._onChat7Click.bind(this));
     html.find('.cp-app-icon[data-app="zmail"]').click(this._onZMailClick.bind(this));
+    html.find('.cp-app-icon[data-app="memo"]').click(this._onMemoClick.bind(this));
     html.find('.cp-phone-number[data-action="copy-phone-number"]').click(this._onPhoneNumberClick.bind(this));
 
     // Add context menu for home screen
@@ -918,6 +994,22 @@ class AgentApplication extends FormApplication {
 
     // Navigate to ZMail view
     this.navigateTo('zmail');
+  }
+
+  /**
+   * Handle Memo app click
+   */
+  _onMemoClick(event) {
+    event.preventDefault();
+    console.log("Memo app clicked for device:", this.device.name);
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
+    // Navigate to Memo view
+    this.navigateTo('memo');
   }
 
   /**
@@ -1127,6 +1219,12 @@ class AgentApplication extends FormApplication {
         break;
       case 'zmail-message':
         this.navigateTo('zmail');
+        break;
+      case 'memo':
+        this.navigateTo('home');
+        break;
+      case 'memo-note':
+        this.navigateTo('memo');
         break;
       default:
         this.navigateTo('home');
@@ -2435,6 +2533,35 @@ class AgentApplication extends FormApplication {
   }
 
   /**
+   * Activate Memo listeners
+   */
+  _activateMemoListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-memo-action-btn[data-action="new-note"]').click(this._onNewNoteClick.bind(this));
+    html.find('.cp-memo-note-item[data-action="open-note"]').click(this._onMemoNoteClick.bind(this));
+    html.find('.cp-memo-edit-btn[data-action="edit-note"]').click(this._onMemoEditClick.bind(this));
+    html.find('.cp-memo-delete-btn[data-action="delete-note"]').click(this._onMemoDeleteClick.bind(this));
+  }
+
+  /**
+   * Activate Memo note listeners
+   */
+  _activateMemoNoteListeners(html) {
+    html.find('.cp-back-button').click(this._onBackClick.bind(this));
+    html.find('.cp-memo-save-btn[data-action="save-note"]').click(this._onMemoSaveClick.bind(this));
+
+    // Auto-resize textarea
+    html.find('.cp-memo-content-input').on('input', (event) => {
+      this._autoResizeTextarea(event.target);
+    });
+
+    // Character counter
+    html.find('.cp-memo-content-input').on('input', (event) => {
+      this._updateMemoCharCounter(event.target);
+    });
+  }
+
+  /**
    * Handle ZMail refresh click
    */
   _onZMailRefreshClick(event) {
@@ -2549,6 +2676,194 @@ class AgentApplication extends FormApplication {
         }
       }
     }).render(true);
+  }
+
+  /**
+   * Handle new note click
+   */
+  _onNewNoteClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    console.log("New note clicked");
+
+    // Play opening sound effect
+    if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
+      window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+    }
+
+    // Create new note and navigate to editor
+    this.currentMemoNote = {
+      id: null,
+      title: '',
+      content: '',
+      timestamp: Date.now()
+    };
+    this.navigateTo('memo-note');
+  }
+
+  /**
+   * Handle memo note click
+   */
+  _onMemoNoteClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const noteId = event.currentTarget.dataset.noteId;
+    console.log("Memo note clicked:", noteId);
+
+    // Find the note
+    const notes = window.CyberpunkAgent?.instance?.getMemoNotes(this.device.id) || [];
+    const note = notes.find(n => n.id === noteId);
+
+    if (note) {
+      // Play opening sound effect
+      if (window.CyberpunkAgent?.instance) {
+        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+      }
+
+      // Set current note and navigate
+      this.currentMemoNote = note;
+      this.navigateTo('memo-note');
+    }
+  }
+
+  /**
+   * Handle memo edit click
+   */
+  _onMemoEditClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const noteId = event.currentTarget.dataset.noteId;
+    console.log("Memo edit clicked:", noteId);
+
+    // Find the note
+    const notes = window.CyberpunkAgent?.instance?.getMemoNotes(this.device.id) || [];
+    const note = notes.find(n => n.id === noteId);
+
+    if (note) {
+      // Play opening sound effect
+      if (window.CyberpunkAgent?.instance) {
+        window.CyberpunkAgent.instance.playSoundEffect('opening-window');
+      }
+
+      // Set current note and navigate
+      this.currentMemoNote = note;
+      this.navigateTo('memo-note');
+    }
+  }
+
+  /**
+   * Handle memo delete click
+   */
+  _onMemoDeleteClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const noteId = event.currentTarget.dataset.noteId;
+    console.log("Memo delete clicked:", noteId);
+
+    // Find the note
+    const notes = window.CyberpunkAgent?.instance?.getMemoNotes(this.device.id) || [];
+    const note = notes.find(n => n.id === noteId);
+
+    if (note) {
+      // Show confirmation dialog
+      new Dialog({
+        title: "Deletar Nota",
+        content: `
+          <div class="cp-delete-memo-dialog">
+            <p>Tem certeza que deseja deletar a nota "<strong>${note.title}</strong>"?</p>
+            <p><small>Esta ação não pode ser desfeita.</small></p>
+          </div>
+        `,
+        buttons: {
+          cancel: {
+            label: "Cancelar",
+            callback: () => console.log("Memo deletion cancelled")
+          },
+          confirm: {
+            label: "Deletar",
+            callback: async () => {
+              const success = await window.CyberpunkAgent?.instance?.deleteMemoNote(this.device.id, noteId);
+              if (success) {
+                ui.notifications.info("Nota deletada com sucesso!");
+                this.render(true);
+              } else {
+                ui.notifications.error("Erro ao deletar nota!");
+              }
+            }
+          }
+        }
+      }).render(true);
+    }
+  }
+
+  /**
+   * Handle memo save click
+   */
+  async _onMemoSaveClick(event) {
+    event.preventDefault();
+    console.log("Memo save clicked");
+
+    const titleInput = this.element.find('.cp-memo-title-input');
+    const contentInput = this.element.find('.cp-memo-content-input');
+
+    const title = titleInput.val().trim();
+    const content = contentInput.val().trim();
+
+    if (!title) {
+      ui.notifications.error("Título da nota é obrigatório!");
+      return;
+    }
+
+    if (!content) {
+      ui.notifications.error("Conteúdo da nota é obrigatório!");
+      return;
+    }
+
+    try {
+      let success;
+      if (this.currentMemoNote && this.currentMemoNote.id) {
+        // Update existing note
+        success = await window.CyberpunkAgent?.instance?.updateMemoNote(
+          this.device.id,
+          this.currentMemoNote.id,
+          title,
+          content
+        );
+      } else {
+        // Create new note
+        success = await window.CyberpunkAgent?.instance?.createMemoNote(
+          this.device.id,
+          title,
+          content
+        );
+      }
+
+      if (success) {
+        ui.notifications.info("Nota salva com sucesso!");
+        this.navigateTo('memo');
+      } else {
+        ui.notifications.error("Erro ao salvar nota!");
+      }
+    } catch (error) {
+      console.error("Error saving memo note:", error);
+      ui.notifications.error("Erro ao salvar nota: " + error.message);
+    }
+  }
+
+  /**
+   * Update memo character counter
+   */
+  _updateMemoCharCounter(textarea) {
+    const charCount = this.element.find('.cp-memo-char-count');
+    const currentLength = textarea.value.length;
+    charCount.text(currentLength);
+
+    // Add warning classes for character limits
+    charCount.toggleClass('cp-edit-char-warning', currentLength > 1800);
+    charCount.toggleClass('cp-edit-char-limit', currentLength >= 2000);
   }
 }
 

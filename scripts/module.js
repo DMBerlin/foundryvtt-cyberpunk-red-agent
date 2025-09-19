@@ -2200,6 +2200,9 @@ class CyberpunkAgent {
         this.zmailMessages = new Map(); // deviceId -> [zmailMessages]
         this.zmailSettings = new Map(); // deviceId -> {settings}
 
+        // Memo system - Personal notes for each device
+        this.memoNotes = new Map(); // deviceId -> [memoNotes]
+
         // Store instance for global access
         CyberpunkAgent.instance = this;
     }
@@ -2288,6 +2291,16 @@ class CyberpunkAgent {
             config: false,
             type: Object,
             default: { messages: {}, settings: {} }
+        });
+
+        // Register Memo data setting
+        game.settings.register('cyberpunk-agent', 'memo-data', {
+            name: 'Memo Data',
+            hint: 'Internal storage for Memo notes',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: {}
         });
 
         // Register GM message tracking setting
@@ -2454,6 +2467,10 @@ class CyberpunkAgent {
         // Load ZMail data
         await this.loadZMailData();
         // ZMail data loaded
+
+        // Load Memo data
+        await this.loadMemoData();
+        // Memo data loaded
 
         // Initialize device discovery for existing agent items
         this.initializeDeviceDiscovery();
@@ -11985,6 +12002,254 @@ class CyberpunkAgent {
         } catch (error) {
             console.error("Cyberpunk Agent | Error clearing old ZMail messages:", error);
             return false;
+        }
+    }
+
+    // ===== MEMO SYSTEM METHODS =====
+
+    /**
+     * Get Memo notes for a device
+     */
+    getMemoNotes(deviceId) {
+        return this.memoNotes.get(deviceId) || [];
+    }
+
+    /**
+     * Create a new Memo note
+     */
+    async createMemoNote(deviceId, title, content) {
+        try {
+            console.log(`Cyberpunk Agent | Creating Memo note for device ${deviceId}`);
+
+            // Create Memo note
+            const memoNote = {
+                id: `memo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                title: title,
+                content: content,
+                timestamp: Date.now(),
+                modifiedTimestamp: null
+            };
+
+            // Add to device's notes
+            const notes = this.memoNotes.get(deviceId) || [];
+            notes.push(memoNote);
+            this.memoNotes.set(deviceId, notes);
+
+            // Save data
+            await this.saveMemoData();
+
+            console.log(`Cyberpunk Agent | Memo note created: ${memoNote.id}`);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error creating Memo note:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Update an existing Memo note
+     */
+    async updateMemoNote(deviceId, noteId, title, content) {
+        try {
+            console.log(`Cyberpunk Agent | Updating Memo note ${noteId} for device ${deviceId}`);
+
+            const notes = this.memoNotes.get(deviceId);
+            if (!notes) return false;
+
+            const noteIndex = notes.findIndex(note => note.id === noteId);
+            if (noteIndex === -1) return false;
+
+            // Update note
+            notes[noteIndex].title = title;
+            notes[noteIndex].content = content;
+            notes[noteIndex].modifiedTimestamp = Date.now();
+
+            // Save data
+            await this.saveMemoData();
+
+            console.log(`Cyberpunk Agent | Memo note updated: ${noteId}`);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error updating Memo note:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Delete a Memo note
+     */
+    async deleteMemoNote(deviceId, noteId) {
+        try {
+            console.log(`Cyberpunk Agent | Deleting Memo note ${noteId} for device ${deviceId}`);
+
+            const notes = this.memoNotes.get(deviceId);
+            if (!notes) return false;
+
+            const noteIndex = notes.findIndex(note => note.id === noteId);
+            if (noteIndex === -1) return false;
+
+            // Remove note
+            notes.splice(noteIndex, 1);
+            this.memoNotes.set(deviceId, notes);
+
+            // Save data
+            await this.saveMemoData();
+
+            console.log(`Cyberpunk Agent | Memo note deleted: ${noteId}`);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error deleting Memo note:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Save Memo data (local storage for all users, server sync for GMs)
+     */
+    async saveMemoData() {
+        try {
+            console.log("Cyberpunk Agent | Saving Memo data...");
+
+            // Save to local storage first
+            await this._saveMemoDataToLocal();
+
+            // If user is GM, also save to server for cross-client sync
+            if (game.user.isGM) {
+                await this._saveMemoDataToServer();
+            }
+
+            console.log("Cyberpunk Agent | Memo data saved successfully");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving Memo data:", error);
+        }
+    }
+
+    /**
+     * Save Memo data to local storage
+     */
+    async _saveMemoDataToLocal() {
+        try {
+            const memoData = {};
+
+            // Convert notes Map to Object
+            for (const [deviceId, notes] of this.memoNotes) {
+                memoData[deviceId] = notes;
+            }
+
+            // Save to localStorage
+            const storageKey = `cyberpunk-agent-memo-${game.user.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(memoData));
+            console.log("Cyberpunk Agent | Memo data saved to localStorage for user:", game.user.name);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving Memo data to localStorage:", error);
+        }
+    }
+
+    /**
+     * Save Memo data to server settings (GM only, for cross-client sync)
+     */
+    async _saveMemoDataToServer() {
+        try {
+            const memoData = {};
+
+            // Convert notes Map to Object
+            for (const [deviceId, notes] of this.memoNotes) {
+                memoData[deviceId] = notes;
+            }
+
+            await game.settings.set('cyberpunk-agent', 'memo-data', memoData);
+            console.log("Cyberpunk Agent | Memo data saved to server");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving Memo data to server:", error);
+        }
+    }
+
+    /**
+     * Load Memo data
+     */
+    async loadMemoData() {
+        try {
+            console.log("Cyberpunk Agent | Loading Memo data...");
+
+            // Load from localStorage first
+            await this._loadMemoDataFromLocal();
+
+            // If user is GM, sync directly from server
+            if (game.user.isGM) {
+                await this._loadMemoDataFromServer();
+            } else {
+                // If user is player, request sync from GM
+                await this.requestMemoSyncFromGM();
+            }
+
+            console.log(`Cyberpunk Agent | Memo data loaded: ${this.memoNotes.size} devices with notes`);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading Memo data:", error);
+        }
+    }
+
+    /**
+     * Load Memo data from local storage
+     */
+    async _loadMemoDataFromLocal() {
+        try {
+            const storageKey = `cyberpunk-agent-memo-${game.user.id}`;
+            const localData = localStorage.getItem(storageKey);
+
+            if (localData) {
+                const memoData = JSON.parse(localData);
+
+                // Load notes
+                for (const [deviceId, notes] of Object.entries(memoData)) {
+                    this.memoNotes.set(deviceId, notes || []);
+                }
+
+                console.log("Cyberpunk Agent | Memo data loaded from localStorage");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading Memo data from localStorage:", error);
+        }
+    }
+
+    /**
+     * Load Memo data from server settings (GM only)
+     */
+    async _loadMemoDataFromServer() {
+        try {
+            const serverData = game.settings.get('cyberpunk-agent', 'memo-data');
+            if (serverData) {
+                // Load notes from server
+                for (const [deviceId, notes] of Object.entries(serverData)) {
+                    this.memoNotes.set(deviceId, notes || []);
+                }
+
+                console.log("Cyberpunk Agent | Memo data loaded from server");
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading Memo data from server:", error);
+        }
+    }
+
+    /**
+     * Request Memo sync from GM (players only)
+     */
+    async requestMemoSyncFromGM() {
+        try {
+            if (!this.socketLibIntegration || !this.socketLibIntegration.isAvailable) {
+                console.warn("Cyberpunk Agent | SocketLib not available for Memo sync request");
+                return;
+            }
+
+            // Request sync from GM
+            await this.socketLibIntegration.sendMessageToGM('memoSyncRequest', {
+                userId: game.user.id,
+                userName: game.user.name,
+                timestamp: Date.now()
+            });
+
+            console.log("Cyberpunk Agent | Memo sync request sent to GM");
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error requesting Memo sync from GM:", error);
         }
     }
 }
