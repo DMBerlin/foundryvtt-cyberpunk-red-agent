@@ -2290,6 +2290,17 @@ class CyberpunkAgent {
             default: { messages: {}, settings: {} }
         });
 
+        // Register GM message tracking setting
+        game.settings.register('cyberpunk-agent', 'gm-message-tracking', {
+            name: 'GM Message Tracking',
+            hint: 'Enable GM notifications for all message exchanges between players',
+            scope: 'world',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
+
         // Register a custom settings menu for GM Chat7 Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
             name: 'GM Chat7 Management',
@@ -6116,6 +6127,9 @@ class CyberpunkAgent {
         // Update local interfaces immediately for better UX (only once)
         this._updateChatInterfacesImmediately();
 
+        // Send message tracking notifications
+        await this._sendMessageTrackingNotifications(senderDeviceId, receiverDeviceId, text.trim(), message);
+
         console.log("Cyberpunk Agent | Device message sent:", message);
         return true;
     }
@@ -6155,6 +6169,100 @@ class CyberpunkAgent {
     isContact(actorId, contactId) {
         const contacts = this.getContactsForActor(actorId);
         return contacts.some(contact => contact.id === contactId);
+    }
+
+    /**
+     * Send message tracking notifications to GM and players
+     */
+    async _sendMessageTrackingNotifications(senderDeviceId, receiverDeviceId, text, message) {
+        try {
+            // Get actor information for both devices
+            const senderActor = this._getActorForDevice(senderDeviceId);
+            const receiverActor = this._getActorForDevice(receiverDeviceId);
+
+            if (!senderActor || !receiverActor) {
+                console.warn("Cyberpunk Agent | Cannot send tracking notifications - missing actor information");
+                return;
+            }
+
+            // Get users for both actors
+            const senderUser = this._getUserForActor(senderActor.id);
+            const receiverUser = this._getUserForActor(receiverActor.id);
+
+            // Send GM tracking notification if enabled
+            const gmTrackingEnabled = game.settings.get('cyberpunk-agent', 'gm-message-tracking');
+            if (gmTrackingEnabled) {
+                await this._sendGMTrackingNotification(senderActor, receiverActor, text, message);
+            }
+
+            // Player notifications removed - only GM tracking is available
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending message tracking notifications:", error);
+        }
+    }
+
+    /**
+     * Send GM tracking notification
+     */
+    async _sendGMTrackingNotification(senderActor, receiverActor, text, message) {
+        try {
+            const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
+            if (gmUsers.length === 0) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const content = `
+                <div class="cyberpunk-agent-tracking-notification">
+                    <div class="tracking-header">
+                        <i class="fas fa-exchange-alt"></i>
+                        <strong>New Message Exchange</strong>
+                        <span class="tracking-time">${timestamp}</span>
+                    </div>
+                    <div class="tracking-route">
+                        <span class="sender">${senderActor.name}</span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span class="receiver">${receiverActor.name}</span>
+                    </div>
+                    <div class="tracking-content">
+                        <strong>Message:</strong> ${text}
+                    </div>
+                </div>
+            `;
+
+            await ChatMessage.create({
+                user: game.user.id,
+                speaker: { alias: "Cyberpunk Agent" },
+                content: content,
+                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+                whisper: gmUsers,
+                blind: true,
+                flags: {
+                    'cyberpunk-agent': {
+                        isTrackingNotification: true,
+                        messageId: message.id,
+                        senderId: senderActor.id,
+                        receiverId: receiverActor.id
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending GM tracking notification:", error);
+        }
+    }
+
+
+
+    /**
+     * Get actor for a device ID
+     */
+    _getActorForDevice(deviceId) {
+        for (const [actorId, devices] of this.deviceMappings.entries()) {
+            if (devices.includes(deviceId)) {
+                return game.actors.get(actorId);
+            }
+        }
+        return null;
     }
 
     /**
