@@ -1051,7 +1051,7 @@ async function handleZMailUpdate(data) {
         }
 
         // Show notification for new ZMail
-        ui.notifications.info(`Nova mensagem ZMail recebida de ${data.message.sender}`);
+        ui.notifications.info(`(ZMail) Você recebeu uma nova mensagem de ${data.message.sender}`);
 
         // Play notification sound
         if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {

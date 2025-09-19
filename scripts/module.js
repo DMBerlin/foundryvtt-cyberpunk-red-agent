@@ -291,7 +291,7 @@ class SmartNotificationManager {
 
     showNotificationBanner(senderName, text) {
         const preview = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        ui.notifications.info(`📱 ${senderName}: ${preview}`);
+        ui.notifications.info(`(Chat7) Nova mensagem de ${senderName}: ${preview}`);
     }
 
     async playNotificationSound() {
