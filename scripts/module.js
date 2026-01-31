@@ -2715,112 +2715,61 @@ class CyberpunkAgent {
 
     /**
      * Add control button to the scene controls based on equipped agents
+     * NOTE: This must be SYNCHRONOUS because Foundry hooks don't await async functions
      */
-    async addControlButton(controls) {
+    addControlButton(controls) {
         try {
-            // Prevent race conditions from multiple concurrent calls
-            if (this._addingControlButton) {
-                return;
-            }
-            this._addingControlButton = true;
-
             // Safety check: ensure controls is an array
             if (!Array.isArray(controls)) {
-                this._addingControlButton = false;
-                this._addingControlButton = false;
                 return;
-            }
-
-            // Ensure device data is loaded
-            if (!this.devices || this.devices.size === 0) {
-                this.loadDeviceData();
-
-                // If still no devices after loading, device discovery might not be complete
-                if (this.devices.size === 0) {
-                    this._addingControlButton = false;
-                    return;
-                }
             }
 
             // Find the token controls
             const tokenControl = controls.find(control => control.name === "token");
 
-            if (tokenControl) {
-                // Safety check: ensure tools array exists
-                if (!Array.isArray(tokenControl.tools)) {
-                    tokenControl.tools = [];
-                }
+            if (!tokenControl) {
+                return;
+            }
 
-                // Remove any existing agent tools first to prevent duplicates
-                tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
+            // Safety check: ensure tools array exists
+            if (!Array.isArray(tokenControl.tools)) {
+                tokenControl.tools = [];
+            }
 
-                // Different behavior for GM vs Players
-                if (game.user.isGM) {
-                    // 🆕 GM: Access to ALL registered devices
-                    const allDevices = this.getAllRegisteredDevices();
+            // Remove any existing agent tools first to prevent duplicates
+            tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
 
-                    if (allDevices.length > 0) {
-                        if (allDevices.length === 1) {
-                            // Single device - open directly
-                            const device = allDevices[0];
-                            tokenControl.tools.push({
-                                name: "agent",
-                                title: `Agent: ${device.ownerName}`,
-                                icon: "fas fa-mobile-alt",
-                                onClick: () => {
-                                    console.log("Cyberpunk Agent | GM Agent toolbar button clicked, opening device:", device.deviceId);
-                                    this.openSpecificAgent(device.deviceId);
-                                }
-                            });
-                        } else {
-                            // Multiple devices - show selection menu
-                            tokenControl.tools.push({
-                                name: "agent",
-                                title: `Agent (${allDevices.length} devices)`,
-                                icon: "fas fa-mobile-alt",
-                                onClick: () => {
-                                    console.log("Cyberpunk Agent | GM Agent toolbar button clicked, showing menu for", allDevices.length, "devices");
-                                    this.showAllDevicesMenu(allDevices);
-                                }
-                            });
-                        }
-                        // GM agent button added successfully
+            // Always add a single button that handles everything in onClick
+            // This makes the hook synchronous and the async work happens on click
+            if (game.user.isGM) {
+                // GM: Always show button (can access all devices)
+                tokenControl.tools.push({
+                    name: "agent",
+                    title: "Agent",
+                    icon: "fas fa-mobile-alt",
+                    onClick: () => {
+                        console.log("Cyberpunk Agent | GM toolbar button clicked");
+                        this.openAgentInterface();
                     }
-                } else {
-                    // Players: Access only to their equipped agents (existing behavior)
-                    const equippedAgents = await this.getEquippedAgentsForUser();
-
-                    if (equippedAgents.length > 0) {
-                        if (equippedAgents.length === 1) {
-                            const agent = equippedAgents[0];
-                            tokenControl.tools.push({
-                                name: "agent",
-                                title: `Agent: ${agent.actorName}`,
-                                icon: "fas fa-mobile-alt",
-                                onClick: () => {
-                                    console.log("Cyberpunk Agent | Agent toolbar button clicked, opening device:", agent.deviceId);
-                                    this.openSpecificAgent(agent.deviceId);
-                                }
-                            });
-                        } else {
-                            tokenControl.tools.push({
-                                name: "agent",
-                                title: `Agent (${equippedAgents.length} equipped)`,
-                                icon: "fas fa-mobile-alt",
-                                onClick: () => {
-                                    console.log("Cyberpunk Agent | Agent toolbar button clicked, showing menu for", equippedAgents.length, "agents");
-                                    this.showEquippedAgentMenu(equippedAgents);
-                                }
-                            });
+                });
+            } else {
+                // Player: Only show button if there might be equipped agents
+                // We check synchronously using cached device data
+                const hasDevices = this.devices && this.devices.size > 0;
+                
+                if (hasDevices) {
+                    tokenControl.tools.push({
+                        name: "agent",
+                        title: "Agent",
+                        icon: "fas fa-mobile-alt",
+                        onClick: () => {
+                            console.log("Cyberpunk Agent | Player toolbar button clicked");
+                            this.openAgentInterface();
                         }
-                        // Player agent button added successfully
-                    }
+                    });
                 }
             }
-            
-            this._addingControlButton = false;
         } catch (error) {
-            this._addingControlButton = false;
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
         }
     }
