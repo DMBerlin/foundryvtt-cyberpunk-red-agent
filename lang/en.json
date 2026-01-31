@@ -42,6 +42,10 @@
       "TITLE": "Cyberpunk Agent Settings",
       "NOTIFICATION_SOUND": "Notification Sound",
       "NOTIFICATION_SOUND_HINT": "Play a sound when you receive a new message",
+      "PLAYER_CHAT_NOTIFICATIONS": {
+        "NAME": "Show Agent Notifications in Chat",
+        "HINT": "Display a notification in Foundry chat when you send or receive an Agent message"
+      },
       "GM_DATA_MANAGEMENT": {
         "TITLE": "GM Data Management",
         "DESCRIPTION": "Manage all Cyberpunk Agent data across all devices in the registry",

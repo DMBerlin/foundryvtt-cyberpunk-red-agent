@@ -2325,6 +2325,16 @@ class CyberpunkAgent {
             default: true
         });
 
+        // Player chat notification setting (client-scoped, opt-in)
+        game.settings.register('cyberpunk-agent', 'player-chat-notifications', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: false
+        });
+
 
         // Register a custom settings menu for GM Chat7 Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
@@ -6428,10 +6438,69 @@ class CyberpunkAgent {
                 await this._sendGMTrackingNotification(senderActor, receiverActor, text, message);
             }
 
-            // Player notifications removed - only GM tracking is available
+            // Send player chat notifications if enabled (per-user setting)
+            await this._sendPlayerChatNotifications(senderActor, receiverActor, text, message, senderUser, receiverUser);
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending message tracking notifications:", error);
+        }
+    }
+
+    /**
+     * Send player chat notifications (per-user opt-in)
+     */
+    async _sendPlayerChatNotifications(senderActor, receiverActor, text, message, senderUser, receiverUser) {
+        try {
+            // Truncate message preview
+            const maxLength = 50;
+            const preview = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+
+            // Check if current user is sender or receiver and has notifications enabled
+            const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
+            
+            if (!notificationsEnabled) return;
+
+            // Only send notification to current user (client-side)
+            const isSender = senderUser?.id === game.user.id;
+            const isReceiver = receiverUser?.id === game.user.id;
+
+            if (!isSender && !isReceiver) return;
+
+            const icon = isSender ? '📤' : '📥';
+            const title = isSender ? 'Message Sent' : 'New Message';
+            const otherParty = isSender ? receiverActor.name : senderActor.name;
+            const label = isSender ? 'To' : 'From';
+
+            const content = `
+                <div class="cyberpunk-agent-chat-notification">
+                    <div class="notification-header">
+                        <span class="notification-icon">${icon}</span>
+                        <strong>${title}</strong>
+                    </div>
+                    <div class="notification-party">
+                        <span class="party-label">${label}:</span>
+                        <span class="party-name">${otherParty}</span>
+                    </div>
+                    <div class="notification-preview">"${preview}"</div>
+                </div>
+            `;
+
+            await ChatMessage.create({
+                user: game.user.id,
+                speaker: { alias: "Agent" },
+                content: content,
+                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+                whisper: [game.user.id],
+                flags: {
+                    'cyberpunk-agent': {
+                        isPlayerNotification: true,
+                        messageId: message.id
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error sending player chat notification:", error);
         }
     }
 
