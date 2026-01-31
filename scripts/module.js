@@ -2718,8 +2718,16 @@ class CyberpunkAgent {
      */
     async addControlButton(controls) {
         try {
+            // Prevent race conditions from multiple concurrent calls
+            if (this._addingControlButton) {
+                return;
+            }
+            this._addingControlButton = true;
+
             // Safety check: ensure controls is an array
             if (!Array.isArray(controls)) {
+                this._addingControlButton = false;
+                this._addingControlButton = false;
                 return;
             }
 
@@ -2729,6 +2737,7 @@ class CyberpunkAgent {
 
                 // If still no devices after loading, device discovery might not be complete
                 if (this.devices.size === 0) {
+                    this._addingControlButton = false;
                     return;
                 }
             }
@@ -2759,6 +2768,7 @@ class CyberpunkAgent {
                                 title: `Agent: ${device.ownerName}`,
                                 icon: "fas fa-mobile-alt",
                                 onClick: () => {
+                                    console.log("Cyberpunk Agent | GM Agent toolbar button clicked, opening device:", device.deviceId);
                                     this.openSpecificAgent(device.deviceId);
                                 }
                             });
@@ -2769,6 +2779,7 @@ class CyberpunkAgent {
                                 title: `Agent (${allDevices.length} devices)`,
                                 icon: "fas fa-mobile-alt",
                                 onClick: () => {
+                                    console.log("Cyberpunk Agent | GM Agent toolbar button clicked, showing menu for", allDevices.length, "devices");
                                     this.showAllDevicesMenu(allDevices);
                                 }
                             });
@@ -2787,6 +2798,7 @@ class CyberpunkAgent {
                                 title: `Agent: ${agent.actorName}`,
                                 icon: "fas fa-mobile-alt",
                                 onClick: () => {
+                                    console.log("Cyberpunk Agent | Agent toolbar button clicked, opening device:", agent.deviceId);
                                     this.openSpecificAgent(agent.deviceId);
                                 }
                             });
@@ -2796,6 +2808,7 @@ class CyberpunkAgent {
                                 title: `Agent (${equippedAgents.length} equipped)`,
                                 icon: "fas fa-mobile-alt",
                                 onClick: () => {
+                                    console.log("Cyberpunk Agent | Agent toolbar button clicked, showing menu for", equippedAgents.length, "agents");
                                     this.showEquippedAgentMenu(equippedAgents);
                                 }
                             });
@@ -2804,7 +2817,10 @@ class CyberpunkAgent {
                     }
                 }
             }
+            
+            this._addingControlButton = false;
         } catch (error) {
+            this._addingControlButton = false;
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
         }
     }
