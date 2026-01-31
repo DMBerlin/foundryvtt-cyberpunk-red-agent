@@ -6436,9 +6436,15 @@ class CyberpunkAgent {
      */
     async _sendPlayerChatNotification(senderName, text) {
         try {
+            console.log("Cyberpunk Agent | _sendPlayerChatNotification called with sender:", senderName);
+            
             // Check if current user has notifications enabled
             const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
-            if (!notificationsEnabled) return;
+            console.log("Cyberpunk Agent | Notifications enabled:", notificationsEnabled);
+            if (!notificationsEnabled) {
+                console.log("Cyberpunk Agent | Notifications disabled, skipping");
+                return;
+            }
 
             // Truncate message preview
             const maxLength = 50;
@@ -6458,6 +6464,7 @@ class CyberpunkAgent {
                 </div>
             `;
 
+            console.log("Cyberpunk Agent | Creating chat notification...");
             await ChatMessage.create({
                 user: game.user.id,
                 speaker: { alias: "Agent" },
@@ -6471,7 +6478,7 @@ class CyberpunkAgent {
                 }
             });
 
-            console.log("Cyberpunk Agent | Player chat notification sent");
+            console.log("Cyberpunk Agent | Player chat notification sent successfully");
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending player chat notification:", error);
@@ -10216,12 +10223,24 @@ class CyberpunkAgent {
         }));
 
         // Send player chat notification (receiver only, if enabled)
-        // Only trigger for non-processed messages to avoid duplicates
-        if (!messageAlreadyProcessed && data.message?.text) {
-            // Get sender device info to show sender name
-            const senderDevice = this.devices.get(data.senderId);
-            const senderName = senderDevice?.ownerName || data.userName || 'Unknown';
-            await this._sendPlayerChatNotification(senderName, data.message.text);
+        // Use separate deduplication for notifications to avoid duplicates
+        if (data.message?.text) {
+            const notificationKey = `notification-${data.message.id}`;
+            if (!this._processedNotifications) {
+                this._processedNotifications = new Set();
+            }
+            if (!this._processedNotifications.has(notificationKey)) {
+                this._processedNotifications.add(notificationKey);
+                // Clean up old notification keys (keep only last 50)
+                if (this._processedNotifications.size > 50) {
+                    const keysArray = Array.from(this._processedNotifications);
+                    this._processedNotifications = new Set(keysArray.slice(-25));
+                }
+                // Get sender device info to show sender name
+                const senderDevice = this.devices.get(data.senderId);
+                const senderName = senderDevice?.ownerName || data.userName || 'Unknown';
+                await this._sendPlayerChatNotification(senderName, data.message.text);
+            }
         }
 
         console.log("Cyberpunk Agent | Device message update processed successfully");
