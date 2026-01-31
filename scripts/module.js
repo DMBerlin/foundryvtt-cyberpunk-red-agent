@@ -272,8 +272,8 @@ class SmartNotificationManager {
             const senderDevice = window.CyberpunkAgent?.instance?.devices?.get(message.senderId);
             const senderName = senderDevice?.ownerName || senderDevice?.deviceName || 'Unknown';
 
-            // Show toast banner only if enabled in settings
-            const toastEnabled = game.settings?.get('cyberpunk-agent', 'toast-notifications') ?? true;
+            // Show toast banner only if enabled in settings (default: false)
+            const toastEnabled = game.settings?.get('cyberpunk-agent', 'toast-notifications') ?? false;
             if (toastEnabled) {
                 this.showNotificationBanner(senderName, message.text);
             }
@@ -2546,14 +2546,14 @@ class CyberpunkAgent {
         });
 
         // Register GM message tracking setting
-        // Chat notification setting (client-scoped, opt-in for all users)
+        // Chat notification setting (client-scoped, shows preview in Foundry chat)
         game.settings.register('cyberpunk-agent', 'player-chat-notifications', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.NAME'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.HINT'),
             scope: 'client',
             config: true,
             type: Boolean,
-            default: false
+            default: true
         });
 
         // Notification sound setting (client-scoped, enabled by default)
@@ -2566,14 +2566,14 @@ class CyberpunkAgent {
             default: true
         });
 
-        // Toast notification setting (client-scoped, enabled by default)
+        // Toast notification setting (client-scoped, disabled by default)
         game.settings.register('cyberpunk-agent', 'toast-notifications', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.TOAST_NOTIFICATIONS.NAME'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.TOAST_NOTIFICATIONS.HINT'),
             scope: 'client',
             config: true,
             type: Boolean,
-            default: true
+            default: false
         });
 
 

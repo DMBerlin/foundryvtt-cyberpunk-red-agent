@@ -171,8 +171,8 @@ The module has three independent notification channels, each configurable per-us
 | Type | Setting | Default | Description |
 |------|---------|---------|-------------|
 | **Sound** | `notification-sound` | ON | Plays `notification-message.sfx.mp3` |
-| **Toast** | `toast-notifications` | ON | Shows "(Chat7) Nova mensagem de X: preview" |
-| **Foundry Chat** | `player-chat-notifications` | OFF | Posts styled message to Foundry chat sidebar |
+| **Toast** | `toast-notifications` | OFF | Shows "(Chat7) Nova mensagem de X: preview" |
+| **Foundry Chat** | `player-chat-notifications` | ON | Posts styled message to Foundry chat sidebar |
 
 ### Notification Flow
 ```
