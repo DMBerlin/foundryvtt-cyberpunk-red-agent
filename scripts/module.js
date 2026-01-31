@@ -12472,6 +12472,14 @@ Hooks.once('ready', () => {
         // Make the instance globally available
         window.cyberpunkAgent = CyberpunkAgent.instance;
 
+        // Force update token controls now that instance exists
+        // This catches the case where getSceneControlButtons fired before instance was created
+        setTimeout(() => {
+            if (ui.controls && CyberpunkAgent.instance) {
+                CyberpunkAgent.instance.updateTokenControls();
+            }
+        }, 100);
+
         // Hook for when a user joins - sync messages and deliver offline messages
         Hooks.on('userJoined', (user) => {
             console.log(`Cyberpunk Agent | User ${user.name} joined the session`);
