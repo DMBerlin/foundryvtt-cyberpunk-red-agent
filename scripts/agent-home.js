@@ -1055,9 +1055,10 @@ class AgentApplication extends FormApplication {
     } else if (this._restoreScrollPosition()) {
       // Returning to conversation - position restored from persistent storage
       console.log("AgentApplication | Restored scroll position from storage");
+    } else {
+      // First time opening this conversation - scroll to bottom to show latest messages
+      this._scrollToBottom();
     }
-    // Otherwise: first time opening this conversation, leave scroll at default (top)
-    // This is intentional - no automatic scroll to bottom
 
     console.log("AgentApplication | Conversation listeners activated successfully");
   }
