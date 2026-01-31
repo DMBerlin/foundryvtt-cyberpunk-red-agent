@@ -2719,35 +2719,20 @@ class CyberpunkAgent {
      */
     addControlButton(controls) {
         try {
-            // Safety check: ensure controls is an array
-            if (!Array.isArray(controls)) {
-                return;
-            }
+            if (!Array.isArray(controls)) return;
 
-            // Check if user has any equipped agents (synchronous check)
             const hasEquippedAgents = this.hasEquippedAgentsSync();
-            console.log(`Cyberpunk Agent | addControlButton: hasEquippedAgents=${hasEquippedAgents}`);
-            
-            // Find the token controls
             const tokenControl = controls.find(control => control.name === "token");
 
-            if (!tokenControl) {
-                return;
-            }
-
-            // Safety check: ensure tools array exists
+            if (!tokenControl) return;
             if (!Array.isArray(tokenControl.tools)) {
                 tokenControl.tools = [];
             }
 
-            // Check if button already exists
             const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "cyberpunk-agent");
-            console.log(`Cyberpunk Agent | addControlButton: existingButtonIndex=${existingButtonIndex}`);
             
             if (hasEquippedAgents) {
-                // User has equipped agents - ensure button exists
                 if (existingButtonIndex === -1) {
-                    console.log("Cyberpunk Agent | addControlButton: Adding button");
                     tokenControl.tools.push({
                         name: "cyberpunk-agent",
                         title: "Agent",
@@ -2756,9 +2741,7 @@ class CyberpunkAgent {
                     });
                 }
             } else {
-                // User has no equipped agents - remove button if it exists
                 if (existingButtonIndex !== -1) {
-                    console.log("Cyberpunk Agent | addControlButton: Removing button");
                     tokenControl.tools.splice(existingButtonIndex, 1);
                 }
             }
@@ -2774,26 +2757,17 @@ class CyberpunkAgent {
      */
     hasEquippedAgentsSync() {
         try {
-            if (!game.user) {
-                console.log("Cyberpunk Agent | hasEquippedAgentsSync: no game.user");
-                return false;
-            }
+            if (!game.user) return false;
             
             // GM always has access (they can view any agent)
             if (game.user.isGM) {
-                // Check if there are any agents in the world
-                if (!game.actors) {
-                    console.log("Cyberpunk Agent | hasEquippedAgentsSync: no game.actors (GM)");
-                    return false;
-                }
+                if (!game.actors) return false;
                 for (const actor of game.actors) {
                     if (actor.type !== 'character') continue;
                     if (!actor.items) continue;
                     for (const item of actor.items) {
                         if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
-                            const isEquipped = item.system?.equipped === 'equipped';
-                            console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found agent "${item.name}" on ${actor.name}, equipped=${item.system?.equipped}, isEquipped=${isEquipped}`);
-                            if (isEquipped) return true;
+                            if (item.system?.equipped === 'equipped') return true;
                         }
                     }
                 }
@@ -2802,24 +2776,16 @@ class CyberpunkAgent {
             
             // For regular users, check their owned/accessible actors
             const userActors = this.getUserActorsSync();
-            console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found ${userActors.length} user actors`);
             
             for (const actor of userActors) {
-                if (!actor.items) {
-                    console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Actor ${actor.name} has no items`);
-                    continue;
-                }
-                console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Checking ${actor.name} with ${actor.items.size || actor.items.length || 'unknown'} items`);
+                if (!actor.items) continue;
                 for (const item of actor.items) {
                     if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
-                        const isEquipped = item.system?.equipped === 'equipped';
-                        console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found agent "${item.name}" on ${actor.name}, equipped=${item.system?.equipped}, isEquipped=${isEquipped}`);
-                        if (isEquipped) return true;
+                        if (item.system?.equipped === 'equipped') return true;
                     }
                 }
             }
             
-            console.log("Cyberpunk Agent | hasEquippedAgentsSync: No equipped agents found");
             return false;
         } catch (error) {
             console.error("Cyberpunk Agent | Error in hasEquippedAgentsSync:", error);
@@ -2832,7 +2798,9 @@ class CyberpunkAgent {
      * Mirrors the logic in getUserActors() but synchronous
      */
     getUserActorsSync() {
-        if (!game.user || !game.actors) return [];
+        if (!game.user || !game.actors) {
+            return [];
+        }
         
         const userActors = [];
         const seenIds = new Set();
@@ -2849,9 +2817,10 @@ class CyberpunkAgent {
         try {
             if (game.scenes?.active?.tokens) {
                 for (const token of game.scenes.active.tokens) {
+                    // Check for OWNER level (3)
                     if (token.actor && 
                         token.actor.type === 'character' &&
-                        token.actor.ownership?.[game.user.id] === 1 &&
+                        token.actor.ownership?.[game.user.id] >= 3 &&
                         !seenIds.has(token.actor.id)) {
                         seenIds.add(token.actor.id);
                         userActors.push(token.actor);
@@ -2860,22 +2829,26 @@ class CyberpunkAgent {
             }
         } catch (e) { /* ignore */ }
         
-        // Method 3: Get character actors with ownership level 1 (OWNER)
+        // Method 3: Get character actors with OWNER permission (level 3)
         try {
             for (const actor of game.actors) {
                 if (actor.type !== 'character') continue;
-                if (actor.ownership?.[game.user.id] === 1 && !seenIds.has(actor.id)) {
+                const ownership = actor.ownership?.[game.user.id];
+                // OWNER level is 3
+                if (ownership >= 3 && !seenIds.has(actor.id)) {
                     seenIds.add(actor.id);
                     userActors.push(actor);
                 }
             }
         } catch (e) { /* ignore */ }
         
-        // Method 4: Get all character actors user has ANY permission to
+        // Method 4: Get all character actors user has ANY permission to (fallback)
         try {
             for (const actor of game.actors) {
                 if (actor.type !== 'character') continue;
-                if (actor.ownership?.[game.user.id] !== undefined && !seenIds.has(actor.id)) {
+                const ownership = actor.ownership?.[game.user.id];
+                // Any defined permission level > 0
+                if (ownership !== undefined && ownership > 0 && !seenIds.has(actor.id)) {
                     seenIds.add(actor.id);
                     userActors.push(actor);
                 }
