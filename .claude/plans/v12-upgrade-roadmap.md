@@ -39,46 +39,44 @@ This roadmap covers:
 
 ---
 
-## Phase 2: UI Live Reload Fix (Priority: 🔴 Critical)
+## Phase 2: UI Live Reload Fix (Priority: 🔴 Critical) - ✅ COMPLETE
 
 ### Problem
 Full `render(true)` on every update destroys scroll position and causes visual flicker.
 
-### 2.1 Quick Fix: State Preservation
-- [ ] Add `_captureUIState()` method to save scroll/focus before render
-- [ ] Add `_restoreUIState()` method to restore after render
-- [ ] Modify `_handleUIControllerUpdate()` to use state preservation
+### 2.1 Scroll Position Management - ✅ DONE
+- [x] Add `_scrollToBottom()` helper method (instant, no animation)
+- [x] Add `_saveScrollPosition()` / `_restoreScrollPosition()` methods
+- [x] Add `_conversationScrollPositions` Map for per-conversation persistence
+- [x] Remove CSS `scroll-behavior: smooth` that was causing animation issues
 
-```javascript
-// Key changes in agent-home.js
-_captureUIState() {
-    const container = this.element?.find('.cp-messages-container')?.[0];
-    return {
-        scrollTop: container?.scrollTop,
-        scrollHeight: container?.scrollHeight,
-        atBottom: container ? (container.scrollTop + container.clientHeight >= container.scrollHeight - 20) : true
-    };
-}
+### 2.2 Simplified Scroll Rules - ✅ DONE
+Implemented two simple rules:
+- **Rule A**: Persist scroll position when leaving chat (back button saves it)
+- **Rule B**: Scroll to bottom when sending OR receiving messages
 
-_restoreUIState(state) {
-    setTimeout(() => {
-        const container = this.element?.find('.cp-messages-container')?.[0];
-        if (container && state.atBottom) {
-            container.scrollTop = container.scrollHeight;
-        }
-    }, 0);
-}
-```
+### 2.3 Real-time Updates - ✅ DONE
+- [x] Fixed `_handleUIControllerUpdate()` to use `_shouldScrollToBottom` flag
+- [x] Reduced debounce from 1000ms to 200ms
+- [x] Fixed early return that prevented UI updates for duplicate messages
 
-### 2.2 Scroll to Bottom on Conversation Open
-- [ ] Add `_scrollToBottom()` helper method
-- [ ] Call after conversation navigation completes
-- [ ] Call after sending a message
+### 2.4 Remaining (Minor)
+- [ ] Mark messages as read on conversation open
+- [ ] Fine-tune scroll behavior (user reported minor issues)
 
-### 2.3 Mark Messages as Read on Open
-- [ ] Call `markMessagesAsReadForDevice()` in `navigateTo('conversation')`
-- [ ] Clear unread count cache for opened conversation
-- [ ] Dispatch update event to refresh contact list badges
+---
+
+## Phase 2.5: Toolbar Button Fix (Priority: 🔴 Critical) - ✅ COMPLETE
+
+### Problem
+Agent toolbar button stopped working after first click and appeared regardless of equipment status.
+
+### Fixes Applied
+- [x] Use DOM event listener instead of Foundry's onClick (gets lost on re-render)
+- [x] Add `hasEquippedAgentsSync()` to check equipment status synchronously
+- [x] Fix ownership level check (was checking `=== 1`, should be `>= 3` for OWNER)
+- [x] Move hook registration from `ready` to `init` for earlier registration
+- [x] Force controls update after instance creation with `setTimeout`
 
 ---
 
@@ -199,11 +197,18 @@ Race conditions, duplicate storage, and sync issues.
 ## Testing Checklist
 
 ### UI Live Reload
-- [ ] Open conversation → scrolls to bottom
-- [ ] Receive message while viewing → appears, stays at bottom
-- [ ] Receive message while scrolled up → maintains position
-- [ ] Open conversation with unread → badge resets to 0
-- [ ] In contact list, receive message → badge updates smoothly
+- [x] Open conversation → scrolls to bottom
+- [x] Receive message while viewing → appears, scrolls to bottom
+- [x] Send message → scrolls to bottom
+- [ ] Receive message while scrolled up → maintains position (needs testing)
+- [ ] Open conversation with unread → badge resets to 0 (needs implementation)
+- [x] In contact list, receive message → badge updates (real-time working)
+
+### Toolbar Button
+- [x] Click Agent icon → opens interface
+- [x] Close and reopen → works correctly
+- [x] Only shows when agent equipped
+- [x] Appears on page refresh (if agent equipped)
 
 ### Chat Notifications
 - [ ] Setting appears in module config (all users)
