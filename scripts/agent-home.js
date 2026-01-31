@@ -28,9 +28,8 @@ class AgentApplication extends FormApplication {
       'memo-note': this._renderMemoNoteView.bind(this)
     };
     this.componentId = `agent-${device.id}`;
-    this._savedUIState = null; // For preserving scroll position across renders
     this._conversationScrollPositions = new Map(); // Persist scroll positions per conversation
-    this._userSentMessage = false; // Flag: user just sent a message, scroll to bottom
+    this._shouldScrollToBottom = false; // Flag: new message arrived or sent, scroll to bottom
     console.log("AgentApplication constructor called with device:", device);
   }
 
@@ -68,50 +67,7 @@ class AgentApplication extends FormApplication {
   }
 
   /**
-   * Capture UI state before re-render (scroll position, input value)
-   * @returns {Object} State object with scroll and input info
-   */
-  _captureUIState() {
-    const container = this.element?.find('.cp-messages-container')?.[0];
-    const messageInput = this.element?.find('.cp-message-input')?.[0];
-    
-    if (!container) return null;
-    
-    // Also save to persistent storage
-    this._saveScrollPosition();
-    
-    return {
-      scrollTop: container.scrollTop,
-      inputValue: messageInput?.value || '',
-      inputFocused: document.activeElement === messageInput
-    };
-  }
-
-  /**
-   * Restore UI state after re-render
-   * @param {Object} state - State object from _captureUIState
-   */
-  _restoreUIState(state) {
-    if (!state) return;
-    
-    const container = this.element?.find('.cp-messages-container')?.[0];
-    const messageInput = this.element?.find('.cp-message-input')?.[0];
-    
-    if (container) {
-      // Restore exact scroll position - no automatic scrolling
-      container.scrollTop = state.scrollTop;
-    }
-    
-    if (messageInput) {
-      messageInput.value = state.inputValue;
-      if (state.inputFocused) {
-        messageInput.focus();
-      }
-    }
-  }
-
-  /**
-   * Scroll messages container to bottom instantly (only call when user sends message)
+   * Scroll messages container to bottom (no animation)
    */
   _scrollToBottom() {
     const container = this.element?.find('.cp-messages-container')?.[0];
@@ -921,11 +877,10 @@ class AgentApplication extends FormApplication {
           return;
         }
 
-        // Capture current scroll position before re-render
-        // This ensures scroll position is preserved when receiving messages
-        this._savedUIState = this._captureUIState();
+        // New message received - scroll to bottom after render
+        this._shouldScrollToBottom = true;
         
-        // Re-render to show new message (scroll position will be restored)
+        // Re-render to show new message
         this.render(true);
       }
     };
@@ -1012,7 +967,6 @@ class AgentApplication extends FormApplication {
 
     // Back button - save scroll position before leaving
     const backButton = html.find('.cp-back-button');
-    console.log("AgentApplication | Found back button:", backButton.length);
     backButton.click((event) => {
       this._saveScrollPosition();
       this._onBackClick(event);
@@ -1020,12 +974,10 @@ class AgentApplication extends FormApplication {
 
     // Send message button
     const sendButton = html.find('.cp-send-message');
-    console.log("AgentApplication | Found send button:", sendButton.length);
     sendButton.click(this._onSendMessage.bind(this));
 
     // Message input
     const messageInput = html.find('.cp-message-input');
-    console.log("AgentApplication | Found message input:", messageInput.length);
     messageInput.keypress(this._onMessageInputKeypress.bind(this));
 
     // Add input event for auto-resizing textarea
@@ -1035,32 +987,28 @@ class AgentApplication extends FormApplication {
 
     // Message context menu
     const messageElements = html.find('.cp-message[data-action="message-context-menu"]');
-    console.log("AgentApplication | Found message elements:", messageElements.length);
     messageElements.contextmenu(this._onMessageContextMenu.bind(this));
 
     // ZMail link clicks
     const zmailLinks = html.find('.cp-zmail-link[data-action="open-zmail-link"]');
-    console.log("AgentApplication | Found ZMail links:", zmailLinks.length);
     zmailLinks.click(this._onZMailLinkClick.bind(this));
 
-    // Handle scroll position
-    if (this._userSentMessage) {
-      // User just sent a message - scroll to bottom to show it
-      this._userSentMessage = false;
+    // Handle scroll position - SIMPLE RULES:
+    // 1. If new message (sent or received) -> scroll to bottom
+    // 2. If returning to conversation -> restore saved position
+    // 3. First time opening -> scroll to bottom
+    if (this._shouldScrollToBottom) {
+      // New message arrived or sent - scroll to bottom
+      this._shouldScrollToBottom = false;
       this._scrollToBottom();
-    } else if (this._savedUIState) {
-      // Re-render with saved state - restore exact position
-      this._restoreUIState(this._savedUIState);
-      this._savedUIState = null;
     } else if (this._restoreScrollPosition()) {
-      // Returning to conversation - position restored from persistent storage
-      console.log("AgentApplication | Restored scroll position from storage");
+      // Returning to conversation - position restored
     } else {
-      // First time opening this conversation - scroll to bottom to show latest messages
+      // First time opening - scroll to bottom to show latest
       this._scrollToBottom();
     }
 
-    console.log("AgentApplication | Conversation listeners activated successfully");
+    console.log("AgentApplication | Conversation listeners activated");
   }
 
   /**
@@ -2374,12 +2322,11 @@ class AgentApplication extends FormApplication {
         if (success) {
           console.log("Cyberpunk Agent | Device message sent successfully");
 
-          // Set flag to scroll to bottom after render (user sent message)
-          this._userSentMessage = true;
+          // Set flag to scroll to bottom after render
+          this._shouldScrollToBottom = true;
           
           // Force immediate conversation refresh after sending
           setTimeout(() => {
-            console.log("AgentApplication | Force refreshing conversation after message sent");
             this.render(true);
           }, 100);
 
