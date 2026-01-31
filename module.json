@@ -42,7 +42,6 @@
   "scripts": [
     "scripts/module.js",
     "scripts/agent-home.js",
-    "scripts/contact-search.js",
     "scripts/socketlib-integration.js",
     "scripts/gm-zmail-management.js"
   ],

@@ -1524,7 +1524,7 @@ class AgentApplication extends FormApplication {
 
     // Add event listener for add contact
     contextMenu.find('[data-action="add-contact"]').click(() => {
-      this._openContactSearchModal();
+      this._navigateToAddContact();
       $('.cp-context-menu').remove();
     });
 
@@ -1534,7 +1534,7 @@ class AgentApplication extends FormApplication {
   /**
    * Navigate to add contact page
    */
-  _openContactSearchModal() {
+  _navigateToAddContact() {
     console.log("Navigating to add contact page for device:", this.device.id);
 
     // Play opening sound effect
