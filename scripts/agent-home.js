@@ -1151,6 +1151,12 @@ class AgentApplication extends FormApplication {
       this._scrollToBottom();
     }
 
+    // Refocus input after sending message (if flag is set)
+    if (this._shouldRefocusInput) {
+      this._shouldRefocusInput = false;
+      messageInput.focus();
+    }
+
     console.log("AgentApplication | Conversation listeners activated");
   }
 
@@ -2465,8 +2471,9 @@ class AgentApplication extends FormApplication {
         if (success) {
           console.log("Cyberpunk Agent | Device message sent successfully");
 
-          // Set flag to scroll to bottom after render
+          // Set flag to scroll to bottom and refocus input after render
           this._shouldScrollToBottom = true;
+          this._shouldRefocusInput = true;
           
           // Force immediate conversation refresh after sending
           setTimeout(() => {
