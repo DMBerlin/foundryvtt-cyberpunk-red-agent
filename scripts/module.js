@@ -1399,7 +1399,7 @@ class GMDataManagementMenu extends FormApplication {
 class UIController {
     constructor() {
         this.components = new Map(); // componentId -> component
-        this.dirtyComponents = new Set(); // componentIds that need rebuild
+        this.dirtyComponents = new Map(); // componentId -> updateType
         this.updateCallbacks = new Map(); // componentId -> update callbacks
         this.isUpdating = false;
         this.updateQueue = [];
@@ -1428,31 +1428,43 @@ class UIController {
 
     /**
      * Mark a component as dirty (needs rebuild)
+     * @param {string} componentId - The component ID
+     * @param {string} updateType - Type of update: 'full', 'newMessage', 'unreadCount'
      */
-    markDirty(componentId) {
-        this.dirtyComponents.add(componentId);
-        console.log(`UIController | Marked component as dirty: ${componentId}`);
+    markDirty(componentId, updateType = 'full') {
+        // If already marked with 'full', don't downgrade
+        const existingType = this.dirtyComponents.get(componentId);
+        if (existingType === 'full') {
+            return; // Already needs full update
+        }
+        this.dirtyComponents.set(componentId, updateType);
+        console.log(`UIController | Marked component as dirty: ${componentId} (type: ${updateType})`);
         this.scheduleUpdate();
     }
 
     /**
      * Mark multiple components as dirty
+     * @param {string[]} componentIds - Array of component IDs
+     * @param {string} updateType - Type of update: 'full', 'newMessage', 'unreadCount'
      */
-    markDirtyMultiple(componentIds) {
+    markDirtyMultiple(componentIds, updateType = 'full') {
         const validComponentIds = [];
         const invalidComponentIds = [];
 
         componentIds.forEach(id => {
             if (this.components.has(id)) {
-                this.dirtyComponents.add(id);
-                validComponentIds.push(id);
+                const existingType = this.dirtyComponents.get(id);
+                if (existingType !== 'full') {
+                    this.dirtyComponents.set(id, updateType);
+                    validComponentIds.push(id);
+                }
             } else {
                 invalidComponentIds.push(id);
             }
         });
 
         if (validComponentIds.length > 0) {
-            console.log(`UIController | Marked valid components as dirty:`, validComponentIds);
+            console.log(`UIController | Marked valid components as dirty (type: ${updateType}):`, validComponentIds);
         }
 
         if (invalidComponentIds.length > 0) {
@@ -1468,7 +1480,7 @@ class UIController {
     markAllDirty() {
         const componentIds = Array.from(this.components.keys());
         componentIds.forEach(componentId => {
-            this.dirtyComponents.add(componentId);
+            this.dirtyComponents.set(componentId, 'full');
         });
         console.log(`UIController | Marked all ${componentIds.length} components as dirty:`, componentIds);
         this.scheduleUpdate();
@@ -1502,18 +1514,18 @@ class UIController {
         // Clean up orphaned components before processing
         const orphanedCount = this.cleanupOrphanedComponents();
 
-        const componentsToUpdate = Array.from(this.dirtyComponents);
+        const componentsToUpdate = Array.from(this.dirtyComponents.entries());
         this.dirtyComponents.clear();
 
-        // Update each dirty component
-        componentsToUpdate.forEach(componentId => {
+        // Update each dirty component with its update type
+        componentsToUpdate.forEach(([componentId, updateType]) => {
             const component = this.components.get(componentId);
             const updateCallback = this.updateCallbacks.get(componentId);
 
             if (component && updateCallback) {
                 try {
-                    console.log(`UIController | Updating component: ${componentId}`);
-                    updateCallback(component);
+                    console.log(`UIController | Updating component: ${componentId} (type: ${updateType})`);
+                    updateCallback(component, updateType);
                 } catch (error) {
                     console.error(`UIController | Error updating component ${componentId}:`, error);
                 }
@@ -4667,18 +4679,10 @@ class CyberpunkAgent {
                 `agent-chat7-${actorId2}`
             ];
 
-            // Mark conversation components as dirty
-            window.CyberpunkAgentUIController.markDirtyMultiple([
-                conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+            // Mark Chat7 components as dirty with 'unreadCount' type (read status changed)
+            window.CyberpunkAgentUIController.markDirtyMultiple(chat7ComponentIds, 'unreadCount');
 
-            console.log("Cyberpunk Agent | Marked components as dirty via UI Controller for conversation read:", [
-                conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+            console.log("Cyberpunk Agent | Marked components as dirty via UI Controller for conversation read:", chat7ComponentIds);
         }
 
         // Strategy 2: Force Chat7 interfaces to refresh unread counts specifically
@@ -4753,18 +4757,10 @@ class CyberpunkAgent {
                 `agent-chat7-${deviceId2}`
             ];
 
-            // Mark conversation components as dirty
-            window.CyberpunkAgentUIController.markDirtyMultiple([
-                conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+            // Mark Chat7 components as dirty with 'unreadCount' type (read status changed)
+            window.CyberpunkAgentUIController.markDirtyMultiple(chat7ComponentIds, 'unreadCount');
 
-            console.log("Cyberpunk Agent | Marked device components as dirty via UI Controller for conversation read:", [
-                conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+            console.log("Cyberpunk Agent | Marked device components as dirty via UI Controller for conversation read:", chat7ComponentIds);
         }
 
         // Strategy 2: Force Chat7 interfaces to refresh unread counts specifically
@@ -9090,12 +9086,21 @@ class CyberpunkAgent {
             }
         });
 
-        // Mark components as dirty using the UI Controller
+        // Mark components as dirty using the UI Controller with 'newMessage' type
         if (componentsToUpdate.length > 0) {
             console.log("Cyberpunk Agent | Components to update:", componentsToUpdate);
             if (window.CyberpunkAgentUIController) {
                 console.log("Cyberpunk Agent | Using UI Controller to mark components as dirty");
-                window.CyberpunkAgentUIController.markDirtyMultiple(componentsToUpdate);
+                // Separate conversation and chat7 components for different update types
+                const conversationComponents = componentsToUpdate.filter(id => id.includes('conversation'));
+                const chat7Components = componentsToUpdate.filter(id => id.includes('chat7'));
+                
+                if (conversationComponents.length > 0) {
+                    window.CyberpunkAgentUIController.markDirtyMultiple(conversationComponents, 'newMessage');
+                }
+                if (chat7Components.length > 0) {
+                    window.CyberpunkAgentUIController.markDirtyMultiple(chat7Components, 'unreadCount');
+                }
             } else {
                 console.warn("Cyberpunk Agent | UI Controller not available, falling back to manual updates");
                 this._fallbackUpdateChatInterfaces();
@@ -10013,12 +10018,14 @@ class CyberpunkAgent {
                 `agent-chat7-${data.receiverId}`
             ];
 
-            // Mark conversation components as dirty
+            // Mark conversation components as dirty with 'newMessage' type
             window.CyberpunkAgentUIController.markDirtyMultiple([
                 conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+                reverseConversationComponentId
+            ], 'newMessage');
+            
+            // Mark Chat7 components with 'unreadCount' type
+            window.CyberpunkAgentUIController.markDirtyMultiple(chat7ComponentIds, 'unreadCount');
 
             console.log("Cyberpunk Agent | Marked components as dirty via UI Controller:", [
                 conversationComponentId,
@@ -10165,12 +10172,14 @@ class CyberpunkAgent {
                 `agent-chat7-${data.receiverId}`
             ];
 
-            // Mark conversation components as dirty
+            // Mark conversation components as dirty with 'newMessage' type for incremental update
             window.CyberpunkAgentUIController.markDirtyMultiple([
                 conversationComponentId,
-                reverseConversationComponentId,
-                ...chat7ComponentIds
-            ]);
+                reverseConversationComponentId
+            ], 'newMessage');
+            
+            // Mark Chat7 components with 'unreadCount' type
+            window.CyberpunkAgentUIController.markDirtyMultiple(chat7ComponentIds, 'unreadCount');
 
             console.log("Cyberpunk Agent | Marked device components as dirty via UI Controller:", [
                 conversationComponentId,

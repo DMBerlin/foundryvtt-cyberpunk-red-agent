@@ -419,9 +419,9 @@ class AgentApplication extends FormApplication {
       const componentIds = this._getComponentIds();
 
       componentIds.forEach(componentId => {
-        const updateCallback = (component) => {
-          console.log(`AgentApplication | UI Controller update callback for: ${componentId}`);
-          this._handleUIControllerUpdate(componentId);
+        const updateCallback = (component, updateType) => {
+          console.log(`AgentApplication | UI Controller update callback for: ${componentId} (type: ${updateType})`);
+          this._handleUIControllerUpdate(componentId, updateType);
         };
 
         window.CyberpunkAgentUIController.registerComponent(componentId, this, updateCallback);
@@ -447,9 +447,11 @@ class AgentApplication extends FormApplication {
 
   /**
    * Handle UI Controller update
+   * @param {string} componentId - The component ID
+   * @param {string} updateType - Type of update: 'full', 'newMessage', 'unreadCount'
    */
-  _handleUIControllerUpdate(componentId) {
-    console.log(`AgentApplication | Handling UI Controller update for: ${componentId}`);
+  _handleUIControllerUpdate(componentId, updateType = 'full') {
+    console.log(`AgentApplication | Handling UI Controller update for: ${componentId} (type: ${updateType})`);
 
     // Skip updates during navigation to prevent conflicts
     if (this._navigationInProgress) {
@@ -476,16 +478,157 @@ class AgentApplication extends FormApplication {
         return;
       }
 
-      // New message received - set flag to scroll to bottom after render
-      this._shouldScrollToBottom = true;
-      
-      // Re-render
-      this.render(true);
+      // Handle based on update type
+      switch (updateType) {
+        case 'newMessage':
+          // Incremental update - append new messages without full re-render
+          this._appendNewMessages();
+          break;
+        case 'unreadCount':
+          // Just update unread badges - no re-render needed for conversation view
+          break;
+        case 'full':
+        default:
+          // Full re-render
+          this._shouldScrollToBottom = true;
+          this.render(true);
+          break;
+      }
     } else if (componentId.includes('chat7')) {
-      // Update Chat7 view with force re-render to ensure mute status is updated
-      console.log("AgentApplication | UI Controller update for Chat7, forcing re-render");
-      this.render(true);
+      // Handle based on update type
+      switch (updateType) {
+        case 'unreadCount':
+          // Incremental update - just update badge numbers
+          this._updateUnreadBadges();
+          break;
+        case 'newMessage':
+        case 'full':
+        default:
+          // Full re-render for Chat7
+          console.log("AgentApplication | UI Controller update for Chat7, forcing re-render");
+          this.render(true);
+          break;
+      }
     }
+  }
+
+  /**
+   * Append new messages to conversation without full re-render
+   */
+  async _appendNewMessages() {
+    console.log("AgentApplication | Appending new messages incrementally");
+    
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    if (!container) {
+      console.warn("AgentApplication | Messages container not found, falling back to full render");
+      this._shouldScrollToBottom = true;
+      this.render(true);
+      return;
+    }
+
+    // Get current messages from DOM
+    const existingMessageIds = new Set();
+    this.element.find('.cp-message[data-message-id]').each((i, el) => {
+      existingMessageIds.add(el.dataset.messageId);
+    });
+
+    // Get all messages for this conversation
+    const messages = await this._getConversationMessages();
+    if (!messages || messages.length === 0) return;
+
+    // Find new messages not in DOM
+    const newMessages = messages.filter(msg => !existingMessageIds.has(msg.id));
+    
+    if (newMessages.length === 0) {
+      console.log("AgentApplication | No new messages to append");
+      return;
+    }
+
+    console.log(`AgentApplication | Appending ${newMessages.length} new messages`);
+
+    // Render and append each new message
+    for (const message of newMessages) {
+      const messageHtml = this._renderMessageHtml(message);
+      const messagesWrapper = this.element.find('.cp-messages-container');
+      messagesWrapper.append(messageHtml);
+    }
+
+    // Scroll to bottom to show new messages
+    this._scrollToBottom();
+  }
+
+  /**
+   * Render a single message to HTML
+   */
+  _renderMessageHtml(message) {
+    const isSent = message.senderId === this.device.id;
+    const messageClass = isSent ? 'cp-message-sent' : 'cp-message-received';
+    const timestamp = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Escape HTML in message text
+    const escapedText = message.text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+
+    return `
+      <div class="cp-message ${messageClass}" data-message-id="${message.id}" data-action="message-context-menu">
+        <div class="cp-message-content">
+          <p class="cp-message-text">${escapedText}</p>
+          <span class="cp-message-time">${timestamp}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get conversation messages for current contact
+   */
+  async _getConversationMessages() {
+    if (!window.CyberpunkAgent?.instance || !this.currentContact?.id) return [];
+    
+    const conversationKey = window.CyberpunkAgent.instance._getDeviceSpecificConversationKey(
+      this.device.id, 
+      this.currentContact.id
+    );
+    
+    return window.CyberpunkAgent.instance.messages.get(conversationKey) || [];
+  }
+
+  /**
+   * Update unread badges without full re-render
+   */
+  _updateUnreadBadges() {
+    console.log("AgentApplication | Updating unread badges incrementally");
+    
+    if (!window.CyberpunkAgent?.instance) return;
+
+    // Find all contact items with unread badges
+    this.element.find('.cp-contact-item').each((i, el) => {
+      const contactId = el.dataset.contactId;
+      if (!contactId) return;
+
+      // Get updated unread count
+      const unreadCount = window.CyberpunkAgent.instance.getUnreadCountForDevices(
+        this.device.id,
+        contactId
+      );
+
+      // Update badge
+      const badge = $(el).find('.cp-unread-badge');
+      if (unreadCount > 0) {
+        if (badge.length) {
+          badge.text(unreadCount > 99 ? '99+' : unreadCount);
+        } else {
+          $(el).find('.cp-contact-info').append(
+            `<span class="cp-unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>`
+          );
+        }
+      } else {
+        badge.remove();
+      }
+    });
   }
 
   /**
@@ -1765,11 +1908,11 @@ class AgentApplication extends FormApplication {
       // Force UI update using multiple strategies
       console.log("AgentApplication | Triggering UI update after marking messages as read");
 
-      // Strategy 1: Use UI Controller if available
+      // Strategy 1: Use UI Controller if available with 'unreadCount' type
       if (window.CyberpunkAgentUIController) {
         const chat7ComponentId = `agent-chat7-${this.device.id}`;
-        window.CyberpunkAgentUIController.markDirty(chat7ComponentId);
-        console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller");
+        window.CyberpunkAgentUIController.markDirty(chat7ComponentId, 'unreadCount');
+        console.log("AgentApplication | Marked Chat7 component as dirty via UI Controller (unreadCount)");
       }
 
       // Strategy 2: Force immediate re-render
