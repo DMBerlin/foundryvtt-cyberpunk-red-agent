@@ -3673,11 +3673,14 @@ class CyberpunkAgent {
 
         // Get phone numbers for all equipped agents
         const options = await Promise.all(equippedAgents.map(async agent => {
-            const phoneNumber = await this.getDevicePhoneNumber(agent.deviceId);
+            // Device objects have 'id' not 'deviceId', and 'ownerName' or 'deviceName' not 'actorName'
+            const deviceId = agent.id || agent.deviceId;
+            const displayName = agent.ownerName || agent.deviceName || agent.actorName || 'Unknown';
+            const phoneNumber = await this.getDevicePhoneNumber(deviceId);
             const formattedPhoneNumber = this.formatPhoneNumberForDisplay(phoneNumber);
             return {
-                label: `${agent.actorName}: ${formattedPhoneNumber}`,
-                value: agent.deviceId
+                label: `${displayName}: ${formattedPhoneNumber}`,
+                value: deviceId
             };
         }));
 
