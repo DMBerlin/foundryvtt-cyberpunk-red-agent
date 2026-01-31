@@ -2316,22 +2316,12 @@ class CyberpunkAgent {
         });
 
         // Register GM message tracking setting
-        game.settings.register('cyberpunk-agent', 'gm-message-tracking', {
-            name: 'GM Message Tracking',
-            hint: 'Enable GM notifications for all message exchanges between players',
-            scope: 'world',
-            config: true,
-            type: Boolean,
-            default: true
-        });
-
-        // Player chat notification setting (client-scoped, opt-in)
-        // Only show to non-GM users (GM has their own gm-message-tracking setting)
+        // Chat notification setting (client-scoped, opt-in for all users)
         game.settings.register('cyberpunk-agent', 'player-chat-notifications', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.NAME'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.HINT'),
             scope: 'client',
-            config: !game.user?.isGM, // Hide from GM (they have gm-message-tracking)
+            config: true,
             type: Boolean,
             default: false
         });
@@ -6433,13 +6423,7 @@ class CyberpunkAgent {
             const senderUser = this._getUserForActor(senderActor.id);
             const receiverUser = this._getUserForActor(receiverActor.id);
 
-            // Send GM tracking notification if enabled
-            const gmTrackingEnabled = game.settings.get('cyberpunk-agent', 'gm-message-tracking');
-            if (gmTrackingEnabled) {
-                await this._sendGMTrackingNotification(senderActor, receiverActor, text, message);
-            }
-
-            // Player notifications are handled on the receiver side via handleDeviceMessageUpdate
+            // Chat notifications are handled on the receiver side via handleDeviceMessageUpdate
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending message tracking notifications:", error);
@@ -6447,15 +6431,11 @@ class CyberpunkAgent {
     }
 
     /**
-     * Send player chat notifications (per-user opt-in)
-     * Only shows notification to RECEIVER when they receive a message
-     * GM uses gm-message-tracking instead, so skip for GM users
+     * Send chat notification for received messages (per-user opt-in)
+     * Works for both players and GM
      */
     async _sendPlayerChatNotification(senderName, text) {
         try {
-            // Skip for GM - they have their own gm-message-tracking setting
-            if (game.user.isGM) return;
-
             // Check if current user has notifications enabled
             const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
             if (!notificationsEnabled) return;
@@ -6495,55 +6475,6 @@ class CyberpunkAgent {
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending player chat notification:", error);
-        }
-    }
-
-    /**
-     * Send GM tracking notification
-     */
-    async _sendGMTrackingNotification(senderActor, receiverActor, text, message) {
-        try {
-            const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
-            if (gmUsers.length === 0) return;
-
-            const timestamp = new Date().toLocaleTimeString();
-            const content = `
-                <div class="cyberpunk-agent-tracking-notification">
-                    <div class="tracking-header">
-                        <i class="fas fa-exchange-alt"></i>
-                        <strong>New Message Exchange</strong>
-                        <span class="tracking-time">${timestamp}</span>
-                    </div>
-                    <div class="tracking-route">
-                        <span class="sender">${senderActor.name}</span>
-                        <i class="fas fa-arrow-right"></i>
-                        <span class="receiver">${receiverActor.name}</span>
-                    </div>
-                    <div class="tracking-content">
-                        <strong>Message:</strong> ${text}
-                    </div>
-                </div>
-            `;
-
-            await ChatMessage.create({
-                user: game.user.id,
-                speaker: { alias: "Cyberpunk Agent" },
-                content: content,
-                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
-                whisper: gmUsers,
-                blind: true,
-                flags: {
-                    'cyberpunk-agent': {
-                        isTrackingNotification: true,
-                        messageId: message.id,
-                        senderId: senderActor.id,
-                        receiverId: receiverActor.id
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error("Cyberpunk Agent | Error sending GM tracking notification:", error);
         }
     }
 
