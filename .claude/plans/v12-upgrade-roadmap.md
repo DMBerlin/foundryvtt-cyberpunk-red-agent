@@ -249,3 +249,209 @@ Use conventional commits:
 - Phase 4 can be done in parallel with Phase 3
 - Phase 6 is a larger refactor, can be deferred if needed
 - All phases should include tests before merge
+
+---
+
+## GM Chat7 Management System Analysis
+
+### Current State
+
+The GM Management System provides administrative tools via module settings menu:
+
+**GMDataManagementMenu** (module.js:1217-1393):
+- Clear All Messages
+- Clear All Contact Lists
+- Synchronize All Devices
+- Master Reset System
+
+**GMZMailManagementApplication** (gm-zmail-management.js):
+- Send ZMail to players
+- View all ZMail messages
+- Mark all as read
+- Clear old messages
+
+### Issues Identified
+
+#### 🔴 HIGH: `clearAllMessages()` Only Clears GM's localStorage
+
+**Location:** module.js:9162-9240
+
+```javascript
+// This only clears the GM's localStorage, not players'!
+for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('cyberpunk-agent-messages-')) {
+        keysToRemove.push(key);
+    }
+}
+```
+
+**Problem:** `localStorage` is per-browser. GM can't access players' localStorage. The socket notification is sent, but players need to handle `allMessagesCleared` event.
+
+**Fix:** Verify `handleAllMessagesCleared` properly clears player localStorage (it's registered but implementation unclear).
+
+---
+
+#### 🔴 HIGH: Server Messages Not Cleared
+
+**Location:** module.js:9162-9240
+
+`clearAllMessages()` clears localStorage and memory, but **doesn't clear `server-messages` setting**!
+
+```javascript
+// Missing:
+await game.settings.set('cyberpunk-agent', 'server-messages', {});
+```
+
+**Impact:** Players will re-sync "cleared" messages when they reconnect.
+
+**Fix:** Add server message clearing to `clearAllMessages()`.
+
+---
+
+#### 🟡 MEDIUM: No Selective Message Clearing
+
+**Current:** All-or-nothing approach.
+
+**Missing Features:**
+- Clear messages for specific device
+- Clear messages older than X days
+- Clear specific conversation
+
+**Recommendation:** Add selective clearing options.
+
+---
+
+#### 🟡 MEDIUM: Inconsistent Socket Method Usage
+
+**Location:** module.js:9218-9228
+
+```javascript
+// Uses window.socket directly instead of SocketLib
+await window.socket.executeForEveryone('allMessagesCleared', {...});
+```
+
+Other places use `this.socketLibIntegration`. Should be consistent.
+
+**Fix:** Use SocketLib integration consistently.
+
+---
+
+#### 🟡 MEDIUM: No Progress Feedback for Sync
+
+`synchronizeAllDevices()` shows results after completion but no progress during. For large worlds, this could take time.
+
+**Fix:** Add progress notifications during sync phases.
+
+---
+
+#### 🟢 LOW: Hardcoded Portuguese Text
+
+UI notifications use Portuguese strings:
+```javascript
+ui.notifications.info("All messages cleared successfully!");  // English
+ui.notifications.error("Apenas o GM pode executar...");       // Portuguese
+```
+
+**Fix:** Use localization keys consistently.
+
+---
+
+### Integration with Proposed Changes
+
+| Proposed Change | GM Management Impact | Action Needed |
+|-----------------|---------------------|---------------|
+| UIController update types | None | - |
+| State preservation | None | - |
+| Chat notifications | None | - |
+| GM offline detection | Add "GM Status" indicator | Add to management UI |
+| Write queue | Sync operations should use queue | Refactor sync methods |
+| Conversation key delimiter | Migration needed on Master Sync | Add migration step |
+
+---
+
+### Recommended Improvements
+
+#### 1. Fix `clearAllMessages()` to Clear Server
+
+```javascript
+async clearAllMessages() {
+    // ... existing local clearing ...
+    
+    // CRITICAL: Clear server messages
+    await game.settings.set('cyberpunk-agent', 'server-messages', {});
+    await game.settings.set('cyberpunk-agent', 'server-read-status', {});
+    await game.settings.set('cyberpunk-agent', 'offline-message-queue', {});
+    
+    // ... notify clients ...
+}
+```
+
+#### 2. Add Selective Clearing
+
+```javascript
+async clearMessagesForDevice(deviceId) {
+    // Clear messages for specific device only
+}
+
+async clearMessagesOlderThan(days) {
+    // Clear messages older than X days
+}
+
+async clearConversation(deviceId1, deviceId2) {
+    // Clear specific conversation
+}
+```
+
+#### 3. Add GM Dashboard View
+
+Instead of just action buttons, show:
+- Active devices count
+- Total messages count
+- Unread messages count
+- Last sync timestamp
+- GM online status indicator
+
+```html
+<div class="gm-dashboard-stats">
+    <div class="stat-card">
+        <span class="stat-value">{{deviceCount}}</span>
+        <span class="stat-label">Active Devices</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{messageCount}}</span>
+        <span class="stat-label">Total Messages</span>
+    </div>
+    <!-- ... -->
+</div>
+```
+
+#### 4. Add Confirmation Audit Log
+
+Track destructive actions:
+```javascript
+async logGMAction(action, details) {
+    const log = game.settings.get('cyberpunk-agent', 'gm-audit-log') || [];
+    log.push({
+        action,
+        details,
+        userId: game.user.id,
+        userName: game.user.name,
+        timestamp: Date.now()
+    });
+    // Keep last 100 entries
+    await game.settings.set('cyberpunk-agent', 'gm-audit-log', log.slice(-100));
+}
+```
+
+---
+
+### Files to Update
+
+| File | Changes |
+|------|---------|
+| `scripts/module.js` | Fix `clearAllMessages()`, add selective clearing |
+| `scripts/gm-zmail-management.js` | Add stats to template data |
+| `templates/gm-data-management.html` | Add dashboard stats, selective options |
+| `lang/*.json` | Add localization keys for all strings |
+
