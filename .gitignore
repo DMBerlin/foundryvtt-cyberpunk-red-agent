@@ -33,18 +33,17 @@ dev-copy-local.bat
 # IDEs e editores
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
 
 # Arquivos do sistema
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
 
 # Arquivos de backup
 *.bak
