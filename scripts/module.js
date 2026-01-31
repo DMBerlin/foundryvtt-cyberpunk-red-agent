@@ -2726,6 +2726,7 @@ class CyberpunkAgent {
 
             // Check if user has any equipped agents (synchronous check)
             const hasEquippedAgents = this.hasEquippedAgentsSync();
+            console.log(`Cyberpunk Agent | addControlButton: hasEquippedAgents=${hasEquippedAgents}`);
             
             // Find the token controls
             const tokenControl = controls.find(control => control.name === "token");
@@ -2741,10 +2742,12 @@ class CyberpunkAgent {
 
             // Check if button already exists
             const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "cyberpunk-agent");
+            console.log(`Cyberpunk Agent | addControlButton: existingButtonIndex=${existingButtonIndex}`);
             
             if (hasEquippedAgents) {
                 // User has equipped agents - ensure button exists
                 if (existingButtonIndex === -1) {
+                    console.log("Cyberpunk Agent | addControlButton: Adding button");
                     tokenControl.tools.push({
                         name: "cyberpunk-agent",
                         title: "Agent",
@@ -2755,6 +2758,7 @@ class CyberpunkAgent {
             } else {
                 // User has no equipped agents - remove button if it exists
                 if (existingButtonIndex !== -1) {
+                    console.log("Cyberpunk Agent | addControlButton: Removing button");
                     tokenControl.tools.splice(existingButtonIndex, 1);
                 }
             }
@@ -2770,18 +2774,25 @@ class CyberpunkAgent {
      */
     hasEquippedAgentsSync() {
         try {
-            if (!game.user) return false;
+            if (!game.user) {
+                console.log("Cyberpunk Agent | hasEquippedAgentsSync: no game.user");
+                return false;
+            }
             
             // GM always has access (they can view any agent)
             if (game.user.isGM) {
                 // Check if there are any agents in the world
-                if (!game.actors) return false;
+                if (!game.actors) {
+                    console.log("Cyberpunk Agent | hasEquippedAgentsSync: no game.actors (GM)");
+                    return false;
+                }
                 for (const actor of game.actors) {
                     if (actor.type !== 'character') continue;
                     if (!actor.items) continue;
                     for (const item of actor.items) {
                         if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
                             const isEquipped = item.system?.equipped === 'equipped';
+                            console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found agent "${item.name}" on ${actor.name}, equipped=${item.system?.equipped}, isEquipped=${isEquipped}`);
                             if (isEquipped) return true;
                         }
                     }
@@ -2791,17 +2802,24 @@ class CyberpunkAgent {
             
             // For regular users, check their owned/accessible actors
             const userActors = this.getUserActorsSync();
+            console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found ${userActors.length} user actors`);
             
             for (const actor of userActors) {
-                if (!actor.items) continue;
+                if (!actor.items) {
+                    console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Actor ${actor.name} has no items`);
+                    continue;
+                }
+                console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Checking ${actor.name} with ${actor.items.size || actor.items.length || 'unknown'} items`);
                 for (const item of actor.items) {
                     if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
                         const isEquipped = item.system?.equipped === 'equipped';
+                        console.log(`Cyberpunk Agent | hasEquippedAgentsSync: Found agent "${item.name}" on ${actor.name}, equipped=${item.system?.equipped}, isEquipped=${isEquipped}`);
                         if (isEquipped) return true;
                     }
                 }
             }
             
+            console.log("Cyberpunk Agent | hasEquippedAgentsSync: No equipped agents found");
             return false;
         } catch (error) {
             console.error("Cyberpunk Agent | Error in hasEquippedAgentsSync:", error);
@@ -2811,29 +2829,60 @@ class CyberpunkAgent {
     
     /**
      * Synchronously get user's accessible actors (for toolbar check)
+     * Mirrors the logic in getUserActors() but synchronous
      */
     getUserActorsSync() {
         if (!game.user || !game.actors) return [];
         
-        const actors = [];
+        const userActors = [];
+        const seenIds = new Set();
         
-        // Check character ownership
-        if (game.user.character) {
-            actors.push(game.user.character);
-        }
-        
-        // Check all actors for ownership
-        for (const actor of game.actors) {
-            if (actor.type !== 'character') continue;
-            // Check if user owns or has observer+ permission
-            if (actor.testUserPermission(game.user, "OBSERVER")) {
-                if (!actors.includes(actor)) {
-                    actors.push(actor);
-                }
+        // Method 1: Check user's assigned character
+        if (game.user.character && game.user.character.type === 'character') {
+            if (!seenIds.has(game.user.character.id)) {
+                seenIds.add(game.user.character.id);
+                userActors.push(game.user.character);
             }
         }
         
-        return actors;
+        // Method 2: Get character actors from owned tokens on active scene
+        try {
+            if (game.scenes?.active?.tokens) {
+                for (const token of game.scenes.active.tokens) {
+                    if (token.actor && 
+                        token.actor.type === 'character' &&
+                        token.actor.ownership?.[game.user.id] === 1 &&
+                        !seenIds.has(token.actor.id)) {
+                        seenIds.add(token.actor.id);
+                        userActors.push(token.actor);
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+        
+        // Method 3: Get character actors with ownership level 1 (OWNER)
+        try {
+            for (const actor of game.actors) {
+                if (actor.type !== 'character') continue;
+                if (actor.ownership?.[game.user.id] === 1 && !seenIds.has(actor.id)) {
+                    seenIds.add(actor.id);
+                    userActors.push(actor);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        
+        // Method 4: Get all character actors user has ANY permission to
+        try {
+            for (const actor of game.actors) {
+                if (actor.type !== 'character') continue;
+                if (actor.ownership?.[game.user.id] !== undefined && !seenIds.has(actor.id)) {
+                    seenIds.add(actor.id);
+                    userActors.push(actor);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        
+        return userActors;
     }
     
     /**
@@ -12399,6 +12448,31 @@ Hooks.once('init', () => {
         console.log("Cyberpunk Agent | Init hook triggered");
         CyberpunkAgent.registerSettings();
         console.log("Cyberpunk Agent | Settings registered successfully");
+        
+        // Register getSceneControlButtons hook early - it fires during UI init before ready
+        Hooks.on('getSceneControlButtons', (controls) => {
+            try {
+                if (CyberpunkAgent.instance && controls) {
+                    CyberpunkAgent.instance.addControlButton(controls);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in getSceneControlButtons hook:", error);
+            }
+        });
+        
+        // Register renderSceneControls hook early to attach DOM handlers
+        Hooks.on('renderSceneControls', (app, html, data) => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    setTimeout(() => {
+                        CyberpunkAgent.instance.attachAgentButtonHandler();
+                    }, 50);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in renderSceneControls hook:", error);
+            }
+        });
+        
     } catch (error) {
         console.error("Cyberpunk Agent | Error in init hook:", error);
     }
@@ -12489,30 +12563,7 @@ Hooks.once('ready', () => {
             }
         });
 
-        // Hook for when the controls toolbar is built - this is the MAIN hook for adding buttons
-        Hooks.on('getSceneControlButtons', (controls) => {
-            try {
-                if (CyberpunkAgent.instance && controls) {
-                    CyberpunkAgent.instance.addControlButton(controls);
-                }
-            } catch (error) {
-                console.error("Cyberpunk Agent | Error in getSceneControlButtons hook:", error);
-            }
-        });
-
-        // Hook to attach DOM click handler after scene controls render
-        Hooks.on('renderSceneControls', (app, html, data) => {
-            try {
-                if (CyberpunkAgent.instance) {
-                    // Small delay to ensure DOM is ready
-                    setTimeout(() => {
-                        CyberpunkAgent.instance.attachAgentButtonHandler();
-                    }, 50);
-                }
-            } catch (error) {
-                console.error("Cyberpunk Agent | Error in renderSceneControls hook:", error);
-            }
-        });
+        // NOTE: getSceneControlButtons and renderSceneControls hooks are now registered in init
 
         // Hook to ensure button appears when canvas is ready (fixes initial load issue)
         Hooks.on('canvasReady', () => {
