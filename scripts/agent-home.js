@@ -84,15 +84,17 @@ class AgentApplication extends FormApplication {
   }
 
   /**
-   * Scroll messages container to bottom
+   * Scroll messages container to bottom instantly (no visible animation)
    */
   _scrollToBottom() {
-    setTimeout(() => {
-      const container = this.element?.find('.cp-messages-container')?.[0];
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, 0);
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    if (container) {
+      // Use scrollTo with instant behavior to avoid visible scrolling animation
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'instant'
+      });
+    }
   }
 
   /**
@@ -884,10 +886,11 @@ class AgentApplication extends FormApplication {
         return;
       }
 
-      if (type === 'messageUpdate' &&
+      // Check for messageUpdate OR deviceMessageUpdate (both are valid message events)
+      if ((type === 'messageUpdate' || type === 'deviceMessageUpdate') &&
         ((senderId === this.device.id && receiverId === this.currentContact.id) ||
           (senderId === this.currentContact.id && receiverId === this.device.id))) {
-        console.log("AgentApplication | Conversation received update");
+        console.log("AgentApplication | Conversation received update, type:", type);
 
         // Prevent infinite loops
         if (this._isUpdating) {
@@ -895,6 +898,9 @@ class AgentApplication extends FormApplication {
           return;
         }
 
+        // Flag that we want to scroll to bottom after render
+        this._scrollToBottomAfterRender = true;
+        
         // Simple re-render
         this.render(true);
       }
@@ -1010,13 +1016,22 @@ class AgentApplication extends FormApplication {
     console.log("AgentApplication | Found ZMail links:", zmailLinks.length);
     zmailLinks.click(this._onZMailLinkClick.bind(this));
 
-    // Restore UI state if we have saved state (from UIController update)
+    // Handle scroll position
     if (this._savedUIState) {
+      // Restore saved scroll position (from UIController update)
       this._restoreUIState(this._savedUIState);
       this._savedUIState = null;
-    } else {
-      // First render of conversation - scroll to bottom
+    } else if (this._scrollToBottomAfterRender) {
+      // New message received - scroll to bottom immediately
+      this._scrollToBottomAfterRender = false;
       this._scrollToBottom();
+    } else {
+      // First render of conversation - set scroll position immediately (no animation)
+      const container = html.find('.cp-messages-container')[0];
+      if (container) {
+        // Set scroll position directly to avoid visible scrolling
+        container.scrollTop = container.scrollHeight;
+      }
     }
 
     console.log("AgentApplication | Conversation listeners activated successfully");
