@@ -59,7 +59,7 @@ If the manifest method doesn't work, you can install manually.
 Before installing Cyberpunk Agent, make sure you have:
 
 ### Required
-- **FoundryVTT v11** or higher
+- **FoundryVTT v10** or higher (v12 recommended)
 - **SocketLib module** - [Install from here](https://foundryvtt.com/packages/socketlib)
 
 ### Recommended
@@ -172,8 +172,8 @@ If you encounter issues:
 ## Version Compatibility
 
 | Cyberpunk Agent | FoundryVTT | Cyberpunk RED System |
-|----------------|------------|---------------------|
-| 2.x.x          | v11+       | 0.88.0+            |
-| 1.x.x          | v10-v11    | 0.88.0+            |
+|-----------------|------------|---------------------|
+| 5.x.x          | v10-v12    | 0.88.0+             |
+| 4.x.x          | v10-v11    | 0.88.0+             |
 
 Always use the latest versions for the best experience.

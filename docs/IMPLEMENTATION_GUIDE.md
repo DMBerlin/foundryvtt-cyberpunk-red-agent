@@ -2,7 +2,7 @@
 
 ## 🎉 Implementation Complete
 
-The Cyberpunk Agent module has been successfully enhanced with advanced messaging features while maintaining 100% backwards compatibility with FoundryVTT v11.315 and Cyberpunk RED v0.88.2.
+The Cyberpunk Agent module has been successfully enhanced with advanced messaging features while maintaining 100% backwards compatibility with FoundryVTT v10-v12 and Cyberpunk RED v0.88.0+.
 
 ## ✨ Enhanced Features Implemented
 
@@ -184,7 +184,7 @@ The Cyberpunk Agent module now features:
 - **Performance Optimized**: Efficient memory and storage usage
 - **Maintainable**: Clear code structure and comprehensive logging
 
-The implementation is **production-ready** and provides significant improvements in reliability, performance, and user experience while maintaining full compatibility with FoundryVTT v11.315 and Cyberpunk RED v0.88.2.
+The implementation is **production-ready** and provides significant improvements in reliability, performance, and user experience while maintaining full compatibility with FoundryVTT v10-v12 and Cyberpunk RED v0.88.0+.
 
 ---
 

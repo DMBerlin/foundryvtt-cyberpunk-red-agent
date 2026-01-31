@@ -73,9 +73,9 @@ This document compares our `module.json` with a functional example to ensure com
 
 // After (Correct)
 "compatibility": {
-  "minimum": "11",
-  "verified": "11",
-  "maximum": "11"
+  "minimum": "10",
+  "verified": "12",
+  "maximum": "12"
 }
 ```
 
