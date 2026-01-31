@@ -6238,6 +6238,12 @@ class CyberpunkAgent {
                 return;
             }
 
+            // Check if GM is online before attempting sync
+            if (!this._isGMOnline()) {
+                console.log("Cyberpunk Agent | GM offline, skipping message sync request");
+                return;
+            }
+
             if (!this.socketLibIntegration) {
                 console.warn("Cyberpunk Agent | SocketLib not available for message sync request");
                 return;
@@ -9147,6 +9153,21 @@ class CyberpunkAgent {
     async _requestGMToClearServerStorage(deviceId, contactDeviceId) {
         try {
             console.log("Cyberpunk Agent | Requesting GM to clear server storage for player conversation");
+
+            // Check if GM is online before attempting
+            if (!this._isGMOnline()) {
+                console.log("Cyberpunk Agent | GM offline, using localStorage fallback for clear request");
+                const clearedConversations = JSON.parse(localStorage.getItem('cyberpunk-agent-cleared-conversations') || '{}');
+                const conversationKey1 = this._getDeviceSpecificConversationKey(deviceId, contactDeviceId);
+                const conversationKey2 = this._getDeviceSpecificConversationKey(contactDeviceId, deviceId);
+
+                clearedConversations[conversationKey1] = true;
+                clearedConversations[conversationKey2] = true;
+
+                localStorage.setItem('cyberpunk-agent-cleared-conversations', JSON.stringify(clearedConversations));
+                console.log("Cyberpunk Agent | Fallback: Marked conversation as cleared in localStorage");
+                return;
+            }
 
             if (!this._isSocketLibAvailable()) {
                 console.warn("Cyberpunk Agent | SocketLib not available for GM request");
@@ -12220,6 +12241,12 @@ class CyberpunkAgent {
         try {
             if (game.user.isGM) {
                 console.log("Cyberpunk Agent | GM doesn't need to request ZMail sync from self");
+                return;
+            }
+
+            // Check if GM is online before attempting sync
+            if (!this._isGMOnline()) {
+                console.log("Cyberpunk Agent | GM offline, skipping ZMail sync request");
                 return;
             }
 
