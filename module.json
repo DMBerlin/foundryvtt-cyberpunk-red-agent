@@ -12,12 +12,10 @@
       "flags": {}
     }
   ],
-  "minimumCoreVersion": "10",
-  "compatibleCoreVersion": "11",
   "compatibility": {
     "minimum": "10",
-    "verified": "11",
-    "maximum": "11"
+    "verified": "12",
+    "maximum": "12"
   },
   "relationships": {
     "systems": [
@@ -26,7 +24,7 @@
         "type": "system",
         "compatibility": {
           "minimum": "0.88.0",
-          "verified": "0.88.2"
+          "verified": "0.92.2"
         }
       }
     ],
@@ -35,8 +33,8 @@
         "id": "socketlib",
         "type": "module",
         "compatibility": {
-          "minimum": "10",
-          "verified": "11"
+          "minimum": "1.0.0",
+          "verified": "1.1.3"
         }
       }
     ]
