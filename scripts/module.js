@@ -6438,8 +6438,7 @@ class CyberpunkAgent {
                 await this._sendGMTrackingNotification(senderActor, receiverActor, text, message);
             }
 
-            // Send player chat notifications if enabled (per-user setting)
-            await this._sendPlayerChatNotifications(senderActor, receiverActor, text, message, senderUser, receiverUser);
+            // Player notifications are handled on the receiver side via handleDeviceMessageUpdate
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending message tracking notifications:", error);
@@ -6448,38 +6447,27 @@ class CyberpunkAgent {
 
     /**
      * Send player chat notifications (per-user opt-in)
+     * Only shows notification to RECEIVER when they receive a message
      */
-    async _sendPlayerChatNotifications(senderActor, receiverActor, text, message, senderUser, receiverUser) {
+    async _sendPlayerChatNotification(senderName, text) {
         try {
+            // Check if current user has notifications enabled
+            const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
+            if (!notificationsEnabled) return;
+
             // Truncate message preview
             const maxLength = 50;
             const preview = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 
-            // Check if current user is sender or receiver and has notifications enabled
-            const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
-            
-            if (!notificationsEnabled) return;
-
-            // Only send notification to current user (client-side)
-            const isSender = senderUser?.id === game.user.id;
-            const isReceiver = receiverUser?.id === game.user.id;
-
-            if (!isSender && !isReceiver) return;
-
-            const icon = isSender ? '📤' : '📥';
-            const title = isSender ? 'Message Sent' : 'New Message';
-            const otherParty = isSender ? receiverActor.name : senderActor.name;
-            const label = isSender ? 'To' : 'From';
-
             const content = `
                 <div class="cyberpunk-agent-chat-notification">
                     <div class="notification-header">
-                        <span class="notification-icon">${icon}</span>
-                        <strong>${title}</strong>
+                        <span class="notification-icon">📥</span>
+                        <strong>New Message</strong>
                     </div>
                     <div class="notification-party">
-                        <span class="party-label">${label}:</span>
-                        <span class="party-name">${otherParty}</span>
+                        <span class="party-label">From:</span>
+                        <span class="party-name">${senderName}</span>
                     </div>
                     <div class="notification-preview">"${preview}"</div>
                 </div>
@@ -6493,11 +6481,12 @@ class CyberpunkAgent {
                 whisper: [game.user.id],
                 flags: {
                     'cyberpunk-agent': {
-                        isPlayerNotification: true,
-                        messageId: message.id
+                        isPlayerNotification: true
                     }
                 }
             });
+
+            console.log("Cyberpunk Agent | Player chat notification sent");
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending player chat notification:", error);
@@ -10290,8 +10279,14 @@ class CyberpunkAgent {
             }
         }));
 
-        // Notifications are handled by handleSendMessage in SocketLib integration
-        console.log("Cyberpunk Agent | Notifications handled by handleSendMessage in SocketLib integration");
+        // Send player chat notification (receiver only, if enabled)
+        // Only trigger for non-processed messages to avoid duplicates
+        if (!messageAlreadyProcessed && data.message?.text) {
+            // Get sender device info to show sender name
+            const senderDevice = this.devices.get(data.senderId);
+            const senderName = senderDevice?.ownerName || data.userName || 'Unknown';
+            await this._sendPlayerChatNotification(senderName, data.message.text);
+        }
 
         console.log("Cyberpunk Agent | Device message update processed successfully");
     }
