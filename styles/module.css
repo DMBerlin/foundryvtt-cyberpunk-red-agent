@@ -826,7 +826,6 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
-  scroll-behavior: smooth;
   background: var(--cp-gradient-dark);
   position: relative;
 }
