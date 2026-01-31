@@ -476,10 +476,10 @@ class AgentApplication extends FormApplication {
         return;
       }
 
-      // Capture UI state before re-render (scroll position, input focus)
-      this._savedUIState = this._captureUIState();
+      // New message received - set flag to scroll to bottom after render
+      this._shouldScrollToBottom = true;
       
-      // Re-render with state preservation
+      // Re-render
       this.render(true);
     } else if (componentId.includes('chat7')) {
       // Update Chat7 view with force re-render to ensure mute status is updated
