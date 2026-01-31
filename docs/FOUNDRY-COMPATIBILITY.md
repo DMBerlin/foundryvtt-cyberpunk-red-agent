@@ -1,8 +1,16 @@
-# FoundryVTT v11 Compatibility Guide
+# FoundryVTT Compatibility Guide
 
 ## Overview
 
-This document outlines the changes made to ensure the Cyberpunk Agent module is fully compatible with FoundryVTT v11 and follows the official API guidelines.
+This document outlines the changes made to ensure the Cyberpunk Agent module is fully compatible with FoundryVTT v10-v12 and follows the official API guidelines.
+
+## Supported Versions
+
+| FoundryVTT | Status | Notes |
+|------------|--------|-------|
+| v10 | Supported | Minimum version |
+| v11 | Verified | Fully tested |
+| v12 | Verified | Current target |
 
 ## Key Changes Made
 
@@ -154,23 +162,24 @@ styles/
 
 To test the v11 compatibility:
 
-1. **Load the module** in FoundryVTT v11
+1. **Load the module** in FoundryVTT v10, v11, or v12
 2. **Check console** for any errors
 3. **Test all applications**:
    - Agent Home (opens from token controls)
-   - Contact Manager (opens from Actor Directory for GMs)
-   - Chat interface (opens from Agent Home)
+   - Chat7 interface (opens from Agent Home)
+   - ZMail (opens from Agent Home)
+   - Memo (opens from Agent Home)
 4. **Test settings** in the module settings panel
-5. **Test contact management** functionality
+5. **Test messaging** functionality
 
 ## Known Issues
 
-None currently identified. The module has been thoroughly tested for v11 compatibility.
+None currently identified. The module has been tested for v10-v12 compatibility.
 
 ## Future Considerations
 
-- Monitor FoundryVTT v11 updates for any breaking changes
-- Consider implementing additional v11 features as they become available
+- Monitor FoundryVTT updates for any breaking changes
+- Consider implementing additional features as they become available
 - Maintain backward compatibility where possible
 - Follow FoundryVTT development guidelines for future updates
 
