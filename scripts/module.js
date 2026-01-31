@@ -12522,14 +12522,36 @@ Hooks.once('ready', () => {
                     CyberpunkAgent.instance.loadDeviceData();
                     
                     // Force re-render of controls to pick up our button
+                    // Use multiple delays to catch late-loading actor data
                     setTimeout(() => {
                         if (ui.controls) {
                             ui.controls.initialize();
                         }
                     }, 500);
+                    
+                    // Second check after actors are more likely to be fully loaded
+                    setTimeout(() => {
+                        if (ui.controls && CyberpunkAgent.instance.hasEquippedAgentsSync()) {
+                            CyberpunkAgent.instance.updateTokenControls();
+                        }
+                    }, 1500);
                 }
             } catch (error) {
                 console.error("Cyberpunk Agent | Error in canvasReady hook:", error);
+            }
+        });
+
+        // Hook to refresh button when actor sheet opens (ensures equipment changes are detected)
+        Hooks.on('renderActorSheet', (app, html, data) => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    // Delay to ensure actor data is updated
+                    setTimeout(() => {
+                        CyberpunkAgent.instance.updateTokenControls();
+                    }, 100);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in renderActorSheet hook:", error);
             }
         });
 
