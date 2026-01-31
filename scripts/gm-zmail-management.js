@@ -17,7 +17,7 @@ class GMZMailManagementApplication extends FormApplication {
    * Default options for the application
    */
   static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "gm-zmail-management",
       classes: ["cyberpunk-agent", "gm-zmail-management"],
       template: "modules/cyberpunk-agent/templates/gm-zmail-management.html",

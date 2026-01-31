@@ -1220,7 +1220,7 @@ class GMDataManagementMenu extends FormApplication {
     }
 
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "gm-data-management",
             template: "modules/cyberpunk-agent/templates/gm-data-management.html",
             title: "GM Chat7 Management",
@@ -1607,7 +1607,7 @@ class GMZMailManagementMenu extends FormApplication {
     }
 
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "gm-zmail-management-menu",
             title: "ZMail Management",
             template: "modules/cyberpunk-agent/templates/gm-zmail-management.html",
@@ -2724,6 +2724,11 @@ class CyberpunkAgent {
                 return;
             }
 
+            // Ensure device data is loaded (synchronous operation)
+            if (!this.devices || this.devices.size === 0) {
+                this.loadDeviceData();
+            }
+
             // Find the token controls
             const tokenControl = controls.find(control => control.name === "token");
 
@@ -2734,6 +2739,13 @@ class CyberpunkAgent {
             // Safety check: ensure tools array exists
             if (!Array.isArray(tokenControl.tools)) {
                 tokenControl.tools = [];
+            }
+
+            // Check if button already exists and has a working onClick
+            const existingButton = tokenControl.tools.find(tool => tool.name === "agent");
+            if (existingButton && typeof existingButton.onClick === 'function') {
+                // Button already exists and is functional, skip re-adding
+                return;
             }
 
             // Remove any existing agent tools first to prevent duplicates
@@ -2753,21 +2765,21 @@ class CyberpunkAgent {
                     }
                 });
             } else {
-                // Player: Only show button if there might be equipped agents
-                // We check synchronously using cached device data
+                // Player: Show button if there are any devices (they'll get filtered on click)
+                // Or if device data isn't loaded yet (button will check on click)
                 const hasDevices = this.devices && this.devices.size > 0;
                 
-                if (hasDevices) {
-                    tokenControl.tools.push({
-                        name: "agent",
-                        title: "Agent",
-                        icon: "fas fa-mobile-alt",
-                        onClick: () => {
-                            console.log("Cyberpunk Agent | Player toolbar button clicked");
-                            this.openAgentInterface();
-                        }
-                    });
-                }
+                // Always add button for players - the openAgentInterface will show
+                // an appropriate message if no devices are found
+                tokenControl.tools.push({
+                    name: "agent",
+                    title: "Agent",
+                    icon: "fas fa-mobile-alt",
+                    onClick: () => {
+                        console.log("Cyberpunk Agent | Player toolbar button clicked");
+                        this.openAgentInterface();
+                    }
+                });
             }
         } catch (error) {
             console.error("Cyberpunk Agent | Error in addControlButton:", error);

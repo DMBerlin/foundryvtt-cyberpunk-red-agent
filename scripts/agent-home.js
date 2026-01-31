@@ -99,7 +99,7 @@ class AgentApplication extends FormApplication {
    * Default options for the application
    */
   static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "cyberpunk-agent",
       classes: ["cyberpunk-agent", "agent-application"],
       template: "modules/cyberpunk-agent/templates/agent-home.html",
