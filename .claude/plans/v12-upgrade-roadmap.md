@@ -482,12 +482,63 @@ async openAgentInterface() {
 - Shows a dropdown with all equipped Agents
 - Format: `"ActorName: (555) 123-4567"`
 - User selects which Agent to open
-- GM sees ALL devices in the world
+- **GM sees ALL devices in the world** (important for GM oversight)
+
+**GM Access Use Case:**
+The GM has access to all agents in the game. This is intentional for:
+- Debugging player messaging issues
+- Monitoring in-game communications for plot purposes
+- Sending messages as NPCs
+- Administrative troubleshooting
 
 **This means:**
 - ✅ Ctrl+P (hotkey) → calls `openAgentInterface()` → shows selection if multiple
 - ✅ FAB click → calls `openAgentInterface()` → shows selection if multiple
-- ✅ Token HUD → opens Agent for THAT specific token's actor (no dialog needed)
+- ✅ Token HUD → opens Agent for THAT specific token's actor (explicit, no dialog)
+- ✅ **GM always sees selection dialog** (has access to all devices)
+
+---
+
+### Player Settings for UX Options
+
+All three UX improvements should be **toggleable per-player** via module settings:
+
+```javascript
+// Register in init hook
+game.settings.register('cyberpunk-agent', 'showFloatingButton', {
+    name: 'Show Floating Agent Button',
+    hint: 'Display a floating button to quickly access your Agent device',
+    scope: 'client',  // Per-player setting
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => window.CyberpunkAgent?.instance?._updateFloatingButton()
+});
+
+game.settings.register('cyberpunk-agent', 'enableAgentHotkey', {
+    name: 'Enable Agent Hotkey',
+    hint: 'Use Ctrl+P to open your Agent device',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: true
+});
+
+game.settings.register('cyberpunk-agent', 'showTokenHUDButton', {
+    name: 'Show Agent Button on Token HUD',
+    hint: 'Display Agent button when right-clicking tokens',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: true
+});
+```
+
+| Setting | Scope | Default | Controls |
+|---------|-------|---------|----------|
+| `showFloatingButton` | client | `true` | FAB visibility |
+| `enableAgentHotkey` | client | `true` | Ctrl+P functionality |
+| `showTokenHUDButton` | client | `true` | Token HUD button |
 
 ---
 
@@ -502,6 +553,9 @@ _addFloatingAgentButton() {
     // Remove existing
     $('#cyberpunk-agent-fab').remove();
     
+    // Check if setting is enabled
+    if (!game.settings.get('cyberpunk-agent', 'showFloatingButton')) return;
+    
     const equippedAgents = this.getEquippedAgentsForUser();
     if (equippedAgents.length === 0 && !game.user.isGM) return;
     
@@ -511,7 +565,7 @@ _addFloatingAgentButton() {
         </div>
     `);
     
-    fab.on('click', () => this.openAgentInterface());  // Shows dialog if multiple
+    fab.on('click', () => this.openAgentInterface());  // Shows dialog if multiple (always for GM)
     $('body').append(fab);
 }
 ```
@@ -535,9 +589,12 @@ _addFloatingAgentButton() {
 }
 ```
 
-**Behavior:** Click → If 1 agent, opens it. If multiple, shows selection dialog.
-**Pros:** Always visible, cyberpunk aesthetic
-**Cons:** Takes screen space, might conflict with other modules
+**Behavior:** 
+- Player with 1 agent → opens directly
+- Player with multiple agents → shows selection dialog
+- **GM → always shows selection dialog** (sees all devices in world)
+
+**Toggleable:** `showFloatingButton` setting (default: on)
 
 ---
 
@@ -552,16 +609,22 @@ Hooks.once('init', () => {
         hint: 'Opens your equipped Agent device',
         editable: [{ key: 'KeyP', modifiers: ['Control'] }],  // Ctrl+P
         onDown: () => {
-            window.CyberpunkAgent?.instance?.openAgentInterface();  // Shows dialog if multiple
+            // Check if setting is enabled
+            if (!game.settings.get('cyberpunk-agent', 'enableAgentHotkey')) return false;
+            
+            window.CyberpunkAgent?.instance?.openAgentInterface();  // Shows dialog if multiple/GM
             return true;
         }
     });
 });
 ```
 
-**Behavior:** Ctrl+P → If 1 agent, opens it. If multiple, shows selection dialog.
-**Pros:** No UI clutter, power-user friendly
-**Cons:** Not discoverable, users need to know the key
+**Behavior:** 
+- Player with 1 agent → opens directly
+- Player with multiple agents → shows selection dialog
+- **GM → always shows selection dialog** (sees all devices in world)
+
+**Toggleable:** `enableAgentHotkey` setting (default: on)
 
 ---
 
@@ -571,10 +634,14 @@ Add Agent button to token HUD (right-click menu):
 
 ```javascript
 Hooks.on('renderTokenHUD', (hud, html, data) => {
+    // Check if setting is enabled
+    if (!game.settings.get('cyberpunk-agent', 'showTokenHUDButton')) return;
+    
     const token = hud.object;
     const actor = token.actor;
     
-    if (!actor?.isOwner) return;
+    // GM can access any token's agent, players only their own
+    if (!game.user.isGM && !actor?.isOwner) return;
     
     const hasAgent = this._actorHasEquippedAgent(actor);
     if (!hasAgent) return;
@@ -585,7 +652,7 @@ Hooks.on('renderTokenHUD', (hud, html, data) => {
         </div>
     `);
     
-    // Opens Agent for THIS specific actor - no dialog needed
+    // Opens Agent for THIS specific actor - explicit, no dialog needed
     button.on('click', () => {
         this.openAgentForActor(actor.id);
     });
@@ -594,9 +661,12 @@ Hooks.on('renderTokenHUD', (hud, html, data) => {
 });
 ```
 
-**Behavior:** Contextual - opens Agent for the specific token's actor, no selection dialog needed.
-**Pros:** Contextual (appears on token), intuitive for that actor
-**Cons:** Requires token on scene, right-click to access
+**Behavior:** 
+- Opens Agent for the specific token's actor directly (explicit context)
+- No selection dialog needed - the token provides the context
+- **GM can access any token's agent** (useful for NPC agents)
+
+**Toggleable:** `showTokenHUDButton` setting (default: on)
 
 ---
 
@@ -632,19 +702,22 @@ async updateTokenControls() {
 
 ### Recommendation
 
-**Phase 1 (Quick):**
-- Fix existing toolbar refresh issue
-- Add hotkey binding (Ctrl+P or configurable) - low effort, high discoverability in settings
-
-**Phase 2 (Better UX):**
-- Add FAB as optional setting (disabled by default)
-- Add Token HUD button for contextual access
+**All three UX options (FAB, Hotkey, Token HUD) are toggleable per-player, default ON.**
 
 **Implementation Order:**
-1. Fix toolbar refresh (existing code fix)
-2. Add keybinding (low effort, high value)
-3. Add Token HUD button (contextual, actor-specific)
-4. Add FAB as optional feature (medium effort)
+1. Fix toolbar refresh (existing code fix, no setting needed)
+2. Register 3 new client-scoped settings
+3. Add keybinding with setting check
+4. Add Token HUD hook with setting check
+5. Add FAB with setting check and onChange handler
+
+**Settings Summary:**
+
+| Setting | Scope | Default | GM Behavior |
+|---------|-------|---------|-------------|
+| `showFloatingButton` | client | `true` | Always shows selection (all devices) |
+| `enableAgentHotkey` | client | `true` | Always shows selection (all devices) |
+| `showTokenHUDButton` | client | `true` | Can access any token's agent |
 
 ---
 
