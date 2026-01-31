@@ -2719,13 +2719,17 @@ class CyberpunkAgent {
      */
     addControlButton(controls) {
         try {
+            console.log("Cyberpunk Agent | addControlButton called");
+            
             // Safety check: ensure controls is an array
             if (!Array.isArray(controls)) {
+                console.log("Cyberpunk Agent | controls is not an array, returning");
                 return;
             }
 
             // Ensure device data is loaded (synchronous operation)
             if (!this.devices || this.devices.size === 0) {
+                console.log("Cyberpunk Agent | Loading device data...");
                 this.loadDeviceData();
             }
 
@@ -2733,6 +2737,7 @@ class CyberpunkAgent {
             const tokenControl = controls.find(control => control.name === "token");
 
             if (!tokenControl) {
+                console.log("Cyberpunk Agent | No token control found, returning");
                 return;
             }
 
@@ -2741,46 +2746,38 @@ class CyberpunkAgent {
                 tokenControl.tools = [];
             }
 
-            // Check if button already exists and has a working onClick
-            const existingButton = tokenControl.tools.find(tool => tool.name === "agent");
-            if (existingButton && typeof existingButton.onClick === 'function') {
-                // Button already exists and is functional, skip re-adding
-                return;
-            }
-
-            // Remove any existing agent tools first to prevent duplicates
-            tokenControl.tools = tokenControl.tools.filter(tool => tool.name !== "agent");
-
-            // Always add a single button that handles everything in onClick
-            // This makes the hook synchronous and the async work happens on click
-            if (game.user.isGM) {
-                // GM: Always show button (can access all devices)
-                tokenControl.tools.push({
-                    name: "agent",
-                    title: "Agent",
-                    icon: "fas fa-mobile-alt",
-                    onClick: () => {
-                        console.log("Cyberpunk Agent | GM toolbar button clicked");
-                        this.openAgentInterface();
-                    }
-                });
-            } else {
-                // Player: Show button if there are any devices (they'll get filtered on click)
-                // Or if device data isn't loaded yet (button will check on click)
-                const hasDevices = this.devices && this.devices.size > 0;
+            // Check if button already exists
+            const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "agent");
+            console.log("Cyberpunk Agent | Existing button index:", existingButtonIndex);
+            
+            if (existingButtonIndex !== -1) {
+                const existingButton = tokenControl.tools[existingButtonIndex];
+                console.log("Cyberpunk Agent | Existing button onClick type:", typeof existingButton.onClick);
                 
-                // Always add button for players - the openAgentInterface will show
-                // an appropriate message if no devices are found
-                tokenControl.tools.push({
-                    name: "agent",
-                    title: "Agent",
-                    icon: "fas fa-mobile-alt",
-                    onClick: () => {
-                        console.log("Cyberpunk Agent | Player toolbar button clicked");
-                        this.openAgentInterface();
-                    }
-                });
+                // Always remove and re-add to ensure onClick is fresh
+                tokenControl.tools.splice(existingButtonIndex, 1);
             }
+
+            // Store reference to this for the closure
+            const agentInstance = this;
+            
+            // Create the button with a fresh onClick handler
+            const agentButton = {
+                name: "agent",
+                title: "Agent",
+                icon: "fas fa-mobile-alt",
+                onClick: function() {
+                    console.log("Cyberpunk Agent | *** BUTTON CLICKED ***");
+                    console.log("Cyberpunk Agent | agentInstance:", agentInstance);
+                    console.log("Cyberpunk Agent | game.user.isGM:", game.user.isGM);
+                    agentInstance.openAgentInterface();
+                }
+            };
+            
+            console.log("Cyberpunk Agent | Adding button with onClick:", typeof agentButton.onClick);
+            tokenControl.tools.push(agentButton);
+            console.log("Cyberpunk Agent | Button added, tools count:", tokenControl.tools.length);
+            
         } catch (error) {
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
         }
@@ -12411,9 +12408,10 @@ Hooks.once('ready', () => {
             }
         });
 
-        // Hook for when the controls toolbar is built (defensive against other module errors)
+        // Hook for when the controls toolbar is built - this is the MAIN hook for adding buttons
         Hooks.on('getSceneControlButtons', (controls) => {
             try {
+                console.log("Cyberpunk Agent | getSceneControlButtons hook fired");
                 if (CyberpunkAgent.instance && controls) {
                     CyberpunkAgent.instance.addControlButton(controls);
                 }
@@ -12422,66 +12420,32 @@ Hooks.once('ready', () => {
             }
         });
 
-        // Hook to refresh controls when scene controls are rendered
-        Hooks.on('renderSceneControls', (sceneControls, html, data) => {
-            try {
-                if (CyberpunkAgent.instance) {
-                    // Simply ensure our button is in the controls without re-initializing
-                    setTimeout(() => {
-                        if (ui.controls && ui.controls.controls) {
-                            CyberpunkAgent.instance.addControlButton(ui.controls.controls);
-                        }
-                    }, 50);
-                }
-            } catch (error) {
-                console.error("Cyberpunk Agent | Error in renderSceneControls hook:", error);
-            }
-        });
+        // NOTE: Removed renderSceneControls hook - it was causing duplicate calls
+        // The getSceneControlButtons hook is sufficient for adding our button
 
         // Hook to ensure button appears when canvas is ready (fixes initial load issue)
         Hooks.on('canvasReady', () => {
             try {
+                console.log("Cyberpunk Agent | canvasReady hook fired");
                 if (CyberpunkAgent.instance) {
-                    // Aggressive fallback: ensure button appears even if other modules break getSceneControlButtons
+                    // Ensure device data is loaded
+                    CyberpunkAgent.instance.loadDeviceData();
+                    
+                    // Force re-render of controls to pick up our button
                     setTimeout(() => {
-                        CyberpunkAgent.instance.forceAddTokenControlButton();
-                    }, 1000);
+                        if (ui.controls) {
+                            console.log("Cyberpunk Agent | Forcing controls re-render from canvasReady");
+                            ui.controls.initialize();
+                        }
+                    }, 500);
                 }
             } catch (error) {
                 console.error("Cyberpunk Agent | Error in canvasReady hook:", error);
             }
         });
 
-        // Hook for when token layer is activated (when user switches to token controls)
-        Hooks.on('activateTokensLayer', () => {
-            try {
-                if (CyberpunkAgent.instance && ui.controls && ui.controls.controls) {
-                    // This runs when user switches to token controls
-                    setTimeout(() => {
-                        CyberpunkAgent.instance.addControlButton(ui.controls.controls);
-                        ui.controls.render();
-                    }, 50);
-                }
-            } catch (error) {
-                console.error("Cyberpunk Agent | Error in activateTokensLayer hook:", error);
-            }
-        });
-
-        // Additional hook for when controls are actually rendered (backup)
-        Hooks.on('renderApplication', (app, html, data) => {
-            try {
-                if (app.constructor.name === 'SceneControls' && CyberpunkAgent.instance) {
-                    // Small delay to ensure the controls are fully rendered
-                    setTimeout(() => {
-                        if (ui.controls && ui.controls.controls) {
-                            CyberpunkAgent.instance.addControlButton(ui.controls.controls);
-                        }
-                    }, 100);
-                }
-            } catch (error) {
-                // Silent fail for this backup hook
-            }
-        });
+        // NOTE: Removed activateTokensLayer hook - was causing issues with button onClick being lost
+        // NOTE: Removed renderApplication hook for SceneControls - was redundant and causing race conditions
 
         // Hook for settings changes (backup for real-time updates)
 
