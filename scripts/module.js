@@ -272,7 +272,11 @@ class SmartNotificationManager {
             const senderDevice = window.CyberpunkAgent?.instance?.devices?.get(message.senderId);
             const senderName = senderDevice?.ownerName || senderDevice?.deviceName || 'Unknown';
 
-            this.showNotificationBanner(senderName, message.text);
+            // Show toast banner only if enabled in settings
+            const toastEnabled = game.settings?.get('cyberpunk-agent', 'toast-notifications') ?? true;
+            if (toastEnabled) {
+                this.showNotificationBanner(senderName, message.text);
+            }
 
             // Use the main CyberpunkAgent notification sound system
             if (window.CyberpunkAgent?.instance) {
@@ -11463,6 +11467,8 @@ class CyberpunkAgent {
 
     /**
      * Show UI notification for new messages if contact is not muted and not for active conversation
+     * Note: This is now primarily used for the sound notification path.
+     * The detailed toast is handled by SmartNotificationManager.showNotificationBanner()
      */
     showMessageNotification(senderId = null, receiverId = null) {
         try {
@@ -11499,9 +11505,10 @@ class CyberpunkAgent {
                 }
             }
 
-            // Show UI notification
-            ui.notifications.info("Você tem uma nova mensagem no seu Agente.");
-            console.log("Cyberpunk Agent | UI notification displayed");
+            // Note: Generic toast removed - SmartNotificationManager provides detailed "(Chat7)" toast
+            // The toast is now shown by SmartNotificationManager.showNotificationBanner()
+            // which includes sender name and message preview
+            console.log("Cyberpunk Agent | Toast notification path checked (detailed toast handled by SmartNotificationManager)");
         } catch (error) {
             console.error("Cyberpunk Agent | Error showing message notification:", error);
         }
