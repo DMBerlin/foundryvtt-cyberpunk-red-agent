@@ -77,6 +77,17 @@ class AgentApplication extends FormApplication {
   }
 
   /**
+   * Override close to clear active conversation
+   */
+  async close(options = {}) {
+    // Clear active conversation when window closes
+    if (window.CyberpunkAgent?.instance) {
+      window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
+    }
+    return super.close(options);
+  }
+
+  /**
    * Default options for the application
    */
   static get defaultOptions() {
@@ -638,7 +649,6 @@ class AgentApplication extends FormApplication {
     // Clear active conversation when closing
     if (window.CyberpunkAgent && window.CyberpunkAgent.instance) {
       window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
-      console.log(`AgentApplication | Cleared active conversation on close for user ${game.user.id}`);
     }
 
     // Remove event listeners to prevent memory leaks and unwanted behavior
@@ -690,13 +700,10 @@ class AgentApplication extends FormApplication {
           this.device.id,
           contact.id
         );
-        console.log(`AgentApplication | Registered active conversation: ${this.device.id} -> ${contact.id}`);
 
         // Sync with server before opening conversation to ensure all messages are up to date
-        console.log(`AgentApplication | Syncing device ${this.device.id} with server before opening conversation`);
         try {
           await window.CyberpunkAgent.instance.syncMessagesWithServer(this.device.id);
-          console.log(`AgentApplication | Server sync completed for device ${this.device.id}`);
         } catch (error) {
           console.error(`AgentApplication | Error syncing with server:`, error);
         }
@@ -800,6 +807,15 @@ class AgentApplication extends FormApplication {
     if (!this.currentContact) {
       console.error("AgentApplication | No contact specified for conversation view");
       return;
+    }
+
+    // Set active conversation for notification suppression
+    if (window.CyberpunkAgent?.instance && this.device?.id && this.currentContact?.id) {
+      window.CyberpunkAgent.instance.registerActiveConversation(
+        game.user.id,
+        this.device.id,
+        this.currentContact.id
+      );
     }
 
     // Load fresh data only once to prevent loops

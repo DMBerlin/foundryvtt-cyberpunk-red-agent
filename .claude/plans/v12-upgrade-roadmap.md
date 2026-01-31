@@ -109,7 +109,7 @@ Current UIController uses single update type, forcing full re-renders.
 
 ---
 
-## Phase 4: Chat Notifications Feature (Priority: 🟡 High) - ✅ COMPLETE
+## Phase 4: Chat Notifications Feature (Priority: 🟡 High) - 🔄 IN PROGRESS
 
 ### Problem
 Users want optional FoundryVTT chat notifications for Agent messages.
@@ -119,20 +119,38 @@ Users want optional FoundryVTT chat notifications for Agent messages.
 - [x] Default: false (opt-in)
 - [x] Add localization keys
 
-### 4.2 Implement Notification Function - ✅ DONE
+### 4.2 Add Sound and Toast Settings - ✅ DONE
+- [x] Register `notification-sound` setting (scope: 'client', default: true)
+- [x] Register `toast-notifications` setting (scope: 'client', default: true)
+- [x] Migrated from localStorage to game.settings for sound toggle
+
+### 4.3 Implement Notification Function - ✅ DONE
 - [x] Add `_sendPlayerChatNotifications()` method
 - [x] Create whispered ChatMessage to current user only
 - [x] Truncate message preview to 50 chars
-- [x] Use different icons for sent (📤) vs received (📥)
+- [x] Show From → To format for both sender and receiver info
 
-### 4.3 Hook into Message Flow - ✅ DONE
-- [x] Call from `_sendMessageTrackingNotifications()`
+### 4.4 Hook into Message Flow - ✅ DONE
+- [x] Call from `handleDeviceMessageUpdate()` on receiver side
 - [x] Check per-user setting before sending
-- [x] Works for both sender and receiver
+- [x] Trigger `handleNewMessageNotifications()` for sound and toast
+- [x] Deduplication to prevent duplicate notifications
 
-### 4.4 Add CSS Styling - ✅ DONE
+### 4.5 Add CSS Styling - ✅ DONE
 - [x] Add `.cyberpunk-agent-chat-notification` styles
-- [x] Match cyberpunk aesthetic (neon cyan, dark background)
+- [x] Cyberpunk 2077 aesthetic (yellow accent, cyan/magenta names)
+- [x] Neon glow effects
+
+### 4.6 Active Conversation Suppression - ✅ DONE
+- [x] Call `setActiveConversation()` when opening conversation view
+- [x] Call `clearActiveConversation()` when navigating away or closing window
+- [x] Sound/toast only trigger for messages NOT in active conversation
+
+### 4.7 Testing
+- [ ] Verify sound does NOT play when conversation is open
+- [ ] Verify sound DOES play when message is from different contact
+- [ ] Verify toast notification displays when enabled
+- [ ] Verify all three notification types can be toggled independently
 
 ---
 

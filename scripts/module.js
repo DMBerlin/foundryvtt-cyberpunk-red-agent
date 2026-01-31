@@ -2326,6 +2326,26 @@ class CyberpunkAgent {
             default: false
         });
 
+        // Notification sound setting (client-scoped, enabled by default)
+        game.settings.register('cyberpunk-agent', 'notification-sound', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.NOTIFICATION_SOUND.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
+        // Toast notification setting (client-scoped, enabled by default)
+        game.settings.register('cyberpunk-agent', 'toast-notifications', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.TOAST_NOTIFICATIONS.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.TOAST_NOTIFICATIONS.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
 
         // Register a custom settings menu for GM Chat7 Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
@@ -6434,15 +6454,13 @@ class CyberpunkAgent {
      * Send chat notification for received messages (per-user opt-in)
      * Works for both players and GM
      */
-    async _sendPlayerChatNotification(senderName, text) {
+    async _sendPlayerChatNotification(senderName, receiverName, text) {
         try {
-            console.log("Cyberpunk Agent | _sendPlayerChatNotification called with sender:", senderName);
+            console.log("Cyberpunk Agent | _sendPlayerChatNotification called:", senderName, "->", receiverName);
             
             // Check if current user has notifications enabled
             const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
-            console.log("Cyberpunk Agent | Notifications enabled:", notificationsEnabled);
             if (!notificationsEnabled) {
-                console.log("Cyberpunk Agent | Notifications disabled, skipping");
                 return;
             }
 
@@ -6453,23 +6471,23 @@ class CyberpunkAgent {
             const content = `
                 <div class="cyberpunk-agent-chat-notification">
                     <div class="notification-header">
-                        <span class="notification-icon">📥</span>
-                        <strong>New Message</strong>
+                        <span class="notification-icon">◈</span>
+                        <span class="notification-title">INCOMING TRANSMISSION</span>
                     </div>
-                    <div class="notification-party">
-                        <span class="party-label">From:</span>
-                        <span class="party-name">${senderName}</span>
+                    <div class="notification-route">
+                        <span class="route-from">${senderName}</span>
+                        <span class="route-arrow">▸</span>
+                        <span class="route-to">${receiverName}</span>
                     </div>
-                    <div class="notification-preview">"${preview}"</div>
+                    <div class="notification-preview">${preview}</div>
                 </div>
             `;
 
-            console.log("Cyberpunk Agent | Creating chat notification...");
             await ChatMessage.create({
                 user: game.user.id,
-                speaker: { alias: "Agent" },
+                speaker: { alias: "AGENT" },
                 content: content,
-                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+                style: CONST.CHAT_MESSAGE_STYLES.OTHER,
                 whisper: [game.user.id],
                 flags: {
                     'cyberpunk-agent': {
@@ -6477,8 +6495,6 @@ class CyberpunkAgent {
                     }
                 }
             });
-
-            console.log("Cyberpunk Agent | Player chat notification sent successfully");
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error sending player chat notification:", error);
@@ -10074,6 +10090,14 @@ class CyberpunkAgent {
             return;
         }
 
+        // Extract nested data if present (data may be wrapped in data.data)
+        const messageData = data.data || data;
+        const senderId = messageData.senderId || data.senderId;
+        const receiverId = messageData.receiverId || data.receiverId;
+        const message = messageData.message || data.message;
+
+        console.log("Cyberpunk Agent | Extracted: senderId=", senderId, "receiverId=", receiverId, "message=", message);
+
         // Check if this is a recent update to avoid duplicates
         const now = Date.now();
         const timeDiff = now - data.timestamp;
@@ -10083,7 +10107,7 @@ class CyberpunkAgent {
         }
 
         // Add debouncing to prevent rapid message processing
-        const messageKey = `${data.senderId}-${data.receiverId}-${data.message?.id}`;
+        const messageKey = `${senderId}-${receiverId}-${message?.id}`;
         let messageAlreadyProcessed = false;
         if (this._processedMessages && this._processedMessages.has(messageKey)) {
             console.log("Cyberpunk Agent | Message already processed, but will still trigger UI update");
@@ -10101,12 +10125,12 @@ class CyberpunkAgent {
         }
 
         // If we have message data and not already processed, add it to the device conversation locally
-        if (!messageAlreadyProcessed && data.message && data.senderId && data.receiverId) {
-            console.log("Cyberpunk Agent | Adding device message to local conversation:", data.message);
+        if (!messageAlreadyProcessed && message && senderId && receiverId) {
+            console.log("Cyberpunk Agent | Adding device message to local conversation:", message);
 
             try {
                 // Get the device-specific conversation key from the receiver's perspective
-                const conversationKey = this._getDeviceSpecificConversationKey(data.receiverId, data.senderId);
+                const conversationKey = this._getDeviceSpecificConversationKey(receiverId, senderId);
 
                 // Get or create conversation
                 if (!this.messages.has(conversationKey)) {
@@ -10116,15 +10140,15 @@ class CyberpunkAgent {
                 const conversation = this.messages.get(conversationKey);
 
                 // Check if message already exists to avoid duplicates
-                const messageExists = conversation.some(msg => msg.id === data.message.id);
+                const messageExists = conversation.some(msg => msg.id === message.id);
                 if (!messageExists) {
                     // Add the message
-                    conversation.push(data.message);
+                    conversation.push(message);
 
                     // Save messages for both sender and receiver devices
-                    await this.saveMessagesForDevice(data.senderId);
-                    if (data.senderId !== data.receiverId) {
-                        await this.saveMessagesForDevice(data.receiverId);
+                    await this.saveMessagesForDevice(senderId);
+                    if (senderId !== receiverId) {
+                        await this.saveMessagesForDevice(receiverId);
                     }
                     console.log("Cyberpunk Agent | Device message added to local conversation successfully");
                 } else {
@@ -10133,44 +10157,46 @@ class CyberpunkAgent {
 
                 // Ensure contacts are added automatically for both sender and receiver
                 // This is important for player-to-player communication
-                if (!this.isDeviceContact(data.senderId, data.receiverId)) {
-                    console.log(`Cyberpunk Agent | Auto-adding ${data.receiverId} to ${data.senderId} contacts via device message update`);
-                    this.addContactToDevice(data.senderId, data.receiverId);
+                if (!this.isDeviceContact(senderId, receiverId)) {
+                    console.log(`Cyberpunk Agent | Auto-adding ${receiverId} to ${senderId} contacts via device message update`);
+                    this.addContactToDevice(senderId, receiverId);
                 }
 
-                if (!this.isDeviceContact(data.receiverId, data.senderId)) {
-                    console.log(`Cyberpunk Agent | Auto-adding ${data.senderId} to ${data.receiverId} contacts via device message update`);
-                    this.addContactToDevice(data.receiverId, data.senderId);
+                if (!this.isDeviceContact(receiverId, senderId)) {
+                    console.log(`Cyberpunk Agent | Auto-adding ${senderId} to ${receiverId} contacts via device message update`);
+                    this.addContactToDevice(receiverId, senderId);
                 }
 
             } catch (error) {
                 console.error("Cyberpunk Agent | Error adding device message to local conversation:", error);
             }
-        } else if (!messageAlreadyProcessed) {
-            // Fallback: reload device data from settings (only if not already processed)
+        } else if (!messageAlreadyProcessed && !message) {
+            // Fallback: reload device data from settings (only if not already processed and no message)
             console.log("Cyberpunk Agent | No device message data provided, reloading from settings");
             this.loadDeviceData();
             this.loadMessages();
         }
 
         // Clear unread count cache for this device conversation to force recalculation
-        const unreadCacheKey = this._getDeviceSpecificConversationKey(data.receiverId, data.senderId);
-        console.log("Cyberpunk Agent | Clearing unread count cache for key:", unreadCacheKey);
-        this.unreadCounts.delete(unreadCacheKey);
+        if (senderId && receiverId) {
+            const unreadCacheKey = this._getDeviceSpecificConversationKey(receiverId, senderId);
+            console.log("Cyberpunk Agent | Clearing unread count cache for key:", unreadCacheKey);
+            this.unreadCounts.delete(unreadCacheKey);
+        }
 
         // Force immediate UI updates using multiple strategies
         console.log("Cyberpunk Agent | Triggering immediate UI updates for device message update");
 
         // Use safe message sync handling to prevent DOM conflicts
-        this._handleMessageSyncSafely(data.senderId, data.receiverId);
+        this._handleMessageSyncSafely(senderId, receiverId);
 
         // Strategy 1: Use UI Controller if available
-        if (window.CyberpunkAgentUIController) {
-            const conversationComponentId = `agent-conversation-${data.senderId}-${data.receiverId}`;
-            const reverseConversationComponentId = `agent-conversation-${data.receiverId}-${data.senderId}`;
+        if (window.CyberpunkAgentUIController && senderId && receiverId) {
+            const conversationComponentId = `agent-conversation-${senderId}-${receiverId}`;
+            const reverseConversationComponentId = `agent-conversation-${receiverId}-${senderId}`;
             const chat7ComponentIds = [
-                `agent-chat7-${data.senderId}`,
-                `agent-chat7-${data.receiverId}`
+                `agent-chat7-${senderId}`,
+                `agent-chat7-${receiverId}`
             ];
 
             // Mark conversation components as dirty with 'newMessage' type for incremental update
@@ -10196,15 +10222,15 @@ class CyberpunkAgent {
         this.updateOpenInterfaces();
 
         // Strategy 4: Force Chat7 interfaces to refresh unread counts specifically
-        this._forceChat7UnreadCountUpdate(data.senderId, data.receiverId);
+        this._forceChat7UnreadCountUpdate(senderId, receiverId);
 
         // Strategy 5: Dispatch custom event for backward compatibility
         document.dispatchEvent(new CustomEvent('cyberpunk-agent-update', {
             detail: {
                 timestamp: Date.now(),
                 type: 'deviceMessageUpdate',
-                senderId: data.senderId,
-                receiverId: data.receiverId
+                senderId: senderId,
+                receiverId: receiverId
             }
         }));
 
@@ -10214,18 +10240,18 @@ class CyberpunkAgent {
             detail: {
                 timestamp: Date.now(),
                 type: 'contactUpdate',
-                deviceId: data.receiverId,
-                contactDeviceId: data.senderId,
+                deviceId: receiverId,
+                contactDeviceId: senderId,
                 action: 'auto-add',
                 reason: 'message-received',
                 force: true
             }
         }));
 
-        // Send player chat notification (receiver only, if enabled)
+        // Play notification sound and show toast (receiver only, if enabled and not active conversation)
         // Use separate deduplication for notifications to avoid duplicates
-        if (data.message?.text) {
-            const notificationKey = `notification-${data.message.id}`;
+        if (message?.text && senderId && receiverId) {
+            const notificationKey = `notification-${message.id}`;
             if (!this._processedNotifications) {
                 this._processedNotifications = new Set();
             }
@@ -10236,10 +10262,16 @@ class CyberpunkAgent {
                     const keysArray = Array.from(this._processedNotifications);
                     this._processedNotifications = new Set(keysArray.slice(-25));
                 }
-                // Get sender device info to show sender name
-                const senderDevice = this.devices.get(data.senderId);
+
+                // Trigger sound and toast notifications (respects active conversation check)
+                this.handleNewMessageNotifications(senderId, receiverId);
+
+                // Get sender and receiver device info for chat notification
+                const senderDevice = this.devices.get(senderId);
+                const receiverDevice = this.devices.get(receiverId);
                 const senderName = senderDevice?.ownerName || data.userName || 'Unknown';
-                await this._sendPlayerChatNotification(senderName, data.message.text);
+                const receiverName = receiverDevice?.ownerName || 'Unknown';
+                await this._sendPlayerChatNotification(senderName, receiverName, message.text);
             }
         }
 
@@ -11074,20 +11106,26 @@ class CyberpunkAgent {
                 return null;
             }
 
-            // Find the user who owns this actor
+            // Find the actor
             const actor = game.actors.get(device.ownerActorId);
             if (!actor) {
                 return null;
             }
 
-            // Find the user who owns this actor
+            // Find the user who owns this actor - prioritize non-GM users
             const users = Array.from(game.users.values());
-            const owner = users.find(user => user.character && user.character.id === device.ownerActorId);
+            
+            // First, try to find a player whose character is this actor
+            let owner = users.find(user => !user.isGM && user.character && user.character.id === device.ownerActorId);
+            
+            if (!owner) {
+                // If no direct character ownership, check if a non-GM user has OWNER permission
+                owner = users.find(user => !user.isGM && actor.testUserPermission(user, 'OWNER'));
+            }
 
             if (!owner) {
-                // If no direct character ownership, check if user has ownership of the actor
-                const owner = users.find(user => actor.testUserPermission(user, 'OWNER'));
-                return owner;
+                // Fallback: check GM ownership (GM can own any actor)
+                owner = users.find(user => user.isGM && actor.testUserPermission(user, 'OWNER'));
             }
 
             return owner;
@@ -11121,8 +11159,8 @@ class CyberpunkAgent {
      */
     playNotificationSound(senderId = null, receiverId = null, type = 'chat7') {
         try {
-            // Check if notification sounds are enabled in localStorage (default to true)
-            const soundEnabled = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+            // Check if notification sounds are enabled in game settings (default to true)
+            const soundEnabled = game.settings.get('cyberpunk-agent', 'notification-sound');
 
             if (!soundEnabled) {
                 console.log("Cyberpunk Agent | Notification sounds disabled by user");
@@ -11174,6 +11212,14 @@ class CyberpunkAgent {
      */
     showMessageNotification(senderId = null, receiverId = null) {
         try {
+            // Check if toast notifications are enabled in game settings (default to true)
+            const toastEnabled = game.settings.get('cyberpunk-agent', 'toast-notifications');
+
+            if (!toastEnabled) {
+                console.log("Cyberpunk Agent | Toast notifications disabled by user");
+                return;
+            }
+
             // If we have sender and receiver IDs, check if the contact is muted
             if (senderId && receiverId) {
                 // Check if this is a device conversation (device IDs contain hyphens)
@@ -11218,14 +11264,14 @@ class CyberpunkAgent {
     }
 
     /**
-     * Toggle notification sounds on/off
+     * Toggle notification sounds on/off (uses game settings)
      */
-    toggleNotificationSounds() {
+    async toggleNotificationSounds() {
         try {
-            const currentSetting = localStorage.getItem('cyberpunk-agent-notification-sound') !== 'false';
+            const currentSetting = game.settings.get('cyberpunk-agent', 'notification-sound');
             const newSetting = !currentSetting;
 
-            localStorage.setItem('cyberpunk-agent-notification-sound', newSetting.toString());
+            await game.settings.set('cyberpunk-agent', 'notification-sound', newSetting);
 
             console.log(`Cyberpunk Agent | Notification sounds ${newSetting ? 'enabled' : 'disabled'}`);
             ui.notifications.info(`Notificações sonoras ${newSetting ? 'ativadas' : 'desativadas'}!`);

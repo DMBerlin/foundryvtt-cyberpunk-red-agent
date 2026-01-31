@@ -40,8 +40,14 @@
     },
     "SETTINGS": {
       "TITLE": "Cyberpunk Agent Settings",
-      "NOTIFICATION_SOUND": "Notification Sound",
-      "NOTIFICATION_SOUND_HINT": "Play a sound when you receive a new message",
+      "NOTIFICATION_SOUND": {
+        "NAME": "Notification Sound",
+        "HINT": "Play a sound when you receive a new Agent message"
+      },
+      "TOAST_NOTIFICATIONS": {
+        "NAME": "Toast Notifications",
+        "HINT": "Show a toast notification popup when you receive a new Agent message"
+      },
       "PLAYER_CHAT_NOTIFICATIONS": {
         "NAME": "Show Agent Notifications in Chat",
         "HINT": "Display a notification in Foundry chat when you send or receive an Agent message"
