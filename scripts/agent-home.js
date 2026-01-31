@@ -29,12 +29,47 @@ class AgentApplication extends FormApplication {
     };
     this.componentId = `agent-${device.id}`;
     this._savedUIState = null; // For preserving scroll position across renders
+    this._conversationScrollPositions = new Map(); // Persist scroll positions per conversation
+    this._userSentMessage = false; // Flag: user just sent a message, scroll to bottom
     console.log("AgentApplication constructor called with device:", device);
   }
 
   /**
-   * Capture UI state before re-render (scroll position, focus)
-   * @returns {Object} State object with scroll and focus info
+   * Get conversation key for scroll position storage
+   */
+  _getConversationKey() {
+    if (!this.currentContact?.id) return null;
+    return `${this.device.id}-${this.currentContact.id}`;
+  }
+
+  /**
+   * Save current scroll position for the current conversation
+   */
+  _saveScrollPosition() {
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    const key = this._getConversationKey();
+    if (container && key) {
+      this._conversationScrollPositions.set(key, container.scrollTop);
+    }
+  }
+
+  /**
+   * Restore scroll position for the current conversation
+   * @returns {boolean} true if position was restored, false otherwise
+   */
+  _restoreScrollPosition() {
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    const key = this._getConversationKey();
+    if (container && key && this._conversationScrollPositions.has(key)) {
+      container.scrollTop = this._conversationScrollPositions.get(key);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Capture UI state before re-render (scroll position, input value)
+   * @returns {Object} State object with scroll and input info
    */
   _captureUIState() {
     const container = this.element?.find('.cp-messages-container')?.[0];
@@ -42,11 +77,11 @@ class AgentApplication extends FormApplication {
     
     if (!container) return null;
     
+    // Also save to persistent storage
+    this._saveScrollPosition();
+    
     return {
       scrollTop: container.scrollTop,
-      scrollHeight: container.scrollHeight,
-      clientHeight: container.clientHeight,
-      atBottom: container.scrollTop + container.clientHeight >= container.scrollHeight - 30,
       inputValue: messageInput?.value || '',
       inputFocused: document.activeElement === messageInput
     };
@@ -59,41 +94,29 @@ class AgentApplication extends FormApplication {
   _restoreUIState(state) {
     if (!state) return;
     
-    setTimeout(() => {
-      const container = this.element?.find('.cp-messages-container')?.[0];
-      const messageInput = this.element?.find('.cp-message-input')?.[0];
-      
-      if (container) {
-        if (state.atBottom) {
-          // User was at bottom, scroll to new bottom
-          container.scrollTop = container.scrollHeight;
-        } else {
-          // User was scrolled up, maintain relative position
-          const heightDiff = container.scrollHeight - state.scrollHeight;
-          container.scrollTop = state.scrollTop + heightDiff;
-        }
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    const messageInput = this.element?.find('.cp-message-input')?.[0];
+    
+    if (container) {
+      // Restore exact scroll position - no automatic scrolling
+      container.scrollTop = state.scrollTop;
+    }
+    
+    if (messageInput) {
+      messageInput.value = state.inputValue;
+      if (state.inputFocused) {
+        messageInput.focus();
       }
-      
-      if (messageInput) {
-        messageInput.value = state.inputValue;
-        if (state.inputFocused) {
-          messageInput.focus();
-        }
-      }
-    }, 0);
+    }
   }
 
   /**
-   * Scroll messages container to bottom instantly (no visible animation)
+   * Scroll messages container to bottom instantly (only call when user sends message)
    */
   _scrollToBottom() {
     const container = this.element?.find('.cp-messages-container')?.[0];
     if (container) {
-      // Use scrollTo with instant behavior to avoid visible scrolling animation
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'instant'
-      });
+      container.scrollTop = container.scrollHeight;
     }
   }
 
@@ -898,10 +921,11 @@ class AgentApplication extends FormApplication {
           return;
         }
 
-        // Flag that we want to scroll to bottom after render
-        this._scrollToBottomAfterRender = true;
+        // Capture current scroll position before re-render
+        // This ensures scroll position is preserved when receiving messages
+        this._savedUIState = this._captureUIState();
         
-        // Simple re-render
+        // Re-render to show new message (scroll position will be restored)
         this.render(true);
       }
     };
@@ -986,10 +1010,13 @@ class AgentApplication extends FormApplication {
   _activateConversationListeners(html) {
     console.log("AgentApplication | Activating conversation listeners");
 
-    // Back button
+    // Back button - save scroll position before leaving
     const backButton = html.find('.cp-back-button');
     console.log("AgentApplication | Found back button:", backButton.length);
-    backButton.click(this._onBackClick.bind(this));
+    backButton.click((event) => {
+      this._saveScrollPosition();
+      this._onBackClick(event);
+    });
 
     // Send message button
     const sendButton = html.find('.cp-send-message');
@@ -1017,22 +1044,20 @@ class AgentApplication extends FormApplication {
     zmailLinks.click(this._onZMailLinkClick.bind(this));
 
     // Handle scroll position
-    if (this._savedUIState) {
-      // Restore saved scroll position (from UIController update)
+    if (this._userSentMessage) {
+      // User just sent a message - scroll to bottom to show it
+      this._userSentMessage = false;
+      this._scrollToBottom();
+    } else if (this._savedUIState) {
+      // Re-render with saved state - restore exact position
       this._restoreUIState(this._savedUIState);
       this._savedUIState = null;
-    } else if (this._scrollToBottomAfterRender) {
-      // New message received - scroll to bottom immediately
-      this._scrollToBottomAfterRender = false;
-      this._scrollToBottom();
-    } else {
-      // First render of conversation - set scroll position immediately (no animation)
-      const container = html.find('.cp-messages-container')[0];
-      if (container) {
-        // Set scroll position directly to avoid visible scrolling
-        container.scrollTop = container.scrollHeight;
-      }
+    } else if (this._restoreScrollPosition()) {
+      // Returning to conversation - position restored from persistent storage
+      console.log("AgentApplication | Restored scroll position from storage");
     }
+    // Otherwise: first time opening this conversation, leave scroll at default (top)
+    // This is intentional - no automatic scroll to bottom
 
     console.log("AgentApplication | Conversation listeners activated successfully");
   }
@@ -2348,10 +2373,12 @@ class AgentApplication extends FormApplication {
         if (success) {
           console.log("Cyberpunk Agent | Device message sent successfully");
 
-          // Force immediate conversation refresh after sending and scroll to bottom
+          // Set flag to scroll to bottom after render (user sent message)
+          this._userSentMessage = true;
+          
+          // Force immediate conversation refresh after sending
           setTimeout(() => {
             console.log("AgentApplication | Force refreshing conversation after message sent");
-            this._savedUIState = { atBottom: true, inputValue: '', inputFocused: true };
             this.render(true);
           }, 100);
 
