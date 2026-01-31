@@ -2326,11 +2326,12 @@ class CyberpunkAgent {
         });
 
         // Player chat notification setting (client-scoped, opt-in)
+        // Only show to non-GM users (GM has their own gm-message-tracking setting)
         game.settings.register('cyberpunk-agent', 'player-chat-notifications', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.NAME'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.PLAYER_CHAT_NOTIFICATIONS.HINT'),
             scope: 'client',
-            config: true,
+            config: !game.user?.isGM, // Hide from GM (they have gm-message-tracking)
             type: Boolean,
             default: false
         });
@@ -6448,9 +6449,13 @@ class CyberpunkAgent {
     /**
      * Send player chat notifications (per-user opt-in)
      * Only shows notification to RECEIVER when they receive a message
+     * GM uses gm-message-tracking instead, so skip for GM users
      */
     async _sendPlayerChatNotification(senderName, text) {
         try {
+            // Skip for GM - they have their own gm-message-tracking setting
+            if (game.user.isGM) return;
+
             // Check if current user has notifications enabled
             const notificationsEnabled = game.settings.get('cyberpunk-agent', 'player-chat-notifications');
             if (!notificationsEnabled) return;
