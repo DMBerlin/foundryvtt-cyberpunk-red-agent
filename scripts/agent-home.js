@@ -28,7 +28,71 @@ class AgentApplication extends FormApplication {
       'memo-note': this._renderMemoNoteView.bind(this)
     };
     this.componentId = `agent-${device.id}`;
+    this._savedUIState = null; // For preserving scroll position across renders
     console.log("AgentApplication constructor called with device:", device);
+  }
+
+  /**
+   * Capture UI state before re-render (scroll position, focus)
+   * @returns {Object} State object with scroll and focus info
+   */
+  _captureUIState() {
+    const container = this.element?.find('.cp-messages-container')?.[0];
+    const messageInput = this.element?.find('.cp-message-input')?.[0];
+    
+    if (!container) return null;
+    
+    return {
+      scrollTop: container.scrollTop,
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+      atBottom: container.scrollTop + container.clientHeight >= container.scrollHeight - 30,
+      inputValue: messageInput?.value || '',
+      inputFocused: document.activeElement === messageInput
+    };
+  }
+
+  /**
+   * Restore UI state after re-render
+   * @param {Object} state - State object from _captureUIState
+   */
+  _restoreUIState(state) {
+    if (!state) return;
+    
+    setTimeout(() => {
+      const container = this.element?.find('.cp-messages-container')?.[0];
+      const messageInput = this.element?.find('.cp-message-input')?.[0];
+      
+      if (container) {
+        if (state.atBottom) {
+          // User was at bottom, scroll to new bottom
+          container.scrollTop = container.scrollHeight;
+        } else {
+          // User was scrolled up, maintain relative position
+          const heightDiff = container.scrollHeight - state.scrollHeight;
+          container.scrollTop = state.scrollTop + heightDiff;
+        }
+      }
+      
+      if (messageInput) {
+        messageInput.value = state.inputValue;
+        if (state.inputFocused) {
+          messageInput.focus();
+        }
+      }
+    }, 0);
+  }
+
+  /**
+   * Scroll messages container to bottom
+   */
+  _scrollToBottom() {
+    setTimeout(() => {
+      const container = this.element?.find('.cp-messages-container')?.[0];
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }, 0);
   }
 
   /**
@@ -431,7 +495,10 @@ class AgentApplication extends FormApplication {
         return;
       }
 
-      // Simple re-render without forcing
+      // Capture UI state before re-render (scroll position, input focus)
+      this._savedUIState = this._captureUIState();
+      
+      // Re-render with state preservation
       this.render(true);
     } else if (componentId.includes('chat7')) {
       // Update Chat7 view with force re-render to ensure mute status is updated
@@ -942,6 +1009,15 @@ class AgentApplication extends FormApplication {
     const zmailLinks = html.find('.cp-zmail-link[data-action="open-zmail-link"]');
     console.log("AgentApplication | Found ZMail links:", zmailLinks.length);
     zmailLinks.click(this._onZMailLinkClick.bind(this));
+
+    // Restore UI state if we have saved state (from UIController update)
+    if (this._savedUIState) {
+      this._restoreUIState(this._savedUIState);
+      this._savedUIState = null;
+    } else {
+      // First render of conversation - scroll to bottom
+      this._scrollToBottom();
+    }
 
     console.log("AgentApplication | Conversation listeners activated successfully");
   }
@@ -2257,9 +2333,10 @@ class AgentApplication extends FormApplication {
         if (success) {
           console.log("Cyberpunk Agent | Device message sent successfully");
 
-          // Force immediate conversation refresh after sending
+          // Force immediate conversation refresh after sending and scroll to bottom
           setTimeout(() => {
             console.log("AgentApplication | Force refreshing conversation after message sent");
+            this._savedUIState = { atBottom: true, inputValue: '', inputFocused: true };
             this.render(true);
           }, 100);
 
