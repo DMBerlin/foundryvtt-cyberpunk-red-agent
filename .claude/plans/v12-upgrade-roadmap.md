@@ -452,6 +452,45 @@ Hooks.on('updateItem', (item, changes) => {
 
 ---
 
+### Multi-Actor Selection Behavior
+
+**Current Implementation (Already Working):**
+
+When a user controls multiple actors with equipped Agents, the existing `openAgentInterface()` method handles this gracefully:
+
+```javascript
+// From module.js lines 3554-3582
+async openAgentInterface() {
+    const devices = this.getUserAccessibleDevices();
+    
+    if (devices.length === 0) {
+        ui.notifications.warn("No agent found...");
+        return;
+    }
+    
+    if (devices.length === 1) {
+        // Single device: open directly
+        await this.showAgentHome(devices[0]);
+    } else {
+        // Multiple devices: show selection dialog
+        await this.showEquippedAgentMenu(devices);
+    }
+}
+```
+
+**Selection Dialog (showEquippedAgentMenu):**
+- Shows a dropdown with all equipped Agents
+- Format: `"ActorName: (555) 123-4567"`
+- User selects which Agent to open
+- GM sees ALL devices in the world
+
+**This means:**
+- ✅ Ctrl+P (hotkey) → calls `openAgentInterface()` → shows selection if multiple
+- ✅ FAB click → calls `openAgentInterface()` → shows selection if multiple
+- ✅ Token HUD → opens Agent for THAT specific token's actor (no dialog needed)
+
+---
+
 ### Proposed UX Improvements
 
 #### Option 1: Floating Action Button (FAB)
@@ -472,7 +511,7 @@ _addFloatingAgentButton() {
         </div>
     `);
     
-    fab.on('click', () => this.openAgentInterface());
+    fab.on('click', () => this.openAgentInterface());  // Shows dialog if multiple
     $('body').append(fab);
 }
 ```
@@ -496,6 +535,7 @@ _addFloatingAgentButton() {
 }
 ```
 
+**Behavior:** Click → If 1 agent, opens it. If multiple, shows selection dialog.
 **Pros:** Always visible, cyberpunk aesthetic
 **Cons:** Takes screen space, might conflict with other modules
 
@@ -512,13 +552,14 @@ Hooks.once('init', () => {
         hint: 'Opens your equipped Agent device',
         editable: [{ key: 'KeyP', modifiers: ['Control'] }],  // Ctrl+P
         onDown: () => {
-            window.CyberpunkAgent?.instance?.openAgentInterface();
+            window.CyberpunkAgent?.instance?.openAgentInterface();  // Shows dialog if multiple
             return true;
         }
     });
 });
 ```
 
+**Behavior:** Ctrl+P → If 1 agent, opens it. If multiple, shows selection dialog.
 **Pros:** No UI clutter, power-user friendly
 **Cons:** Not discoverable, users need to know the key
 
@@ -544,6 +585,7 @@ Hooks.on('renderTokenHUD', (hud, html, data) => {
         </div>
     `);
     
+    // Opens Agent for THIS specific actor - no dialog needed
     button.on('click', () => {
         this.openAgentForActor(actor.id);
     });
@@ -552,41 +594,13 @@ Hooks.on('renderTokenHUD', (hud, html, data) => {
 });
 ```
 
-**Pros:** Contextual (appears on token), intuitive
+**Behavior:** Contextual - opens Agent for the specific token's actor, no selection dialog needed.
+**Pros:** Contextual (appears on token), intuitive for that actor
 **Cons:** Requires token on scene, right-click to access
 
 ---
 
-#### Option 4: Actor Sheet Tab
-
-Add an "Agent" tab to the character sheet:
-
-```javascript
-Hooks.on('renderActorSheet', (app, html, data) => {
-    if (!data.actor.isOwner) return;
-    
-    const hasAgent = this._actorHasEquippedAgent(data.actor);
-    if (!hasAgent) return;
-    
-    // Add tab to navigation
-    const tabs = html.find('.sheet-tabs');
-    tabs.append('<a class="item" data-tab="agent"><i class="fas fa-mobile-alt"></i> Agent</a>');
-    
-    // Add tab content
-    const content = html.find('.sheet-body');
-    content.append('<div class="tab agent" data-tab="agent"></div>');
-    
-    // Embed Agent UI in tab
-    // ... render agent interface inline
-});
-```
-
-**Pros:** Integrated with character management
-**Cons:** Complex to embed, may conflict with system sheets
-
----
-
-#### Option 5: Fix Existing Toolbar (Recommended First Step)
+#### Option 4: Fix Existing Toolbar (Recommended First Step)
 
 Force toolbar refresh more aggressively:
 
@@ -620,17 +634,17 @@ async updateTokenControls() {
 
 **Phase 1 (Quick):**
 - Fix existing toolbar refresh issue
-- Add FAB as optional setting (disabled by default)
+- Add hotkey binding (Ctrl+P or configurable) - low effort, high discoverability in settings
 
 **Phase 2 (Better UX):**
-- Add hotkey binding (Ctrl+P or configurable)
+- Add FAB as optional setting (disabled by default)
 - Add Token HUD button for contextual access
 
 **Implementation Order:**
 1. Fix toolbar refresh (existing code fix)
 2. Add keybinding (low effort, high value)
-3. Add FAB as optional feature (medium effort)
-4. Consider Token HUD if users request
+3. Add Token HUD button (contextual, actor-specific)
+4. Add FAB as optional feature (medium effort)
 
 ---
 
@@ -638,7 +652,7 @@ async updateTokenControls() {
 
 | File | Changes |
 |------|---------|
-| `scripts/module.js` | Fix `updateTokenControls()`, add FAB, add keybinding |
+| `scripts/module.js` | Fix `updateTokenControls()`, add FAB, add keybinding, add Token HUD hook |
 | `styles/module.css` | Add FAB styles |
 | `lang/*.json` | Add keybinding labels |
 
