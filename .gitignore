@@ -33,7 +33,6 @@ dev-copy-local.bat
 # IDEs e editores
 .vscode/
 .idea/
-.claude/
 *.swp
 *.swo
 *~

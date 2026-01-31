@@ -36,7 +36,6 @@ foundryvtt-cyberpunk-red-agent/
 │   ├── module.js              # Main module (CyberpunkAgent class, ~12k lines)
 │   ├── agent-home.js          # AgentApplication UI class
 │   ├── socketlib-integration.js # Real-time communication handlers
-│   ├── contact-search.js      # Contact search modal
 │   └── gm-zmail-management.js # GM ZMail management UI
 ├── templates/                 # Handlebars templates
 │   ├── agent-home.html        # Phone home screen
