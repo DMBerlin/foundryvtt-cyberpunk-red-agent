@@ -243,6 +243,407 @@ Use conventional commits:
 
 ---
 
+## Phase 7: Manual Testing Protocol (Priority: 🔴 Critical)
+
+### Prerequisites
+- [ ] Foundry v12 running locally (`make start`)
+- [ ] Module symlinked and active
+- [ ] At least 2 user accounts (GM + Player)
+- [ ] Cyberpunk RED Core system active
+- [ ] SocketLib module installed
+
+### Test 1: Device Creation and Binding
+
+**Setup:**
+1. [ ] Create a new actor (Character type)
+2. [ ] Assign actor ownership to a player user
+
+**Test Steps:**
+1. [ ] Open actor sheet
+2. [ ] Add a new "Gear" item named "Agent" (or containing "agent" in name)
+3. [ ] Verify device is created in registry (check console for "Agent item created")
+4. [ ] Equip the Agent item (set equipped = true)
+5. [ ] Verify phone number is generated
+6. [ ] Check scene controls toolbar for Agent icon
+
+**Expected Results:**
+- Device ID format: `device-{actorId}-{itemId}`
+- Phone number assigned and persisted
+- Toolbar icon appears (may require switching control tabs)
+
+**Known Issue:** Toolbar icon doesn't appear immediately - requires tab switch.
+
+---
+
+### Test 2: Agent UI Navigation
+
+**Test Steps:**
+1. [ ] Click Agent icon in toolbar (or "Agent" button in actor sheet header)
+2. [ ] Verify home screen loads with phone UI
+3. [ ] Navigate to Chat7 (contacts list)
+4. [ ] Verify empty state message shows
+5. [ ] Navigate back to home
+
+**Expected Results:**
+- Smooth transitions between views
+- No console errors
+- Back button works correctly
+
+---
+
+### Test 3: Adding Contacts
+
+**Setup:**
+- Create second actor with Agent equipped
+- Assign to different player (or use GM)
+
+**Test Steps:**
+1. [ ] Open Agent 1
+2. [ ] Navigate to Add Contact
+3. [ ] Search by phone number of Agent 2
+4. [ ] Add contact
+5. [ ] Verify contact appears in Chat7 list
+
+**Expected Results:**
+- Contact added successfully
+- Both devices have reciprocal contact (bidirectional)
+- UI updates without refresh
+
+---
+
+### Test 4: Messaging Flow
+
+**Test Steps:**
+1. [ ] Open conversation with contact
+2. [ ] Send message "Test message 1"
+3. [ ] Verify message appears immediately
+4. [ ] Check receiver's Agent - message should appear
+5. [ ] Reply from receiver
+6. [ ] Verify sender sees reply
+
+**Expected Results:**
+- Messages appear in real-time (SocketLib)
+- Both sides see conversation history
+- Timestamps are correct
+- Message order is preserved
+
+---
+
+### Test 5: Scroll Behavior (Known Bug)
+
+**Test Steps:**
+1. [ ] Send 20+ messages in a conversation
+2. [ ] Scroll up to view older messages
+3. [ ] Receive new message from contact
+4. [ ] Observe scroll position
+
+**Expected Results (Current - Broken):**
+- Scroll jumps to top ❌
+
+**Expected Results (After Fix):**
+- Scroll maintains position or scrolls to bottom if user was at bottom ✅
+
+---
+
+### Test 6: Unread Count
+
+**Test Steps:**
+1. [ ] From Agent 1, send message to Agent 2
+2. [ ] Don't open Agent 2's conversation
+3. [ ] Check Agent 2's Chat7 list for unread badge
+4. [ ] Open conversation
+5. [ ] Go back to Chat7 list
+6. [ ] Verify badge is cleared
+
+**Expected Results:**
+- Unread badge shows count
+- Badge clears after viewing conversation
+
+---
+
+### Test 7: Offline Message Delivery
+
+**Test Steps:**
+1. [ ] Player 2 closes browser (goes offline)
+2. [ ] Player 1 sends message to Player 2
+3. [ ] Player 2 opens browser and logs back in
+4. [ ] Check if message was delivered
+
+**Expected Results:**
+- Message appears in Player 2's Agent
+- Notification shown for offline message
+
+---
+
+### Test 8: GM Management Functions
+
+**Test Steps:**
+1. [ ] Open module settings → GM Chat7 Management
+2. [ ] Test "Synchronize All Devices"
+3. [ ] Verify all devices have phone numbers
+4. [ ] Test "Clear All Messages" (use test world!)
+5. [ ] Verify messages cleared for all users
+
+**Expected Results:**
+- Sync completes with summary
+- Messages cleared from server AND localStorage
+- All clients notified
+
+---
+
+### Test 9: ZMail System
+
+**Test Steps:**
+1. [ ] Open module settings → ZMail Management
+2. [ ] Send ZMail to a player device
+3. [ ] As player, open Agent → ZMail
+4. [ ] Verify message received
+5. [ ] Mark as read
+
+**Expected Results:**
+- ZMail delivered
+- Shows in player's ZMail inbox
+- Read status persists
+
+---
+
+### Test 10: Multi-Device Scenario
+
+**Setup:**
+- One actor with 2 Agent items equipped
+
+**Test Steps:**
+1. [ ] Open toolbar Agent icon
+2. [ ] Verify device selection menu appears
+3. [ ] Select each device
+4. [ ] Verify different phone numbers
+
+**Expected Results:**
+- Menu shows all equipped devices
+- Each device has unique phone number
+- Messages are device-specific, not actor-specific
+
+---
+
+## Agent Access UX Improvements
+
+### Current State Analysis
+
+**How Agent is accessed today:**
+
+| Access Point | Trigger | Issue |
+|--------------|---------|-------|
+| Scene Controls Toolbar | `getSceneControlButtons` hook | Icon doesn't appear immediately |
+| Actor Sheet Header | `renderActorSheet` hook | Only visible when sheet is open |
+
+**Why toolbar icon doesn't appear immediately:**
+
+```javascript
+// The hook fires, but ui.controls.render() doesn't always refresh visually
+Hooks.on('updateItem', (item, changes) => {
+    setTimeout(() => {
+        this.updateTokenControls();  // Adds button
+        ui.controls.render();        // Supposed to refresh - often doesn't
+    }, 100);
+});
+```
+
+**Root Cause:** FoundryVTT's `ui.controls.render()` may not visually update if the active control category hasn't changed.
+
+---
+
+### Proposed UX Improvements
+
+#### Option 1: Floating Action Button (FAB)
+
+Add a persistent floating button when Agent is equipped:
+
+```javascript
+_addFloatingAgentButton() {
+    // Remove existing
+    $('#cyberpunk-agent-fab').remove();
+    
+    const equippedAgents = this.getEquippedAgentsForUser();
+    if (equippedAgents.length === 0 && !game.user.isGM) return;
+    
+    const fab = $(`
+        <div id="cyberpunk-agent-fab" title="Open Agent">
+            <i class="fas fa-mobile-alt"></i>
+        </div>
+    `);
+    
+    fab.on('click', () => this.openAgentInterface());
+    $('body').append(fab);
+}
+```
+
+**CSS:**
+```css
+#cyberpunk-agent-fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #00ffff, #ff00ff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+}
+```
+
+**Pros:** Always visible, cyberpunk aesthetic
+**Cons:** Takes screen space, might conflict with other modules
+
+---
+
+#### Option 2: Hotkey Binding
+
+Register a keybinding to open Agent:
+
+```javascript
+Hooks.once('init', () => {
+    game.keybindings.register('cyberpunk-agent', 'openAgent', {
+        name: 'Open Agent Interface',
+        hint: 'Opens your equipped Agent device',
+        editable: [{ key: 'KeyP', modifiers: ['Control'] }],  // Ctrl+P
+        onDown: () => {
+            window.CyberpunkAgent?.instance?.openAgentInterface();
+            return true;
+        }
+    });
+});
+```
+
+**Pros:** No UI clutter, power-user friendly
+**Cons:** Not discoverable, users need to know the key
+
+---
+
+#### Option 3: Token HUD Button
+
+Add Agent button to token HUD (right-click menu):
+
+```javascript
+Hooks.on('renderTokenHUD', (hud, html, data) => {
+    const token = hud.object;
+    const actor = token.actor;
+    
+    if (!actor?.isOwner) return;
+    
+    const hasAgent = this._actorHasEquippedAgent(actor);
+    if (!hasAgent) return;
+    
+    const button = $(`
+        <div class="control-icon cyberpunk-agent-hud" title="Open Agent">
+            <i class="fas fa-mobile-alt"></i>
+        </div>
+    `);
+    
+    button.on('click', () => {
+        this.openAgentForActor(actor.id);
+    });
+    
+    html.find('.right').append(button);
+});
+```
+
+**Pros:** Contextual (appears on token), intuitive
+**Cons:** Requires token on scene, right-click to access
+
+---
+
+#### Option 4: Actor Sheet Tab
+
+Add an "Agent" tab to the character sheet:
+
+```javascript
+Hooks.on('renderActorSheet', (app, html, data) => {
+    if (!data.actor.isOwner) return;
+    
+    const hasAgent = this._actorHasEquippedAgent(data.actor);
+    if (!hasAgent) return;
+    
+    // Add tab to navigation
+    const tabs = html.find('.sheet-tabs');
+    tabs.append('<a class="item" data-tab="agent"><i class="fas fa-mobile-alt"></i> Agent</a>');
+    
+    // Add tab content
+    const content = html.find('.sheet-body');
+    content.append('<div class="tab agent" data-tab="agent"></div>');
+    
+    // Embed Agent UI in tab
+    // ... render agent interface inline
+});
+```
+
+**Pros:** Integrated with character management
+**Cons:** Complex to embed, may conflict with system sheets
+
+---
+
+#### Option 5: Fix Existing Toolbar (Recommended First Step)
+
+Force toolbar refresh more aggressively:
+
+```javascript
+async updateTokenControls() {
+    try {
+        if (!ui.controls?.controls) return;
+        
+        // Add button
+        this.addControlButton(ui.controls.controls);
+        
+        // Force active control to token
+        const currentActive = ui.controls.activeControl;
+        
+        // Toggle away and back to force re-render
+        ui.controls.activeControl = 'lighting';
+        await ui.controls.render(true);
+        
+        ui.controls.activeControl = currentActive;
+        await ui.controls.render(true);
+        
+    } catch (error) {
+        console.error("Cyberpunk Agent | Error updating token controls:", error);
+    }
+}
+```
+
+---
+
+### Recommendation
+
+**Phase 1 (Quick):**
+- Fix existing toolbar refresh issue
+- Add FAB as optional setting (disabled by default)
+
+**Phase 2 (Better UX):**
+- Add hotkey binding (Ctrl+P or configurable)
+- Add Token HUD button for contextual access
+
+**Implementation Order:**
+1. Fix toolbar refresh (existing code fix)
+2. Add keybinding (low effort, high value)
+3. Add FAB as optional feature (medium effort)
+4. Consider Token HUD if users request
+
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `scripts/module.js` | Fix `updateTokenControls()`, add FAB, add keybinding |
+| `styles/module.css` | Add FAB styles |
+| `lang/*.json` | Add keybinding labels |
+
+---
+
 ## Notes
 
 - Phase 2 is the highest priority (user-facing bug)
