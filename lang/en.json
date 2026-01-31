@@ -36,7 +36,12 @@
       "NO_ACTOR_ACCESS": "You don't have access to any Actor to use the Agent.",
       "SUCCESS": "Operation completed successfully",
       "ERROR": "An error occurred",
-      "WARNING": "Warning"
+      "WARNING": "Warning",
+      "OPERATION_QUEUED": "Operation queued - GM offline",
+      "GM_OFFLINE": "GM Offline - Sync Paused",
+      "GM_ONLINE": "Connected",
+      "SYNC_SUCCESS": "Queued operations synced successfully",
+      "SYNC_FAILED": "Some operations failed to sync"
     },
     "SETTINGS": {
       "TITLE": "Cyberpunk Agent Settings",

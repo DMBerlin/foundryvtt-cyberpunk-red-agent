@@ -4,6 +4,12 @@
     <div class="cp-phone-status">
       <span class="cp-time">{{currentTime}}</span>
       <div class="cp-status-icons">
+        {{#unless gmOnline}}
+        <span class="cp-sync-indicator offline" title="GM Offline - Sync Paused">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span class="cp-sync-text">{{#if pendingOpsCount}} ({{pendingOpsCount}}){{/if}}</span>
+        </span>
+        {{/unless}}
         <i class="fas fa-signal"></i>
         <i class="fas fa-wifi"></i>
         <i class="fas fa-battery-three-quarters"></i>

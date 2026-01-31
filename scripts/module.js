@@ -2215,8 +2215,234 @@ class CyberpunkAgent {
         // Memo system - Personal notes for each device
         this.memoNotes = new Map(); // deviceId -> [memoNotes]
 
+        // GM Offline Resilience
+        this._gmOnlineStatus = true; // Assume GM is online initially
+        this._pendingOperations = []; // Queue of operations waiting for GM
+        this._loadPendingOperations(); // Load any persisted pending operations
+
         // Store instance for global access
         CyberpunkAgent.instance = this;
+    }
+
+    /**
+     * Check if any GM is currently online
+     * @returns {boolean}
+     */
+    _isGMOnline() {
+        const gmUsers = game.users.filter(u => u.isGM && u.active);
+        return gmUsers.length > 0;
+    }
+
+    /**
+     * Update GM online status and trigger UI updates
+     */
+    _updateGMOnlineStatus() {
+        const wasOnline = this._gmOnlineStatus;
+        this._gmOnlineStatus = this._isGMOnline();
+
+        if (wasOnline !== this._gmOnlineStatus) {
+            console.log(`Cyberpunk Agent | GM status changed: ${this._gmOnlineStatus ? 'ONLINE' : 'OFFLINE'}`);
+            
+            // Dispatch event for UI updates
+            document.dispatchEvent(new CustomEvent('cyberpunk-agent-gm-status', {
+                detail: { online: this._gmOnlineStatus }
+            }));
+
+            // If GM came back online, replay pending operations
+            if (this._gmOnlineStatus && this._pendingOperations.length > 0) {
+                this._replayPendingOperations();
+            }
+        }
+    }
+
+    /**
+     * Load pending operations from localStorage
+     */
+    _loadPendingOperations() {
+        try {
+            const stored = localStorage.getItem('cyberpunk-agent-pending-operations');
+            if (stored) {
+                this._pendingOperations = JSON.parse(stored);
+                console.log(`Cyberpunk Agent | Loaded ${this._pendingOperations.length} pending operations`);
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error loading pending operations:", error);
+            this._pendingOperations = [];
+        }
+    }
+
+    /**
+     * Save pending operations to localStorage
+     */
+    _savePendingOperations() {
+        try {
+            localStorage.setItem('cyberpunk-agent-pending-operations', JSON.stringify(this._pendingOperations));
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error saving pending operations:", error);
+        }
+    }
+
+    /**
+     * Queue an operation for when GM comes back online
+     * @param {string} type - Operation type: 'message', 'contact-add', 'contact-remove', 'read-status'
+     * @param {Object} payload - Operation data
+     */
+    _queueOperation(type, payload) {
+        const operation = {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type,
+            payload,
+            timestamp: Date.now(),
+            userId: game.user.id,
+            userName: game.user.name
+        };
+
+        this._pendingOperations.push(operation);
+        this._savePendingOperations();
+
+        console.log(`Cyberpunk Agent | Queued operation: ${type} (${this._pendingOperations.length} pending)`);
+        
+        // Notify UI
+        ui.notifications.warn(game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.OPERATION_QUEUED') || "Operation queued - GM offline");
+
+        return operation.id;
+    }
+
+    /**
+     * Replay pending operations when GM comes back online
+     */
+    async _replayPendingOperations() {
+        if (this._pendingOperations.length === 0) return;
+
+        console.log(`Cyberpunk Agent | Replaying ${this._pendingOperations.length} pending operations...`);
+        
+        const operations = [...this._pendingOperations];
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const op of operations) {
+            try {
+                let success = false;
+
+                switch (op.type) {
+                    case 'message':
+                        success = await this._replayMessageOperation(op.payload);
+                        break;
+                    case 'contact-add':
+                        success = await this._replayContactAddOperation(op.payload);
+                        break;
+                    case 'contact-remove':
+                        success = await this._replayContactRemoveOperation(op.payload);
+                        break;
+                    case 'read-status':
+                        success = await this._replayReadStatusOperation(op.payload);
+                        break;
+                    default:
+                        console.warn(`Cyberpunk Agent | Unknown operation type: ${op.type}`);
+                }
+
+                if (success) {
+                    // Remove from queue
+                    const index = this._pendingOperations.findIndex(o => o.id === op.id);
+                    if (index > -1) {
+                        this._pendingOperations.splice(index, 1);
+                    }
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            } catch (error) {
+                console.error(`Cyberpunk Agent | Error replaying operation ${op.id}:`, error);
+                failCount++;
+            }
+        }
+
+        this._savePendingOperations();
+
+        if (successCount > 0) {
+            ui.notifications.info(`${successCount} queued operation(s) synced successfully`);
+        }
+        if (failCount > 0) {
+            ui.notifications.warn(`${failCount} operation(s) failed to sync`);
+        }
+
+        console.log(`Cyberpunk Agent | Replay complete: ${successCount} success, ${failCount} failed`);
+    }
+
+    /**
+     * Replay a queued message operation
+     */
+    async _replayMessageOperation(payload) {
+        try {
+            const { senderDeviceId, receiverDeviceId, message } = payload;
+            
+            // Try to save to server via GM
+            if (this.socketLibIntegration) {
+                await this.socketLibIntegration.sendMessageToGM('saveMessageToServer', {
+                    senderDeviceId,
+                    receiverDeviceId,
+                    message,
+                    timestamp: Date.now(),
+                    userId: game.user.id,
+                    userName: game.user.name,
+                    isReplay: true
+                });
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error replaying message operation:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Replay a queued contact add operation
+     */
+    async _replayContactAddOperation(payload) {
+        try {
+            const { deviceId, contactDeviceId } = payload;
+            await this.addContactToDevice(deviceId, contactDeviceId);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error replaying contact add operation:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Replay a queued contact remove operation
+     */
+    async _replayContactRemoveOperation(payload) {
+        try {
+            const { deviceId, contactDeviceId } = payload;
+            await this.removeContactFromDevice(deviceId, contactDeviceId);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error replaying contact remove operation:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Replay a queued read status operation
+     */
+    async _replayReadStatusOperation(payload) {
+        try {
+            const { deviceId, contactDeviceId } = payload;
+            await this.markDeviceConversationAsRead(deviceId, contactDeviceId);
+            return true;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error replaying read status operation:", error);
+            return false;
+        }
+    }
+
+    /**
+     * Get pending operations count (for UI)
+     */
+    getPendingOperationsCount() {
+        return this._pendingOperations.length;
     }
 
     /**
@@ -5433,6 +5659,13 @@ class CyberpunkAgent {
      */
     async requestGMMessageSave(senderDeviceId, receiverDeviceId, message) {
         try {
+            // Check if GM is online
+            if (!this._isGMOnline()) {
+                console.log("Cyberpunk Agent | GM offline, queueing message for later sync");
+                this._queueOperation('message', { senderDeviceId, receiverDeviceId, message });
+                return true; // Return true since message is cached locally + queued
+            }
+
             if (this.socketLibIntegration) {
                 const saveRequest = {
                     senderDeviceId,
@@ -12554,6 +12787,26 @@ Hooks.once('ready', () => {
                 CyberpunkAgent.instance.updateTokenControls();
             }
         }, 100);
+
+        // Initialize GM online status
+        CyberpunkAgent.instance._updateGMOnlineStatus();
+        
+        // If GM is online and we have pending operations, replay them
+        if (CyberpunkAgent.instance._isGMOnline() && CyberpunkAgent.instance._pendingOperations.length > 0) {
+            setTimeout(() => {
+                CyberpunkAgent.instance._replayPendingOperations();
+            }, 2000);
+        }
+
+        // Hook for when a user connects
+        Hooks.on('userConnected', (user, connected) => {
+            if (CyberpunkAgent.instance) {
+                if (user.isGM) {
+                    console.log(`Cyberpunk Agent | GM ${user.name} ${connected ? 'connected' : 'disconnected'}`);
+                    CyberpunkAgent.instance._updateGMOnlineStatus();
+                }
+            }
+        });
 
         // Hook for when a user joins - sync messages and deliver offline messages
         Hooks.on('userJoined', (user) => {

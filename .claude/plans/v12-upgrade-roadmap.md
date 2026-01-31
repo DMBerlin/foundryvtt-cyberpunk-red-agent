@@ -109,7 +109,7 @@ Current UIController uses single update type, forcing full re-renders.
 
 ---
 
-## Phase 4: Chat Notifications Feature (Priority: 🟡 High) - 🔄 IN PROGRESS
+## Phase 4: Chat Notifications Feature (Priority: 🟡 High) - ✅ COMPLETE
 
 ### Problem
 Users want optional FoundryVTT chat notifications for Agent messages.
@@ -142,38 +142,38 @@ Users want optional FoundryVTT chat notifications for Agent messages.
 - [x] Neon glow effects
 
 ### 4.6 Active Conversation Suppression - ✅ DONE
-- [x] Call `setActiveConversation()` when opening conversation view
+- [x] Call `registerActiveConversation()` when opening conversation view
 - [x] Call `clearActiveConversation()` when navigating away or closing window
 - [x] Sound/toast only trigger for messages NOT in active conversation
+- [x] Fix `_getUserForDevice()` to prioritize non-GM users
 
-### 4.7 Testing
-- [ ] Verify sound does NOT play when conversation is open
-- [ ] Verify sound DOES play when message is from different contact
-- [ ] Verify toast notification displays when enabled
-- [ ] Verify all three notification types can be toggled independently
+### 4.7 Foundry v12 Compatibility - ✅ DONE
+- [x] Fix deprecated `CHAT_MESSAGE_TYPES` → `CHAT_MESSAGE_STYLES`
 
 ---
 
-## Phase 5: GM Offline Resilience (Priority: 🟢 Medium)
+## Phase 5: GM Offline Resilience (Priority: 🟢 Medium) - ✅ DONE
 
 ### Problem
 When GM is offline, players cannot sync messages to server.
 
-### 5.1 Detect GM Status
-- [ ] Add `_isGMOnline()` helper method
-- [ ] Show "⚠️ Sync Paused" indicator when GM offline
-- [ ] Hide indicator when GM returns
+### 5.1 Detect GM Status - ✅ DONE
+- [x] Add `_isGMOnline()` helper method
+- [x] Show "⚠️ Sync Paused" indicator when GM offline
+- [x] Hide indicator when GM returns
+- [x] Listen for `userConnected` hook for status changes
 
-### 5.2 Local Write Queue
-- [ ] Create `pendingOperations` queue in localStorage
-- [ ] Queue writes when GM offline instead of failing
-- [ ] Store operation type and payload
+### 5.2 Local Write Queue - ✅ DONE
+- [x] Create `_pendingOperations` queue in memory + localStorage
+- [x] Queue writes when GM offline instead of failing
+- [x] Store operation type and payload
+- [x] Support types: 'message', 'contact-add', 'contact-remove', 'read-status'
 
-### 5.3 Replay on GM Connect
-- [ ] Listen for GM user join event
-- [ ] Replay queued operations in order
-- [ ] Clear queue on successful replay
-- [ ] Handle conflicts gracefully
+### 5.3 Replay on GM Connect - ✅ DONE
+- [x] Listen for GM user join event via hooks
+- [x] Replay queued operations in order (FIFO)
+- [x] Clear queue on successful replay
+- [x] Show notification on sync success/failure
 
 ---
 

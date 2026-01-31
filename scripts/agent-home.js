@@ -77,12 +77,16 @@ class AgentApplication extends FormApplication {
   }
 
   /**
-   * Override close to clear active conversation
+   * Override close to clear active conversation and remove listeners
    */
   async close(options = {}) {
     // Clear active conversation when window closes
     if (window.CyberpunkAgent?.instance) {
       window.CyberpunkAgent.instance.clearActiveConversation(game.user.id);
+    }
+    // Remove GM status listener
+    if (this._gmStatusHandler) {
+      document.removeEventListener('cyberpunk-agent-gm-status', this._gmStatusHandler);
     }
     return super.close(options);
   }
@@ -124,6 +128,10 @@ class AgentApplication extends FormApplication {
     const actor = this.device.ownerActorId ? game.actors.get(this.device.ownerActorId) : null;
     const actorName = actor ? actor.name : 'Unknown Actor';
 
+    // Get GM online status for sync indicator
+    const gmOnline = window.CyberpunkAgent?.instance?._isGMOnline() ?? true;
+    const pendingOpsCount = window.CyberpunkAgent?.instance?.getPendingOperationsCount() ?? 0;
+
     let templateData = {
       ...data,
       device: {
@@ -133,7 +141,9 @@ class AgentApplication extends FormApplication {
       },
       currentTime: currentTime,
       currentView: this.currentView,
-      currentContact: this.currentContact
+      currentContact: this.currentContact,
+      gmOnline: gmOnline,
+      pendingOpsCount: pendingOpsCount
     };
 
     // Add view-specific data
@@ -1046,6 +1056,33 @@ class AgentApplication extends FormApplication {
 
     // Add listener
     document.addEventListener('cyberpunk-agent-update', this._conversationUpdateHandler);
+
+    // Add GM status listener
+    this._gmStatusHandler = (event) => {
+      const { online } = event.detail;
+      // Update sync indicator in UI
+      this._updateSyncIndicator(online);
+    };
+    document.addEventListener('cyberpunk-agent-gm-status', this._gmStatusHandler);
+  }
+
+  /**
+   * Update the sync indicator in the UI
+   */
+  _updateSyncIndicator(gmOnline) {
+    const indicator = this.element?.find('.cp-sync-indicator');
+    if (!indicator || !indicator.length) return;
+
+    if (gmOnline) {
+      indicator.removeClass('offline').addClass('online');
+      indicator.attr('title', game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.GM_ONLINE') || 'Connected');
+      indicator.find('.cp-sync-text').text('');
+    } else {
+      indicator.removeClass('online').addClass('offline');
+      indicator.attr('title', game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.GM_OFFLINE') || 'GM Offline - Sync Paused');
+      const pendingCount = window.CyberpunkAgent?.instance?.getPendingOperationsCount() ?? 0;
+      indicator.find('.cp-sync-text').text(pendingCount > 0 ? ` (${pendingCount})` : '');
+    }
   }
 
   /**

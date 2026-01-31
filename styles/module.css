@@ -349,10 +349,41 @@
 .cp-status-icons {
   display: flex;
   gap: 5px;
+  align-items: center;
 }
 
 .cp-status-icons i {
   font-size: 0.7em;
+}
+
+/* Sync Indicator for GM Offline Status */
+.cp-sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: help;
+}
+
+.cp-sync-indicator.offline {
+  background: rgba(255, 42, 109, 0.3);
+  color: #ff2a6d;
+  animation: pulse-warning 2s infinite;
+}
+
+.cp-sync-indicator.online {
+  display: none;
+}
+
+.cp-sync-indicator .cp-sync-text {
+  font-size: 0.9em;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* Phone Screen */
