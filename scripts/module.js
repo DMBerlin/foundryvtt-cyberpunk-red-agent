@@ -2719,17 +2719,13 @@ class CyberpunkAgent {
      */
     addControlButton(controls) {
         try {
-            console.log("Cyberpunk Agent | addControlButton called");
-            
             // Safety check: ensure controls is an array
             if (!Array.isArray(controls)) {
-                console.log("Cyberpunk Agent | controls is not an array, returning");
                 return;
             }
 
             // Ensure device data is loaded (synchronous operation)
             if (!this.devices || this.devices.size === 0) {
-                console.log("Cyberpunk Agent | Loading device data...");
                 this.loadDeviceData();
             }
 
@@ -2737,7 +2733,6 @@ class CyberpunkAgent {
             const tokenControl = controls.find(control => control.name === "token");
 
             if (!tokenControl) {
-                console.log("Cyberpunk Agent | No token control found, returning");
                 return;
             }
 
@@ -2747,40 +2742,59 @@ class CyberpunkAgent {
             }
 
             // Check if button already exists
-            const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "agent");
-            console.log("Cyberpunk Agent | Existing button index:", existingButtonIndex);
+            const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "cyberpunk-agent");
             
             if (existingButtonIndex !== -1) {
-                const existingButton = tokenControl.tools[existingButtonIndex];
-                console.log("Cyberpunk Agent | Existing button onClick type:", typeof existingButton.onClick);
-                
-                // Always remove and re-add to ensure onClick is fresh
-                tokenControl.tools.splice(existingButtonIndex, 1);
+                // Button exists, don't re-add
+                return;
             }
 
-            // Store reference to this for the closure
-            const agentInstance = this;
-            
-            // Create the button with a fresh onClick handler
-            const agentButton = {
-                name: "agent",
+            // Add the button - we'll attach the click handler via DOM after render
+            // Using a unique name to avoid conflicts
+            tokenControl.tools.push({
+                name: "cyberpunk-agent",
                 title: "Agent",
                 icon: "fas fa-mobile-alt",
-                onClick: function() {
-                    console.log("Cyberpunk Agent | *** BUTTON CLICKED ***");
-                    console.log("Cyberpunk Agent | agentInstance:", agentInstance);
-                    console.log("Cyberpunk Agent | game.user.isGM:", game.user.isGM);
-                    agentInstance.openAgentInterface();
-                }
-            };
-            
-            console.log("Cyberpunk Agent | Adding button with onClick:", typeof agentButton.onClick);
-            tokenControl.tools.push(agentButton);
-            console.log("Cyberpunk Agent | Button added, tools count:", tokenControl.tools.length);
+                button: true  // This makes it a button rather than a toggle
+            });
             
         } catch (error) {
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
         }
+    }
+    
+    /**
+     * Attach click handler to the Agent button in the DOM
+     * This is called after scene controls render to ensure the handler persists
+     */
+    attachAgentButtonHandler() {
+        // Find the agent button in the DOM
+        const agentButton = document.querySelector('[data-tool="cyberpunk-agent"]');
+        
+        if (!agentButton) {
+            return;
+        }
+        
+        // Check if we already attached our handler
+        if (agentButton.dataset.cyberpunkAgentHandler === 'true') {
+            return;
+        }
+        
+        // Mark as handled
+        agentButton.dataset.cyberpunkAgentHandler = 'true';
+        
+        // Store reference to this
+        const agentInstance = this;
+        
+        // Attach click handler directly to DOM element
+        agentButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            console.log("Cyberpunk Agent | Agent button clicked (DOM handler)");
+            agentInstance.openAgentInterface();
+        });
+        
+        console.log("Cyberpunk Agent | DOM click handler attached to agent button");
     }
 
     /**
@@ -12411,7 +12425,6 @@ Hooks.once('ready', () => {
         // Hook for when the controls toolbar is built - this is the MAIN hook for adding buttons
         Hooks.on('getSceneControlButtons', (controls) => {
             try {
-                console.log("Cyberpunk Agent | getSceneControlButtons hook fired");
                 if (CyberpunkAgent.instance && controls) {
                     CyberpunkAgent.instance.addControlButton(controls);
                 }
@@ -12420,13 +12433,23 @@ Hooks.once('ready', () => {
             }
         });
 
-        // NOTE: Removed renderSceneControls hook - it was causing duplicate calls
-        // The getSceneControlButtons hook is sufficient for adding our button
+        // Hook to attach DOM click handler after scene controls render
+        Hooks.on('renderSceneControls', (app, html, data) => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        CyberpunkAgent.instance.attachAgentButtonHandler();
+                    }, 50);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in renderSceneControls hook:", error);
+            }
+        });
 
         // Hook to ensure button appears when canvas is ready (fixes initial load issue)
         Hooks.on('canvasReady', () => {
             try {
-                console.log("Cyberpunk Agent | canvasReady hook fired");
                 if (CyberpunkAgent.instance) {
                     // Ensure device data is loaded
                     CyberpunkAgent.instance.loadDeviceData();
@@ -12434,7 +12457,6 @@ Hooks.once('ready', () => {
                     // Force re-render of controls to pick up our button
                     setTimeout(() => {
                         if (ui.controls) {
-                            console.log("Cyberpunk Agent | Forcing controls re-render from canvasReady");
                             ui.controls.initialize();
                         }
                     }, 500);
