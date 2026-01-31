@@ -9054,7 +9054,7 @@ class CyberpunkAgent {
 
         // Prevent duplicate updates within a short time window
         const now = Date.now();
-        if (this._lastChatUpdateTime && (now - this._lastChatUpdateTime) < 1000) { // Increased from 500ms to 1000ms
+        if (this._lastChatUpdateTime && (now - this._lastChatUpdateTime) < 200) {
             console.log("Cyberpunk Agent | Skipping duplicate chat interface update (too soon)");
             return;
         }
@@ -10076,9 +10076,10 @@ class CyberpunkAgent {
 
         // Add debouncing to prevent rapid message processing
         const messageKey = `${data.senderId}-${data.receiverId}-${data.message?.id}`;
+        let messageAlreadyProcessed = false;
         if (this._processedMessages && this._processedMessages.has(messageKey)) {
-            console.log("Cyberpunk Agent | Message already processed, skipping duplicate");
-            return;
+            console.log("Cyberpunk Agent | Message already processed, but will still trigger UI update");
+            messageAlreadyProcessed = true;
         }
         if (!this._processedMessages) {
             this._processedMessages = new Set();
@@ -10091,8 +10092,8 @@ class CyberpunkAgent {
             this._processedMessages = new Set(messagesArray.slice(-50));
         }
 
-        // If we have message data, add it to the device conversation locally
-        if (data.message && data.senderId && data.receiverId) {
+        // If we have message data and not already processed, add it to the device conversation locally
+        if (!messageAlreadyProcessed && data.message && data.senderId && data.receiverId) {
             console.log("Cyberpunk Agent | Adding device message to local conversation:", data.message);
 
             try {
@@ -10137,8 +10138,8 @@ class CyberpunkAgent {
             } catch (error) {
                 console.error("Cyberpunk Agent | Error adding device message to local conversation:", error);
             }
-        } else {
-            // Fallback: reload device data from settings
+        } else if (!messageAlreadyProcessed) {
+            // Fallback: reload device data from settings (only if not already processed)
             console.log("Cyberpunk Agent | No device message data provided, reloading from settings");
             this.loadDeviceData();
             this.loadMessages();
