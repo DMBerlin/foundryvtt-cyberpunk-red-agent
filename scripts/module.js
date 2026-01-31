@@ -2724,11 +2724,9 @@ class CyberpunkAgent {
                 return;
             }
 
-            // Ensure device data is loaded (synchronous operation)
-            if (!this.devices || this.devices.size === 0) {
-                this.loadDeviceData();
-            }
-
+            // Check if user has any equipped agents (synchronous check)
+            const hasEquippedAgents = this.hasEquippedAgentsSync();
+            
             // Find the token controls
             const tokenControl = controls.find(control => control.name === "token");
 
@@ -2744,19 +2742,22 @@ class CyberpunkAgent {
             // Check if button already exists
             const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "cyberpunk-agent");
             
-            if (existingButtonIndex !== -1) {
-                // Button exists, don't re-add
-                return;
+            if (hasEquippedAgents) {
+                // User has equipped agents - ensure button exists
+                if (existingButtonIndex === -1) {
+                    tokenControl.tools.push({
+                        name: "cyberpunk-agent",
+                        title: "Agent",
+                        icon: "fas fa-mobile-alt",
+                        button: true
+                    });
+                }
+            } else {
+                // User has no equipped agents - remove button if it exists
+                if (existingButtonIndex !== -1) {
+                    tokenControl.tools.splice(existingButtonIndex, 1);
+                }
             }
-
-            // Add the button - we'll attach the click handler via DOM after render
-            // Using a unique name to avoid conflicts
-            tokenControl.tools.push({
-                name: "cyberpunk-agent",
-                title: "Agent",
-                icon: "fas fa-mobile-alt",
-                button: true  // This makes it a button rather than a toggle
-            });
             
         } catch (error) {
             console.error("Cyberpunk Agent | Error in addControlButton:", error);
@@ -2764,11 +2765,82 @@ class CyberpunkAgent {
     }
     
     /**
+     * Synchronously check if current user has any equipped agents
+     * Used for toolbar button visibility check
+     */
+    hasEquippedAgentsSync() {
+        try {
+            if (!game.user) return false;
+            
+            // GM always has access (they can view any agent)
+            if (game.user.isGM) {
+                // Check if there are any agents in the world
+                if (!game.actors) return false;
+                for (const actor of game.actors) {
+                    if (actor.type !== 'character') continue;
+                    if (!actor.items) continue;
+                    for (const item of actor.items) {
+                        if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                            const isEquipped = item.system?.equipped === 'equipped';
+                            if (isEquipped) return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // For regular users, check their owned/accessible actors
+            const userActors = this.getUserActorsSync();
+            
+            for (const actor of userActors) {
+                if (!actor.items) continue;
+                for (const item of actor.items) {
+                    if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                        const isEquipped = item.system?.equipped === 'equipped';
+                        if (isEquipped) return true;
+                    }
+                }
+            }
+            
+            return false;
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error in hasEquippedAgentsSync:", error);
+            return false;
+        }
+    }
+    
+    /**
+     * Synchronously get user's accessible actors (for toolbar check)
+     */
+    getUserActorsSync() {
+        if (!game.user || !game.actors) return [];
+        
+        const actors = [];
+        
+        // Check character ownership
+        if (game.user.character) {
+            actors.push(game.user.character);
+        }
+        
+        // Check all actors for ownership
+        for (const actor of game.actors) {
+            if (actor.type !== 'character') continue;
+            // Check if user owns or has observer+ permission
+            if (actor.testUserPermission(game.user, "OBSERVER")) {
+                if (!actors.includes(actor)) {
+                    actors.push(actor);
+                }
+            }
+        }
+        
+        return actors;
+    }
+    
+    /**
      * Attach click handler to the Agent button in the DOM
      * This is called after scene controls render to ensure the handler persists
      */
     attachAgentButtonHandler() {
-        // Find the agent button in the DOM
         const agentButton = document.querySelector('[data-tool="cyberpunk-agent"]');
         
         if (!agentButton) {
@@ -2783,18 +2855,13 @@ class CyberpunkAgent {
         // Mark as handled
         agentButton.dataset.cyberpunkAgentHandler = 'true';
         
-        // Store reference to this
         const agentInstance = this;
         
-        // Attach click handler directly to DOM element
         agentButton.addEventListener('click', function(event) {
             event.preventDefault();
             event.stopPropagation();
-            console.log("Cyberpunk Agent | Agent button clicked (DOM handler)");
             agentInstance.openAgentInterface();
         });
-        
-        console.log("Cyberpunk Agent | DOM click handler attached to agent button");
     }
 
     /**
