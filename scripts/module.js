@@ -2397,6 +2397,46 @@ class CyberpunkAgent {
             default: false
         });
 
+        // Token HUD button setting (client-scoped, enabled by default)
+        game.settings.register('cyberpunk-agent', 'enable-token-hud-button', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_HUD_BUTTON.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_HUD_BUTTON.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
+        // FAB button setting (client-scoped, enabled by default)
+        game.settings.register('cyberpunk-agent', 'enable-fab-button', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_FAB_BUTTON.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_FAB_BUTTON.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
+        // Token controls toolbar button setting (client-scoped, enabled by default)
+        game.settings.register('cyberpunk-agent', 'enable-token-controls-button', {
+            name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_CONTROLS_BUTTON.NAME'),
+            hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_CONTROLS_BUTTON.HINT'),
+            scope: 'client',
+            config: true,
+            type: Boolean,
+            default: true
+        });
+
+        // FAB position setting (client-scoped, hidden)
+        game.settings.register('cyberpunk-agent', 'fab-position', {
+            name: 'FAB Position',
+            hint: 'Stores the user-defined FAB position',
+            scope: 'client',
+            config: false,
+            type: Object,
+            default: { x: null, y: null }
+        });
+
 
         // Register a custom settings menu for GM Chat7 Management
         game.settings.registerMenu('cyberpunk-agent', 'gm-data-management-menu', {
@@ -2810,6 +2850,8 @@ class CyberpunkAgent {
         try {
             if (!Array.isArray(controls)) return;
 
+            // Check if token controls button is enabled in settings
+            const isTokenControlsEnabled = game.settings.get('cyberpunk-agent', 'enable-token-controls-button');
             const hasEquippedAgents = this.hasEquippedAgentsSync();
             const tokenControl = controls.find(control => control.name === "token");
 
@@ -2820,7 +2862,7 @@ class CyberpunkAgent {
 
             const existingButtonIndex = tokenControl.tools.findIndex(tool => tool.name === "cyberpunk-agent");
             
-            if (hasEquippedAgents) {
+            if (isTokenControlsEnabled && hasEquippedAgents) {
                 if (existingButtonIndex === -1) {
                     tokenControl.tools.push({
                         name: "cyberpunk-agent",
@@ -3295,6 +3337,332 @@ class CyberpunkAgent {
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error force adding token control button:", error);
+        }
+    }
+
+    // ==========================================
+    // FAB (Floating Action Button) Methods
+    // ==========================================
+
+    /**
+     * Initialize the FAB (Floating Action Button) on the canvas
+     */
+    initializeFAB() {
+        try {
+            // Check if FAB is enabled
+            const isEnabled = game.settings.get('cyberpunk-agent', 'enable-fab-button');
+            if (!isEnabled) {
+                this.removeFAB();
+                return;
+            }
+
+            // Check if any equipped agents exist
+            const hasEquippedAgents = this.hasEquippedAgentsSync();
+            if (!hasEquippedAgents) {
+                this.removeFAB();
+                return;
+            }
+
+            // Create FAB if it doesn't exist
+            if (!document.getElementById('cyberpunk-agent-fab')) {
+                this.createFAB();
+            }
+
+            // Show the FAB
+            const fab = document.getElementById('cyberpunk-agent-fab');
+            if (fab) {
+                fab.style.display = 'flex';
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error initializing FAB:", error);
+        }
+    }
+
+    /**
+     * Create the FAB element and inject into DOM
+     */
+    createFAB() {
+        try {
+            // Remove existing FAB if any
+            this.removeFAB();
+
+            // Create the FAB element
+            const fab = document.createElement('div');
+            fab.id = 'cyberpunk-agent-fab';
+            fab.className = 'cyberpunk-agent-fab';
+            fab.innerHTML = '<i class="fas fa-mobile-alt"></i>';
+            fab.title = game.i18n.localize('CYBERPUNK_AGENT.AGENT.TITLE');
+
+            // Load saved position or use default
+            const savedPosition = game.settings.get('cyberpunk-agent', 'fab-position');
+            if (savedPosition.x !== null && savedPosition.y !== null) {
+                fab.style.left = `${savedPosition.x}px`;
+                fab.style.top = `${savedPosition.y}px`;
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+            }
+
+            // Add click handler
+            fab.addEventListener('click', (e) => {
+                if (!fab.classList.contains('dragging')) {
+                    this.openAgentInterface();
+                }
+            });
+
+            // Add drag functionality
+            this._initFABDrag(fab);
+
+            // Inject into the UI layer
+            const uiMiddle = document.getElementById('ui-middle');
+            if (uiMiddle) {
+                uiMiddle.appendChild(fab);
+            } else {
+                document.body.appendChild(fab);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error creating FAB:", error);
+        }
+    }
+
+    /**
+     * Initialize drag behavior for FAB
+     * @param {HTMLElement} fab - The FAB element
+     */
+    _initFABDrag(fab) {
+        let isDragging = false;
+        let hasMoved = false;
+        let startX, startY, initialX, initialY;
+
+        const onMouseDown = (e) => {
+            if (e.button !== 0) return; // Only left click
+            isDragging = true;
+            hasMoved = false;
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const rect = fab.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+
+            fab.style.cursor = 'grabbing';
+            fab.style.transition = 'none';
+            
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            // Only count as moved if actually moved
+            if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                hasMoved = true;
+                fab.classList.add('dragging');
+            }
+
+            let newX = initialX + deltaX;
+            let newY = initialY + deltaY;
+
+            // Constrain to viewport
+            const fabSize = 50; // Approximate FAB size
+            newX = Math.max(0, Math.min(window.innerWidth - fabSize, newX));
+            newY = Math.max(0, Math.min(window.innerHeight - fabSize, newY));
+
+            fab.style.left = `${newX}px`;
+            fab.style.top = `${newY}px`;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        };
+
+        const onMouseUp = async (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            fab.style.cursor = 'grab';
+            fab.style.transition = '';
+
+            // Save position if moved
+            if (hasMoved) {
+                const rect = fab.getBoundingClientRect();
+                await game.settings.set('cyberpunk-agent', 'fab-position', {
+                    x: rect.left,
+                    y: rect.top
+                });
+            }
+
+            // Remove dragging class after a short delay to prevent click
+            setTimeout(() => {
+                fab.classList.remove('dragging');
+            }, 100);
+        };
+
+        // Mouse events
+        fab.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        // Touch events for mobile
+        fab.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            onMouseDown({ clientX: touch.clientX, clientY: touch.clientY, button: 0, preventDefault: () => {} });
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+        }, { passive: true });
+
+        document.addEventListener('touchend', onMouseUp);
+    }
+
+    /**
+     * Remove the FAB from DOM
+     */
+    removeFAB() {
+        const fab = document.getElementById('cyberpunk-agent-fab');
+        if (fab) {
+            fab.remove();
+        }
+    }
+
+    /**
+     * Update FAB visibility based on current state
+     */
+    updateFABVisibility() {
+        const isEnabled = game.settings.get('cyberpunk-agent', 'enable-fab-button');
+        const hasEquippedAgents = this.hasEquippedAgentsSync();
+
+        if (isEnabled && hasEquippedAgents) {
+            this.initializeFAB();
+        } else {
+            this.removeFAB();
+        }
+    }
+
+    // ==========================================
+    // Token HUD Integration Methods
+    // ==========================================
+
+    /**
+     * Handle Token HUD render - add Agent button if applicable
+     * @param {TokenHUD} hud - The Token HUD application
+     * @param {jQuery} html - The rendered HTML
+     * @param {Object} data - The data used to render
+     */
+    onRenderTokenHUD(hud, html, data) {
+        try {
+            // Check if token HUD button is enabled
+            const isEnabled = game.settings.get('cyberpunk-agent', 'enable-token-hud-button');
+            if (!isEnabled) return;
+
+            // Get the token and actor
+            const token = hud.object;
+            if (!token || !token.actor) return;
+
+            const actor = token.actor;
+
+            // Check if this actor has an equipped agent
+            const hasEquippedAgent = this._actorHasEquippedAgent(actor);
+            if (!hasEquippedAgent) return;
+
+            // Check permissions - player must own the actor OR be GM
+            if (!game.user.isGM && !actor.isOwner) return;
+
+            // Create the Agent button
+            const agentButton = $(`
+                <div class="control-icon" data-action="agent" title="${game.i18n.localize('CYBERPUNK_AGENT.AGENT.TITLE')}">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+            `);
+
+            // Add click handler
+            agentButton.on('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await this._openAgentForActor(actor);
+            });
+
+            // Find the right column and prepend the button (first position)
+            const rightColumn = html.find('.col.right');
+            if (rightColumn.length) {
+                rightColumn.prepend(agentButton);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error in onRenderTokenHUD:", error);
+        }
+    }
+
+    /**
+     * Check if an actor has an equipped Agent item
+     * @param {Actor} actor - The actor to check
+     * @returns {boolean}
+     */
+    _actorHasEquippedAgent(actor) {
+        if (!actor || !actor.items) return false;
+        
+        for (const item of actor.items) {
+            if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                if (item.system?.equipped === 'equipped') return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Open agent interface for a specific actor
+     * @param {Actor} actor - The actor whose agent to open
+     */
+    async _openAgentForActor(actor) {
+        try {
+            if (!actor) return;
+
+            // Get devices for this actor
+            const deviceIds = this.deviceMappings.get(actor.id) || [];
+            if (deviceIds.length === 0) {
+                // Try to discover devices first
+                await this.discoverAndCreateDevices();
+                const newDeviceIds = this.deviceMappings.get(actor.id) || [];
+                if (newDeviceIds.length === 0) {
+                    ui.notifications.warn(game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.NO_ACTOR_ACCESS'));
+                    return;
+                }
+            }
+
+            // Get device data
+            const devices = [];
+            const deviceIdsForActor = this.deviceMappings.get(actor.id) || [];
+            for (const deviceId of deviceIdsForActor) {
+                const device = this.devices.get(deviceId);
+                if (device) {
+                    devices.push(device);
+                }
+            }
+
+            if (devices.length === 0) {
+                ui.notifications.warn(game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.NO_ACTOR_ACCESS'));
+                return;
+            }
+
+            // Sync messages with server
+            for (const device of devices) {
+                await this.syncMessagesWithServer(device.id);
+            }
+
+            // Show agent home for the first device (or let user choose if multiple)
+            if (devices.length === 1) {
+                await this.showAgentHome(devices[0]);
+            } else {
+                await this.showEquippedAgentMenu(devices);
+            }
+
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error opening agent for actor:", error);
+            ui.notifications.error(game.i18n.localize('CYBERPUNK_AGENT.NOTIFICATIONS.ERROR'));
         }
     }
 
@@ -12925,10 +13293,23 @@ Hooks.once('ready', () => {
                         if (ui.controls && CyberpunkAgent.instance.hasEquippedAgentsSync()) {
                             CyberpunkAgent.instance.updateTokenControls();
                         }
+                        // Initialize FAB after device data is loaded
+                        CyberpunkAgent.instance.initializeFAB();
                     }, 1500);
                 }
             } catch (error) {
                 console.error("Cyberpunk Agent | Error in canvasReady hook:", error);
+            }
+        });
+
+        // Hook to add Agent button to Token HUD (right-click menu)
+        Hooks.on('renderTokenHUD', (hud, html, data) => {
+            try {
+                if (CyberpunkAgent.instance) {
+                    CyberpunkAgent.instance.onRenderTokenHUD(hud, html, data);
+                }
+            } catch (error) {
+                console.error("Cyberpunk Agent | Error in renderTokenHUD hook:", error);
             }
         });
 
@@ -12939,10 +13320,39 @@ Hooks.once('ready', () => {
                     // Delay to ensure actor data is updated
                     setTimeout(() => {
                         CyberpunkAgent.instance.updateTokenControls();
+                        CyberpunkAgent.instance.updateFABVisibility();
                     }, 100);
                 }
             } catch (error) {
                 console.error("Cyberpunk Agent | Error in renderActorSheet hook:", error);
+            }
+        });
+
+        // Hook to update FAB when items are created/updated/deleted
+        Hooks.on('createItem', (item, options, userId) => {
+            if (CyberpunkAgent.instance && item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                setTimeout(() => {
+                    CyberpunkAgent.instance.updateTokenControls();
+                    CyberpunkAgent.instance.updateFABVisibility();
+                }, 100);
+            }
+        });
+
+        Hooks.on('updateItem', (item, changes, options, userId) => {
+            if (CyberpunkAgent.instance && item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                setTimeout(() => {
+                    CyberpunkAgent.instance.updateTokenControls();
+                    CyberpunkAgent.instance.updateFABVisibility();
+                }, 100);
+            }
+        });
+
+        Hooks.on('deleteItem', (item, options, userId) => {
+            if (CyberpunkAgent.instance && item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
+                setTimeout(() => {
+                    CyberpunkAgent.instance.updateTokenControls();
+                    CyberpunkAgent.instance.updateFABVisibility();
+                }, 100);
             }
         });
 

@@ -102,9 +102,11 @@ foundryvtt-cyberpunk-red-agent/
 | `ready` | Initialize CyberpunkAgent singleton |
 | `socketlib.ready` | Initialize SocketLib integration |
 | `getSceneControlButtons` | Add phone icon to token controls |
+| `renderTokenHUD` | Add Agent button to token right-click menu |
+| `canvasReady` | Initialize FAB and refresh controls |
 | `renderActorSheet` | Add Agent button to character sheets |
 | `updateActor`, `updateItem` | Sync device data on changes |
-| `createItem`, `deleteItem` | Handle Agent equipment changes |
+| `createItem`, `deleteItem` | Handle Agent equipment changes, update FAB visibility |
 | `createActor`, `deleteActor` | Handle actor lifecycle |
 | `userJoined` | Sync data when players connect |
 | `userConnected` | Detect GM online/offline status changes |
@@ -127,6 +129,10 @@ foundryvtt-cyberpunk-red-agent/
 | `notification-sound` | client | Enable/disable notification sound (default: ON) |
 | `toast-notifications` | client | Enable/disable toast popups (default: OFF) |
 | `player-chat-notifications` | client | Enable Foundry chat notifications (default: ON) |
+| `enable-token-hud-button` | client | Show Agent button in token right-click menu (default: ON) |
+| `enable-fab-button` | client | Show floating Agent button on canvas (default: ON) |
+| `enable-token-controls-button` | client | Show Agent in token controls toolbar (default: ON) |
+| `fab-position` | client | User's custom FAB position (hidden setting) |
 
 ### LocalStorage Keys (Client-side)
 
@@ -135,6 +141,32 @@ foundryvtt-cyberpunk-red-agent/
 | `cyberpunk-agent-pending-operations` | Queue of operations waiting for GM |
 | `cyberpunk-agent-messages-{deviceId}` | Cached messages for device |
 | `cyberpunk-agent-cleared-conversations` | Locally cleared conversations |
+
+## Agent Access Methods
+
+Users can access the Agent interface through three methods (each toggle-able in settings):
+
+### 1. Token Controls Toolbar
+- Button in the left-side token controls toolbar
+- Icon: `fa-mobile-alt`
+- Shows only when user has actors with equipped Agents
+
+### 2. Token HUD (Right-Click Menu)
+- Button appears in token right-click menu (TokenHUD)
+- Position: First button in right column (before Visibility, Target, Combat)
+- Shows only for tokens whose actors have equipped Agents
+- Players: Only for owned actors
+- GM: For any actor with equipped Agent
+
+### 3. Floating Action Button (FAB)
+- Persistent draggable button on canvas
+- Cyberpunk-styled with cyan glow and pulse animation
+- Draggable to any position (position saved per-user)
+- Shows only when any accessible actor has equipped Agent
+- Click behavior:
+  - 1 actor: Opens directly
+  - Multiple actors: Shows selection menu
+  - GM: Shows all actors with agents
 
 ## Apps/Features
 

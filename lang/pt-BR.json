@@ -40,8 +40,30 @@
     },
     "SETTINGS": {
       "TITLE": "Configurações do Cyberpunk Agent",
-      "NOTIFICATION_SOUND": "Som de Notificação",
-      "NOTIFICATION_SOUND_HINT": "Toca um som quando você recebe uma nova mensagem",
+      "NOTIFICATION_SOUND": {
+        "NAME": "Som de Notificação",
+        "HINT": "Toca um som quando você recebe uma nova mensagem do Agent"
+      },
+      "TOAST_NOTIFICATIONS": {
+        "NAME": "Notificações Toast",
+        "HINT": "Mostra uma notificação popup quando você recebe uma nova mensagem do Agent"
+      },
+      "PLAYER_CHAT_NOTIFICATIONS": {
+        "NAME": "Mostrar Notificações do Agent no Chat",
+        "HINT": "Exibe uma notificação no chat do Foundry quando você envia ou recebe uma mensagem do Agent"
+      },
+      "ENABLE_TOKEN_HUD_BUTTON": {
+        "NAME": "Mostrar Agent no Menu do Token",
+        "HINT": "Adiciona um botão do Agent no menu do botão direito do token para tokens com Agents equipados"
+      },
+      "ENABLE_FAB_BUTTON": {
+        "NAME": "Mostrar Botão Flutuante do Agent",
+        "HINT": "Exibe um botão flutuante arrastável na tela para acesso rápido ao Agent"
+      },
+      "ENABLE_TOKEN_CONTROLS_BUTTON": {
+        "NAME": "Mostrar Agent nos Controles de Token",
+        "HINT": "Exibe o botão do Agent na barra de ferramentas de controles de token do lado esquerdo"
+      },
       "GM_DATA_MANAGEMENT": {
         "TITLE": "Gerenciamento de Dados GM",
         "DESCRIPTION": "Gerencie todos os dados do Cyberpunk Agent em todos os dispositivos no registro",

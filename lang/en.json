@@ -56,6 +56,18 @@
       "PLAYER_CHAT_NOTIFICATIONS": {
         "NAME": "Show Agent Notifications in Chat",
         "HINT": "Display a notification in Foundry chat when you send or receive an Agent message"
+      },
+      "ENABLE_TOKEN_HUD_BUTTON": {
+        "NAME": "Show Agent in Token Menu",
+        "HINT": "Add an Agent button to the token right-click menu for tokens with equipped Agents"
+      },
+      "ENABLE_FAB_BUTTON": {
+        "NAME": "Show Floating Agent Button",
+        "HINT": "Display a draggable floating button on the canvas for quick Agent access"
+      },
+      "ENABLE_TOKEN_CONTROLS_BUTTON": {
+        "NAME": "Show Agent in Token Controls",
+        "HINT": "Display the Agent button in the left-side token controls toolbar"
       }
     },
     "GM_MANAGEMENT": {
