@@ -2,6 +2,11 @@
 
 > Implementation plan for Foundry v12 upgrade and architectural improvements.
 > Last updated: 2026-01-31
+> 
+> **Status Summary:**
+> - Phase 1-6: ✅ Complete
+> - Phase 7: Manual testing protocol (ongoing)
+> - UX Improvements: 🟡 Partial (FAB ✅, Token HUD ✅, Hotkey ❌)
 
 ---
 
@@ -9,10 +14,11 @@
 
 This roadmap covers:
 1. Foundry v12 compatibility (✅ Done)
-2. Messaging architecture fixes
-3. UI live reload improvements
-4. Chat notification feature
-5. GM offline resilience
+2. Messaging architecture fixes (✅ Done)
+3. UI live reload improvements (✅ Done)
+4. Chat notification feature (✅ Done)
+5. GM offline resilience (✅ Done)
+6. Agent access UX improvements (🟡 Partial - FAB & Token HUD done, Hotkey pending)
 
 ---
 
@@ -177,25 +183,29 @@ When GM is offline, players cannot sync messages to server.
 
 ---
 
-## Phase 6: Messaging Architecture Fixes (Priority: 🟢 Medium)
+## Phase 6: Messaging Architecture Fixes (Priority: 🟢 Medium) - ✅ COMPLETE
 
 ### Problem
 Race conditions, duplicate storage, and sync issues.
 
-### 6.1 Serialize GM Writes
-- [ ] Add write queue in UIController or separate class
-- [ ] Process one `game.settings.set()` at a time
-- [ ] Prevent concurrent modifications
+### 6.1 Serialize GM Writes - ✅ DONE
+- [x] Add write queue in separate `WriteQueueManager` class
+- [x] Process one `game.settings.set()` at a time
+- [x] Prevent concurrent modifications
+- [x] Used in `saveMessageToServerAsGM()` method
 
-### 6.2 Fix Conversation Key Parsing
-- [ ] Change delimiter from `-` to `|` for conversation keys
-- [ ] Update all `_getDeviceConversationKey()` callers
-- [ ] Migrate existing data (one-time upgrade script)
+### 6.2 Fix Conversation Key Parsing - ✅ DONE
+- [x] Changed delimiter from `-` to `|` for conversation keys
+- [x] Updated all `_getDeviceConversationKey()` callers to use pipe delimiter
+- [x] Added migration script `_migrateConversationKeys()` for existing data
+- [x] Supports both legacy and new formats with fallback parsing
 
-### 6.3 Deletion Sync
-- [ ] Add deletion timestamps to messages
-- [ ] On sync, compare timestamps to detect server-side deletions
-- [ ] Remove locally cached deleted messages
+### 6.3 Deletion Sync - ✅ DONE
+- [x] Added `deletion-records` setting to track deleted message IDs with timestamps
+- [x] Implemented `_recordMessageDeletions()` to record deletions
+- [x] Implemented `_syncDeletions()` to sync deletions during message sync
+- [x] Removes locally cached deleted messages based on server deletion records
+- [x] 30-day retention period for deletion records
 
 ---
 
@@ -235,11 +245,12 @@ Race conditions, duplicate storage, and sync issues.
 | File | Phase | Changes |
 |------|-------|---------|
 | `scripts/agent-home.js` | 2, 3 | State preservation, incremental updates |
-| `scripts/module.js` | 3, 4, 5 | UIController types, notifications, GM detection |
+| `scripts/module.js` | 3, 4, 5, 6 | UIController types, notifications, GM detection, WriteQueueManager, conversation key migration, deletion sync, FAB, Token HUD |
 | `scripts/socketlib-integration.js` | 3, 6 | Update types, write serialization |
-| `styles/module.css` | 4 | Chat notification styles |
-| `lang/en.json` | 4 | Localization keys |
-| `lang/pt-BR.json` | 4 | Localization keys |
+| `styles/module.css` | 4, UX | Chat notification styles, FAB styles (Cyberpunk 2077 theme) |
+| `lang/en.json` | 4, UX | Localization keys for notifications and FAB settings |
+| `lang/pt-BR.json` | 4, UX | Localization keys for notifications and FAB settings |
+| `CLAUDE.md` | All | Updated with latest implementation details |
 
 ---
 
@@ -554,129 +565,84 @@ game.settings.register('cyberpunk-agent', 'showTokenHUDButton', {
 
 ### Proposed UX Improvements
 
-#### Option 1: Floating Action Button (FAB)
+#### Option 1: Floating Action Button (FAB) - ✅ IMPLEMENTED
 
-Add a persistent floating button when Agent is equipped:
+**Implementation Status:** ✅ Complete
 
-```javascript
-_addFloatingAgentButton() {
-    // Remove existing
-    $('#cyberpunk-agent-fab').remove();
-    
-    // Check if setting is enabled
-    if (!game.settings.get('cyberpunk-agent', 'showFloatingButton')) return;
-    
-    const equippedAgents = this.getEquippedAgentsForUser();
-    if (equippedAgents.length === 0 && !game.user.isGM) return;
-    
-    const fab = $(`
-        <div id="cyberpunk-agent-fab" title="Open Agent">
-            <i class="fas fa-mobile-alt"></i>
-        </div>
-    `);
-    
-    fab.on('click', () => this.openAgentInterface());  // Shows dialog if multiple (always for GM)
-    $('body').append(fab);
-}
-```
+**Settings:**
+- `enable-fab-button` (client-scoped, default: true)
+- `fab-position` (client-scoped, hidden, stores user position)
 
-**CSS:**
-```css
-#cyberpunk-agent-fab {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #00ffff, #ff00ff);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 100;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
-}
-```
+**Methods:**
+- `initializeFAB()` - Initializes FAB on canvas ready
+- `createFAB()` - Creates and appends FAB to body
+- `removeFAB()` - Removes FAB when conditions not met
+- `updateFABVisibility()` - Updates FAB based on equipment status
+- `_initFABDrag()` - Handles drag functionality
+
+**Styling:**
+- Cyberpunk 2077 aesthetic with red/blue color scheme
+- 36px × 36px size (matches token control buttons)
+- Red border and icon (default), blue on hover
+- Glitch animation on click with color cycling
+- Scanline and digital noise overlays
+- Pointer cursor on hover, grabbing when dragging
+- Position saved per-user and restored on load
+
+**Behavior:** 
+- Player with 1 agent → opens directly
+- Player with multiple agents → shows selection dialog
+- **GM → always shows selection dialog** (sees all devices in world)
+- Appended directly to `body` element for reliable visibility
+
+**Hooks:**
+- `canvasReady` - Initializes FAB when scene loads
+- `renderActorSheet` - Updates FAB visibility on actor changes
+- `createItem`, `updateItem`, `deleteItem` - Updates FAB on Agent equipment changes
+
+---
+
+#### Option 2: Hotkey Binding - ❌ NOT IMPLEMENTED
+
+**Status:** Not yet implemented
+
+**Proposed Implementation:**
+- Register keybinding in `init` hook
+- Setting: `enable-agent-hotkey` (client-scoped, default: true)
+- Default keybinding: Ctrl+P
+- Calls `openAgentInterface()` when pressed
 
 **Behavior:** 
 - Player with 1 agent → opens directly
 - Player with multiple agents → shows selection dialog
 - **GM → always shows selection dialog** (sees all devices in world)
 
-**Toggleable:** `showFloatingButton` setting (default: on)
+**Toggleable:** `enable-agent-hotkey` setting (default: on)
 
 ---
 
-#### Option 2: Hotkey Binding
+#### Option 3: Token HUD Button - ✅ IMPLEMENTED
 
-Register a keybinding to open Agent:
+**Implementation Status:** ✅ Complete
 
-```javascript
-Hooks.once('init', () => {
-    game.keybindings.register('cyberpunk-agent', 'openAgent', {
-        name: 'Open Agent Interface',
-        hint: 'Opens your equipped Agent device',
-        editable: [{ key: 'KeyP', modifiers: ['Control'] }],  // Ctrl+P
-        onDown: () => {
-            // Check if setting is enabled
-            if (!game.settings.get('cyberpunk-agent', 'enableAgentHotkey')) return false;
-            
-            window.CyberpunkAgent?.instance?.openAgentInterface();  // Shows dialog if multiple/GM
-            return true;
-        }
-    });
-});
-```
+**Setting:**
+- `enable-token-hud-button` (client-scoped, default: true)
 
-**Behavior:** 
-- Player with 1 agent → opens directly
-- Player with multiple agents → shows selection dialog
-- **GM → always shows selection dialog** (sees all devices in world)
+**Method:**
+- `onRenderTokenHUD(hud, html, data)` - Adds Agent button to token HUD
 
-**Toggleable:** `enableAgentHotkey` setting (default: on)
-
----
-
-#### Option 3: Token HUD Button
-
-Add Agent button to token HUD (right-click menu):
-
-```javascript
-Hooks.on('renderTokenHUD', (hud, html, data) => {
-    // Check if setting is enabled
-    if (!game.settings.get('cyberpunk-agent', 'showTokenHUDButton')) return;
-    
-    const token = hud.object;
-    const actor = token.actor;
-    
-    // GM can access any token's agent, players only their own
-    if (!game.user.isGM && !actor?.isOwner) return;
-    
-    const hasAgent = this._actorHasEquippedAgent(actor);
-    if (!hasAgent) return;
-    
-    const button = $(`
-        <div class="control-icon cyberpunk-agent-hud" title="Open Agent">
-            <i class="fas fa-mobile-alt"></i>
-        </div>
-    `);
-    
-    // Opens Agent for THIS specific actor - explicit, no dialog needed
-    button.on('click', () => {
-        this.openAgentForActor(actor.id);
-    });
-    
-    html.find('.right').append(button);
-});
-```
+**Hook:**
+- `renderTokenHUD` - Registered in `ready` hook
 
 **Behavior:** 
 - Opens Agent for the specific token's actor directly (explicit context)
 - No selection dialog needed - the token provides the context
 - **GM can access any token's agent** (useful for NPC agents)
+- Only shows for tokens whose actors have equipped Agents
+- Players: Only for owned actors
+- GM: For any actor with equipped Agent
 
-**Toggleable:** `showTokenHUDButton` setting (default: on)
+**Toggleable:** `enable-token-hud-button` setting (default: on)
 
 ---
 
@@ -710,34 +676,33 @@ async updateTokenControls() {
 
 ---
 
-### Recommendation
+### Implementation Status
 
-**All three UX options (FAB, Hotkey, Token HUD) are toggleable per-player, default ON.**
-
-**Implementation Order:**
-1. Fix toolbar refresh (existing code fix, no setting needed)
-2. Register 3 new client-scoped settings
-3. Add keybinding with setting check
-4. Add Token HUD hook with setting check
-5. Add FAB with setting check and onChange handler
+**Current Status:**
+- ✅ FAB: Implemented and working
+- ❌ Hotkey Binding: Not yet implemented
+- ✅ Token HUD Button: Implemented and working
+- ✅ Toolbar Button: Fixed and working
 
 **Settings Summary:**
 
-| Setting | Scope | Default | GM Behavior |
-|---------|-------|---------|-------------|
-| `showFloatingButton` | client | `true` | Always shows selection (all devices) |
-| `enableAgentHotkey` | client | `true` | Always shows selection (all devices) |
-| `showTokenHUDButton` | client | `true` | Can access any token's agent |
+| Setting | Scope | Default | Status | GM Behavior |
+|---------|-------|---------|--------|-------------|
+| `enable-fab-button` | client | `true` | ✅ Implemented | Always shows selection (all devices) |
+| `enable-agent-hotkey` | client | `true` | ❌ Not implemented | Would show selection (all devices) |
+| `enable-token-hud-button` | client | `true` | ✅ Implemented | Can access any token's agent |
+| `enable-token-controls-button` | client | `true` | ✅ Implemented | Shows in toolbar when agents equipped |
+| `fab-position` | client | `{x: null, y: null}` | ✅ Implemented | Stores user's custom FAB position |
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `scripts/module.js` | Fix `updateTokenControls()`, add FAB, add keybinding, add Token HUD hook |
-| `styles/module.css` | Add FAB styles |
-| `lang/*.json` | Add keybinding labels |
+| File | Changes | Status |
+|------|---------|--------|
+| `scripts/module.js` | Fix `updateTokenControls()`, add FAB, add Token HUD hook | ✅ Done (FAB ✅, Token HUD ✅, Hotkey ❌) |
+| `styles/module.css` | Add FAB styles (Cyberpunk 2077 theme) | ✅ Done |
+| `lang/*.json` | Add FAB and Token HUD setting labels | ✅ Done (Hotkey labels pending) |
 
 ---
 
@@ -952,4 +917,29 @@ async logGMAction(action, details) {
 | `scripts/gm-zmail-management.js` | Add stats to template data |
 | `templates/gm-data-management.html` | Add dashboard stats, selective options |
 | `lang/*.json` | Add localization keys for all strings |
+
+---
+
+## Recent Implementation Updates (2026-01-31)
+
+### FAB (Floating Action Button) Implementation - ✅ COMPLETE
+
+**Issue Fixed:** FAB was not appearing in the DOM due to appending to `#ui-bottom` container which had visibility issues.
+
+**Solution:** Changed to append directly to `body` element, ensuring FAB is always visible.
+
+**Styling Updates:**
+- Updated to Cyberpunk 2077 aesthetic (red/blue color scheme)
+- Size matches token control buttons (36px × 36px)
+- Glitch animation on click with color cycling
+- Scanline and digital noise overlays
+- Pointer cursor on hover
+- Position persistence per-user
+
+**Files Modified:**
+- `scripts/module.js` - FAB initialization, creation, removal, and visibility management
+- `styles/module.css` - Complete FAB styling with Cyberpunk 2077 theme
+- `CLAUDE.md` - Updated FAB documentation
+
+**Commit:** `fix(fab): fix FAB visibility and update to Cyberpunk 2077 styling`
 
