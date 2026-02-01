@@ -5273,11 +5273,15 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-dark-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+.gm-zmail-stat-value i {
+  color: var(--color-text-dark-primary);
 }
 
 .gm-zmail-stat-card .notes {
@@ -5302,7 +5306,12 @@
 .gm-zmail-management select {
   background: var(--color-bg-input);
   border: 1px solid var(--color-border-light-2);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark-primary);
+}
+
+.gm-zmail-management input::placeholder,
+.gm-zmail-management textarea::placeholder {
+  color: var(--color-text-dark-secondary);
 }
 
 .gm-zmail-management input:focus,
