@@ -868,9 +868,9 @@ window.cyberpunkAgentDebugActorDevices = function () {
     }
 
     const agent = window.CyberpunkAgent.instance;
-    const allActors = game.actors.filter(a => a.type === 'character');
+    const allActors = game.actors.filter(a => agent._isValidActorType(a.type));
 
-    console.log(`📋 Analyzing ${allActors.length} character actors:`);
+    console.log(`📋 Analyzing ${allActors.length} character/mook actors:`);
     console.log("");
 
     for (const actor of allActors) {
@@ -2776,7 +2776,7 @@ class CyberpunkAgent {
     async discoverAndCreateDevices() {
         // Discovering existing agent items
 
-        const actors = game.actors.filter(actor => actor.type === 'character');
+        const actors = game.actors.filter(actor => this._isValidActorType(actor.type));
         let devicesCreated = 0;
 
         for (const actor of actors) {
@@ -2883,6 +2883,15 @@ class CyberpunkAgent {
     }
     
     /**
+     * Check if an actor type is valid for agent detection (character or mook)
+     * @param {string} actorType - The actor type to check
+     * @returns {boolean}
+     */
+    _isValidActorType(actorType) {
+        return actorType === 'character' || actorType === 'mook';
+    }
+
+    /**
      * Synchronously check if current user has any equipped agents
      * Used for toolbar button visibility check
      */
@@ -2894,7 +2903,7 @@ class CyberpunkAgent {
             if (game.user.isGM) {
                 if (!game.actors) return false;
                 for (const actor of game.actors) {
-                    if (actor.type !== 'character') continue;
+                    if (!this._isValidActorType(actor.type)) continue;
                     if (!actor.items) continue;
                     for (const item of actor.items) {
                         if (item.type === 'gear' && item.name.toLowerCase().includes('agent')) {
@@ -2936,21 +2945,21 @@ class CyberpunkAgent {
         const userActors = [];
         const seenIds = new Set();
         
-        // Method 1: Check user's assigned character
-        if (game.user.character && game.user.character.type === 'character') {
+        // Method 1: Check user's assigned character/mook
+        if (game.user.character && this._isValidActorType(game.user.character.type)) {
             if (!seenIds.has(game.user.character.id)) {
                 seenIds.add(game.user.character.id);
                 userActors.push(game.user.character);
             }
         }
         
-        // Method 2: Get character actors from owned tokens on active scene
+        // Method 2: Get character/mook actors from owned tokens on active scene
         try {
             if (game.scenes?.active?.tokens) {
                 for (const token of game.scenes.active.tokens) {
                     // Check for OWNER level (3)
                     if (token.actor && 
-                        token.actor.type === 'character' &&
+                        this._isValidActorType(token.actor.type) &&
                         token.actor.ownership?.[game.user.id] >= 3 &&
                         !seenIds.has(token.actor.id)) {
                         seenIds.add(token.actor.id);
@@ -2960,10 +2969,10 @@ class CyberpunkAgent {
             }
         } catch (e) { /* ignore */ }
         
-        // Method 3: Get character actors with OWNER permission (level 3)
+        // Method 3: Get character/mook actors with OWNER permission (level 3)
         try {
             for (const actor of game.actors) {
-                if (actor.type !== 'character') continue;
+                if (!this._isValidActorType(actor.type)) continue;
                 const ownership = actor.ownership?.[game.user.id];
                 // OWNER level is 3
                 if (ownership >= 3 && !seenIds.has(actor.id)) {
@@ -2973,10 +2982,10 @@ class CyberpunkAgent {
             }
         } catch (e) { /* ignore */ }
         
-        // Method 4: Get all character actors user has ANY permission to (fallback)
+        // Method 4: Get all character/mook actors user has ANY permission to (fallback)
         try {
             for (const actor of game.actors) {
-                if (actor.type !== 'character') continue;
+                if (!this._isValidActorType(actor.type)) continue;
                 const ownership = actor.ownership?.[game.user.id];
                 // Any defined permission level > 0
                 if (ownership !== undefined && ownership > 0 && !seenIds.has(actor.id)) {
@@ -3993,33 +4002,33 @@ class CyberpunkAgent {
         console.log("Cyberpunk Agent | User ID:", game.user.id);
         console.log("Cyberpunk Agent | Is GM:", game.user.isGM);
 
-        // If user is GM, return all character actors
+        // If user is GM, return all character and mook actors
         if (game.user.isGM) {
             if (game.actors) {
-                const allCharacterActors = game.actors.filter(actor => actor.type === 'character');
-                console.log(`Cyberpunk Agent | GM access - returning all ${allCharacterActors.length} character actors`);
-                return allCharacterActors;
+                const allValidActors = game.actors.filter(actor => this._isValidActorType(actor.type));
+                console.log(`Cyberpunk Agent | GM access - returning all ${allValidActors.length} character/mook actors`);
+                return allValidActors;
             } else {
                 console.log("Cyberpunk Agent | GM access - no actors collection available");
                 return [];
             }
         }
 
-        // For regular users, get character actors they have access to
+        // For regular users, get character/mook actors they have access to
         let userActors = [];
 
-        // Method 1: Get character actors from the user's owned tokens
+        // Method 1: Get character/mook actors from the user's owned tokens
         try {
             if (game.scenes && game.scenes.active && game.scenes.active.tokens) {
                 const ownedTokens = game.scenes.active.tokens.filter(token =>
                     token.actor &&
-                    token.actor.type === 'character' &&
+                    this._isValidActorType(token.actor.type) &&
                     token.actor.ownership &&
                     game.user.id &&
                     token.actor.ownership[game.user.id] === 1
                 );
                 userActors = ownedTokens.map(token => token.actor);
-                console.log(`Cyberpunk Agent | Found ${userActors.length} character actors from owned tokens`);
+                console.log(`Cyberpunk Agent | Found ${userActors.length} character/mook actors from owned tokens`);
             } else {
                 console.log("Cyberpunk Agent | No active scene or tokens available");
             }
@@ -4027,34 +4036,34 @@ class CyberpunkAgent {
             console.log("Cyberpunk Agent | Error getting owned tokens:", error);
         }
 
-        // Method 2: Get character actors from the user's character list
+        // Method 2: Get character/mook actors from the user's character list
         try {
             if (game.actors) {
-                const characterActors = game.actors.filter(actor =>
-                    actor.type === 'character' &&
+                const validActors = game.actors.filter(actor =>
+                    this._isValidActorType(actor.type) &&
                     actor.ownership &&
                     game.user.id &&
                     actor.ownership[game.user.id] === 1
                 );
-                console.log(`Cyberpunk Agent | Found ${characterActors.length} character actors from character list`);
-                userActors = [...userActors, ...characterActors];
+                console.log(`Cyberpunk Agent | Found ${validActors.length} character/mook actors from character list`);
+                userActors = [...userActors, ...validActors];
             } else {
                 console.log("Cyberpunk Agent | No actors collection available");
             }
         } catch (error) {
-            console.log("Cyberpunk Agent | Error getting character actors:", error);
+            console.log("Cyberpunk Agent | Error getting character/mook actors:", error);
         }
 
-        // Method 3: Get all character actors that the user has any permission to
+        // Method 3: Get all character/mook actors that the user has any permission to
         try {
             if (game.actors) {
                 const accessibleActors = game.actors.filter(actor => {
-                    if (actor.type !== 'character') return false;
+                    if (!this._isValidActorType(actor.type)) return false;
                     if (!actor.ownership) return false;
                     if (!game.user.id) return false;
                     return actor.ownership[game.user.id] !== undefined;
                 });
-                console.log(`Cyberpunk Agent | Found ${accessibleActors.length} accessible character actors`);
+                console.log(`Cyberpunk Agent | Found ${accessibleActors.length} accessible character/mook actors`);
                 userActors = [...userActors, ...accessibleActors];
             } else {
                 console.log("Cyberpunk Agent | No actors collection available");
@@ -4073,7 +4082,7 @@ class CyberpunkAgent {
             }
         }
 
-        console.log(`Cyberpunk Agent | Final unique accessible character actors: ${uniqueActors.length}`);
+        console.log(`Cyberpunk Agent | Final unique accessible character/mook actors: ${uniqueActors.length}`);
         uniqueActors.forEach(actor => {
             console.log(`  - ${actor.name} (${actor.id}) - Type: ${actor.type}`);
         });
