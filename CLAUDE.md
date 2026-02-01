@@ -1,7 +1,7 @@
 # CLAUDE.md - Cyberpunk Agent Module
 
 > This file provides context for AI assistants working on this codebase.
-> Updated: 2026-02-01
+> Updated: 2026-01-31
 
 ## Project Overview
 
@@ -160,13 +160,21 @@ Users can access the Agent interface through three methods (each toggle-able in 
 
 ### 3. Floating Action Button (FAB)
 - Persistent draggable button on canvas
-- Cyberpunk-styled with cyan glow and pulse animation
-- Draggable to any position (position saved per-user)
+- Cyberpunk 2077-styled with red/blue color scheme and glitch effects
+- Size: 36px × 36px (matches token control buttons)
+- Draggable to any position (position saved per-user in `fab-position` setting)
 - Shows only when any accessible actor has equipped Agent
+- Styling features:
+  - Red border and icon color (default state)
+  - Blue border and icon on hover
+  - Glitch animation on click (position shifts + color cycling through red/blue/yellow)
+  - Scanline and digital noise overlays for authentic Cyberpunk aesthetic
+  - Pointer cursor on hover, grabbing cursor when dragging
 - Click behavior:
   - 1 actor: Opens directly
   - Multiple actors: Shows selection menu
   - GM: Shows all actors with agents
+- Appended directly to `body` element to ensure visibility (not `#ui-bottom`)
 
 ## Apps/Features
 

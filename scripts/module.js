@@ -3364,61 +3364,53 @@ class CyberpunkAgent {
             }
 
             // Create FAB if it doesn't exist
-            if (!document.getElementById('cyberpunk-agent-fab')) {
+            if (!$('#cyberpunk-agent-fab').length) {
                 this.createFAB();
             }
 
-            // Show the FAB
-            const fab = document.getElementById('cyberpunk-agent-fab');
-            if (fab) {
-                fab.style.display = 'flex';
-            }
         } catch (error) {
             console.error("Cyberpunk Agent | Error initializing FAB:", error);
         }
     }
 
     /**
-     * Create the FAB element and inject into DOM
+     * Create the FAB element and inject into DOM using jQuery
      */
     createFAB() {
         try {
-            // Remove existing FAB if any
-            this.removeFAB();
-
-            // Create the FAB element
-            const fab = document.createElement('div');
-            fab.id = 'cyberpunk-agent-fab';
-            fab.className = 'cyberpunk-agent-fab';
-            fab.innerHTML = '<i class="fas fa-mobile-alt"></i>';
-            fab.title = game.i18n.localize('CYBERPUNK_AGENT.AGENT.TITLE');
+            // Don't remove existing - only create if doesn't exist (checked by caller)
+            
+            // Create the FAB element using jQuery for Foundry compatibility
+            const $fab = $(`
+                <div id="cyberpunk-agent-fab" class="cyberpunk-agent-fab" title="${game.i18n.localize('CYBERPUNK_AGENT.AGENT.TITLE')}">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+            `);
 
             // Load saved position or use default
             const savedPosition = game.settings.get('cyberpunk-agent', 'fab-position');
             if (savedPosition.x !== null && savedPosition.y !== null) {
-                fab.style.left = `${savedPosition.x}px`;
-                fab.style.top = `${savedPosition.y}px`;
-                fab.style.right = 'auto';
-                fab.style.bottom = 'auto';
+                $fab.css({
+                    left: `${savedPosition.x}px`,
+                    top: `${savedPosition.y}px`,
+                    right: 'auto',
+                    bottom: 'auto'
+                });
             }
 
             // Add click handler
-            fab.addEventListener('click', (e) => {
-                if (!fab.classList.contains('dragging')) {
+            $fab.on('click', (e) => {
+                if (!$fab.hasClass('dragging')) {
                     this.openAgentInterface();
                 }
             });
 
-            // Add drag functionality
-            this._initFABDrag(fab);
-
-            // Inject into the UI layer
-            const uiMiddle = document.getElementById('ui-middle');
-            if (uiMiddle) {
-                uiMiddle.appendChild(fab);
-            } else {
-                document.body.appendChild(fab);
-            }
+            // Append directly to body - this ensures the FAB is always visible
+            // Using body instead of #ui-bottom to avoid potential parent visibility issues
+            $('body').append($fab);
+            
+            // Add drag functionality (use native element)
+            this._initFABDrag($fab[0]);
 
         } catch (error) {
             console.error("Cyberpunk Agent | Error creating FAB:", error);
@@ -3523,9 +3515,16 @@ class CyberpunkAgent {
      * Remove the FAB from DOM
      */
     removeFAB() {
-        const fab = document.getElementById('cyberpunk-agent-fab');
-        if (fab) {
-            fab.remove();
+        const $fab = $('#cyberpunk-agent-fab');
+        if ($fab.length) {
+            // Check if we should really remove it - verify conditions
+            const isEnabled = game.settings.get('cyberpunk-agent', 'enable-fab-button');
+            const hasEquippedAgents = this.hasEquippedAgentsSync();
+            
+            // Only remove if conditions warrant it
+            if (!isEnabled || !hasEquippedAgents) {
+                $fab.remove();
+            }
         }
     }
 
@@ -13187,6 +13186,15 @@ Hooks.once('ready', () => {
             }
         }, 100);
 
+        // Initialize FAB if canvas is already ready (fallback for when scene is already loaded)
+        // canvasReady hook handles the case when scene loads/switches
+        setTimeout(() => {
+            if (CyberpunkAgent.instance && canvas?.ready) {
+                CyberpunkAgent.instance.loadDeviceData();
+                CyberpunkAgent.instance.initializeFAB();
+            }
+        }, 2000);
+
         // Initialize GM online status
         CyberpunkAgent.instance._updateGMOnlineStatus();
         
@@ -13274,6 +13282,16 @@ Hooks.once('ready', () => {
         // NOTE: getSceneControlButtons and renderSceneControls hooks are now registered in init
 
         // Hook to ensure button appears when canvas is ready (fixes initial load issue)
+        // Also check if canvas is already ready when hook is registered
+        if (canvas?.ready) {
+            setTimeout(() => {
+                if (CyberpunkAgent.instance) {
+                    CyberpunkAgent.instance.loadDeviceData();
+                    CyberpunkAgent.instance.initializeFAB();
+                }
+            }, 500);
+        }
+
         Hooks.on('canvasReady', () => {
             try {
                 if (CyberpunkAgent.instance) {
