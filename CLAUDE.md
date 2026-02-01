@@ -1,7 +1,7 @@
 # CLAUDE.md - Cyberpunk Agent Module
 
 > This file provides context for AI assistants working on this codebase.
-> Updated: 2026-01-31
+> Updated: 2026-02-01
 
 ## Project Overview
 
@@ -33,16 +33,17 @@
 ```
 foundryvtt-cyberpunk-red-agent/
 ├── scripts/
-│   ├── module.js              # Main module (CyberpunkAgent class, ~12k lines)
+│   ├── module.js              # Main module (CyberpunkAgent class, ~13k lines)
 │   ├── agent-home.js          # AgentApplication UI class
-│   ├── socketlib-integration.js # Real-time communication handlers
-│   └── gm-zmail-management.js # GM ZMail management UI
+│   └── socketlib-integration.js # Real-time communication handlers
 ├── templates/                 # Handlebars templates
 │   ├── agent-home.html        # Phone home screen
 │   ├── chat7.html             # Contacts list view
 │   ├── chat-conversation.html # Message conversation view
 │   ├── zmail.html             # Email inbox
 │   ├── memo.html              # Notes app
+│   ├── gm-data-management.html # GM Chat7 data management
+│   ├── gm-zmail-management.html # GM ZMail management
 │   └── ...
 ├── styles/
 │   └── module.css             # All CSS (~3000 lines, CP2077 theme)
@@ -60,9 +61,10 @@ foundryvtt-cyberpunk-red-agent/
 |-------|------|---------|
 | `CyberpunkAgent` | module.js | Main singleton, manages all state and logic |
 | `AgentApplication` | agent-home.js | FormApplication for phone UI |
-| `ContactSearchModal` | contact-search.js | Modal for adding contacts |
-| `GMZMailManagementApplication` | gm-zmail-management.js | GM-only ZMail management |
-| `GMDataManagementMenu` | module.js | GM settings menu for data management |
+| `ContactSearchModal` | module.js | Modal for adding contacts |
+| `GMDataManagementMenu` | module.js | GM settings menu for Chat7 data management |
+| `GMZMailManagementMenu` | module.js | GM settings menu for ZMail (compose, manage, history) |
+| `WriteQueueManager` | module.js | Serializes GM writes to prevent race conditions |
 | `MessageUtils` | module.js | Message ID generation and validation |
 | `MessageDeduplicationManager` | module.js | Prevents duplicate messages |
 | `MessagePerformanceManager` | module.js | Pagination and batched saves |
@@ -114,16 +116,17 @@ foundryvtt-cyberpunk-red-agent/
 | `device-data` | world | Device registry, phone mappings |
 | `phone-number-data` | world | Phone number → device ID mapping |
 | `contact-networks` | world | Contact lists per device |
-| `server-messages` | world | All chat messages |
+| `server-messages` | world | All chat messages (uses pipe `\|` delimiter for keys) |
 | `server-read-status` | world | Read/unread status |
+| `deletion-records` | world | Deleted message IDs with 30-day retention |
 | `zmail-data` | world | ZMail messages |
 | `memo-data` | world | Personal notes |
 | `gm-pinned-devices` | world | GM's pinned devices list |
 | `offline-message-queue` | world | Messages for offline devices |
 | `gm-message-tracking` | world | GM message tracking preference |
-| `notification-sound` | client | Enable/disable notification sound |
-| `toast-notifications` | client | Enable/disable toast popups |
-| `player-chat-notifications` | client | Enable/disable Foundry chat notifications |
+| `notification-sound` | client | Enable/disable notification sound (default: ON) |
+| `toast-notifications` | client | Enable/disable toast popups (default: OFF) |
+| `player-chat-notifications` | client | Enable Foundry chat notifications (default: ON) |
 
 ### LocalStorage Keys (Client-side)
 
@@ -280,12 +283,15 @@ When GM is offline, the phone header shows:
 
 ### Messaging Rules
 1. **Message Storage**: All messages stored server-side in `game.settings`
-2. **Conversation Key**: Sorted device IDs joined by `-` (e.g., `deviceA-deviceB`)
-3. **Message ID**: Generated with `senderId-receiverId-timestamp-hash-random`
-4. **Deduplication**: Recent messages tracked in memory to prevent duplicates
-5. **Offline Delivery**: Messages queued for offline devices, delivered on reconnect
-6. **Real-time Delivery**: Uses SocketLib `executeForEveryone` (works without GM)
-7. **Persistence**: Requires GM to write to `game.settings` (world-scoped)
+2. **Conversation Key**: Sorted device IDs joined by `|` pipe (e.g., `deviceA|deviceB`)
+3. **Legacy Key Migration**: Old `-` delimiter keys auto-migrated on GM startup
+4. **Message ID**: Generated with `senderId-receiverId-timestamp-hash-random`
+5. **Deduplication**: Recent messages tracked in memory to prevent duplicates
+6. **Offline Delivery**: Messages queued for offline devices, delivered on reconnect
+7. **Real-time Delivery**: Uses SocketLib `executeForEveryone` (works without GM)
+8. **Persistence**: Requires GM to write to `game.settings` (world-scoped)
+9. **Write Queue**: GM writes serialized via `WriteQueueManager` to prevent race conditions
+10. **Deletion Sync**: Deleted message IDs tracked with 30-day retention for cross-client sync
 
 ### GM Privileges
 1. **Universal Device Access**: GM can open any character's Agent
@@ -397,6 +403,8 @@ UI strings should use localization keys from `lang/*.json`.
 - `CYBERPUNK_AGENT.NOTIFICATIONS.*` - Toast and notification messages
 - `CYBERPUNK_AGENT.CHAT7.*` - Chat7 app strings
 - `CYBERPUNK_AGENT.DIALOGS.*` - Dialog button labels
+- `CYBERPUNK_AGENT.GM_MANAGEMENT.*` - GM Chat7 data management
+- `CYBERPUNK_AGENT.ZMAIL.*` - ZMail management and compose
 
 ## Coding Conventions
 

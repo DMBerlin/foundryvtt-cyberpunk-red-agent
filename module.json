@@ -42,8 +42,7 @@
   "scripts": [
     "scripts/module.js",
     "scripts/agent-home.js",
-    "scripts/socketlib-integration.js",
-    "scripts/gm-zmail-management.js"
+    "scripts/socketlib-integration.js"
   ],
   "styles": [
     "styles/module.css"

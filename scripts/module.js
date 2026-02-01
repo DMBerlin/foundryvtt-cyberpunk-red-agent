@@ -400,12 +400,97 @@ class ErrorHandlingManager {
     }
 }
 
+/**
+ * Write Queue Manager - Serializes game.settings.set() operations to prevent race conditions
+ */
+class WriteQueueManager {
+    constructor() {
+        this.queue = [];
+        this.isProcessing = false;
+        this.retryAttempts = new Map();
+        this.maxRetries = 3;
+    }
+
+    /**
+     * Queue a settings write operation
+     * @param {string} key - The settings key (e.g., 'server-messages')
+     * @param {Function} writeOperation - Async function that performs the write
+     * @param {string} operationId - Optional unique ID for deduplication
+     * @returns {Promise} Resolves when the write completes
+     */
+    async queueWrite(key, writeOperation, operationId = null) {
+        return new Promise((resolve, reject) => {
+            const id = operationId || `${key}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            this.queue.push({
+                id,
+                key,
+                writeOperation,
+                resolve,
+                reject,
+                timestamp: Date.now()
+            });
+
+            this._processQueue();
+        });
+    }
+
+    /**
+     * Process the queue sequentially
+     */
+    async _processQueue() {
+        if (this.isProcessing || this.queue.length === 0) {
+            return;
+        }
+
+        this.isProcessing = true;
+
+        while (this.queue.length > 0) {
+            const operation = this.queue.shift();
+            
+            try {
+                const result = await operation.writeOperation();
+                operation.resolve(result);
+                this.retryAttempts.delete(operation.id);
+            } catch (error) {
+                const attempts = (this.retryAttempts.get(operation.id) || 0) + 1;
+                this.retryAttempts.set(operation.id, attempts);
+
+                if (attempts < this.maxRetries) {
+                    console.warn(`Cyberpunk Agent | Write operation failed, retry ${attempts}/${this.maxRetries}:`, operation.key);
+                    // Re-queue at the front for immediate retry
+                    this.queue.unshift(operation);
+                    await new Promise(r => setTimeout(r, 500 * attempts)); // Exponential backoff
+                } else {
+                    console.error(`Cyberpunk Agent | Write operation failed after ${this.maxRetries} attempts:`, operation.key, error);
+                    operation.reject(error);
+                    this.retryAttempts.delete(operation.id);
+                }
+            }
+        }
+
+        this.isProcessing = false;
+    }
+
+    /**
+     * Get queue status
+     */
+    getStatus() {
+        return {
+            queueLength: this.queue.length,
+            isProcessing: this.isProcessing,
+            pendingRetries: this.retryAttempts.size
+        };
+    }
+}
+
 // Create global instances
 window.CyberpunkAgentMessageUtils = MessageUtils;
 window.CyberpunkAgentMessageDeduplication = new MessageDeduplicationManager();
 window.CyberpunkAgentPerformanceManager = new MessagePerformanceManager();
 window.CyberpunkAgentNotificationManager = new SmartNotificationManager();
 window.CyberpunkAgentErrorHandler = new ErrorHandlingManager();
+window.CyberpunkAgentWriteQueue = new WriteQueueManager();
 
 console.log("Cyberpunk Agent | Enhanced messaging system loaded successfully");
 
@@ -1226,9 +1311,10 @@ class GMDataManagementMenu extends FormApplication {
     static get defaultOptions() {
         return foundry.utils.mergeObject(super.defaultOptions, {
             id: "gm-data-management",
+            classes: ["sheet"],
             template: "modules/cyberpunk-agent/templates/gm-data-management.html",
-            title: "GM Chat7 Management",
-            width: 600,
+            title: game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.TITLE"),
+            width: 500,
             height: "auto",
             resizable: true,
             closeOnSubmit: false
@@ -1236,57 +1322,35 @@ class GMDataManagementMenu extends FormApplication {
     }
 
     getData(options = {}) {
-        return {
-            // Add any data needed for the template
-        };
+        return {};
     }
 
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Clear All Messages button
         html.find('.clear-all-messages').click(this._onClearAllMessages.bind(this));
-
-        // Clear All Contact Lists button
         html.find('.clear-all-contact-lists').click(this._onClearAllContactLists.bind(this));
-
-        // Synchronize All Devices button
         html.find('.synchronize-all-devices').click(this._onSynchronizeAllDevices.bind(this));
-
-        // Master Reset System button
         html.find('.master-reset-system').click(this._onMasterResetSystem.bind(this));
     }
 
     async _onClearAllMessages(event) {
         event.preventDefault();
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Clear All Messages",
-                content: "<p>This will delete ALL chat message histories for ALL devices in the registry. This action cannot be undone.</p><p>Are you sure you want to continue?</p>",
-                buttons: {
-                    yes: {
-                        icon: '<i class="fas fa-trash"></i>',
-                        label: "Yes, Clear All Messages",
-                        callback: () => resolve(true)
-                    },
-                    no: {
-                        icon: '<i class="fas fa-times"></i>',
-                        label: "Cancel",
-                        callback: () => resolve(false)
-                    }
-                },
-                default: "no"
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.CONFIRM_TITLE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.CONFIRM_MESSAGE")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
             try {
                 await window.CyberpunkAgent.instance.clearAllMessages();
-                ui.notifications.info("All messages cleared successfully!");
+                ui.notifications.info(game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.SUCCESS"));
             } catch (error) {
                 console.error("Error clearing all messages:", error);
-                ui.notifications.error("Error clearing all messages: " + error.message);
+                ui.notifications.error(`${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.ERROR")}: ${error.message}`);
             }
         }
     }
@@ -1294,33 +1358,20 @@ class GMDataManagementMenu extends FormApplication {
     async _onClearAllContactLists(event) {
         event.preventDefault();
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Clear All Contact Lists",
-                content: "<p>This will clear the contact list from all agent devices in the registry. This will remove all contacts but keep the devices themselves. This action cannot be undone.</p><p>Are you sure you want to continue?</p>",
-                buttons: {
-                    yes: {
-                        icon: '<i class="fas fa-address-book"></i>',
-                        label: "Yes, Clear All Contact Lists",
-                        callback: () => resolve(true)
-                    },
-                    no: {
-                        icon: '<i class="fas fa-times"></i>',
-                        label: "Cancel",
-                        callback: () => resolve(false)
-                    }
-                },
-                default: "no"
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.CONFIRM_TITLE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.CONFIRM_MESSAGE")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
             try {
                 await window.CyberpunkAgent.instance.clearAllContactLists();
-                ui.notifications.info("All contact lists cleared successfully!");
+                ui.notifications.info(game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.SUCCESS"));
             } catch (error) {
                 console.error("Error clearing all contact lists:", error);
-                ui.notifications.error("Error clearing all contact lists: " + error.message);
+                ui.notifications.error(`${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.ERROR")}: ${error.message}`);
             }
         }
     }
@@ -1328,50 +1379,20 @@ class GMDataManagementMenu extends FormApplication {
     async _onSynchronizeAllDevices(event) {
         event.preventDefault();
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Master Synchronization - Devices & Messages",
-                content: `
-                    <div style="margin-bottom: 15px;">
-                        <h3 style="margin: 0 0 10px 0; color: #ff3333;">⚠️ MASTER SYNCHRONIZATION</h3>
-                        <p><strong>This will perform a complete system synchronization:</strong></p>
-                        <ul style="margin: 10px 0; padding-left: 20px;">
-                            <li><strong>Actor Data:</strong> Update device names and avatars from character sheets</li>
-                            <li><strong>Device Registry:</strong> Ensure all devices have phone numbers</li>
-                            <li><strong>Message History:</strong> Clear all players' local storage</li>
-                            <li><strong>Authoritative Sync:</strong> Sync all clients with GM server storage</li>
-                        </ul>
-                        <p style="color: #ffaa00;"><strong>⚠️ Warning:</strong> This will force all connected players to re-sync their entire message history from the server. Any local-only messages will be lost.</p>
-                    </div>
-                    <p><strong>Are you sure you want to continue?</strong></p>
-                `,
-                buttons: {
-                    yes: {
-                        icon: '<i class="fas fa-sync-alt"></i>',
-                        label: "Yes, Perform Master Sync",
-                        callback: () => resolve(true)
-                    },
-                    no: {
-                        icon: '<i class="fas fa-times"></i>',
-                        label: "Cancel",
-                        callback: () => resolve(false)
-                    }
-                },
-                default: "no"
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.CONFIRM_TITLE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.CONFIRM_MESSAGE")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
             try {
                 const result = await window.CyberpunkAgent.instance.synchronizeAllDevices();
-                const message = `🔄 Master synchronization completed successfully!\n` +
-                    `👤 Actor data: ${result.actorDataUpdated} devices updated\n` +
-                    `📱 Device registry: ${result.deviceCount} devices (${result.devicesUpdated} new phone numbers)\n` +
-                    `💬 Messages: ${result.conversationsSync} conversations, ${result.messagesSync} messages synced`;
-                ui.notifications.info(message);
+                ui.notifications.info(`${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.SUCCESS")} Devices: ${result.deviceCount}, Messages: ${result.messagesSync}`);
             } catch (error) {
                 console.error("Error in master synchronization:", error);
-                ui.notifications.error("Error in master synchronization: " + error.message);
+                ui.notifications.error(`${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.ERROR")}: ${error.message}`);
             }
         }
     }
@@ -1380,18 +1401,15 @@ class GMDataManagementMenu extends FormApplication {
         event.preventDefault();
 
         try {
-            // Call the global master reset function
             if (typeof window.cyberpunkAgentMasterReset === 'function') {
                 await window.cyberpunkAgentMasterReset();
-                // The master reset function handles its own confirmation dialog
-                // and will close this dialog when it completes
             } else {
                 console.error("Master reset function not available");
                 ui.notifications.error("Master reset function not available");
             }
         } catch (error) {
             console.error("Error executing master reset:", error);
-            ui.notifications.error("Error executing master reset: " + error.message);
+            ui.notifications.error(`${game.i18n.localize("CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.ERROR")}: ${error.message}`);
         }
     }
 }
@@ -1616,6 +1634,7 @@ window.CyberpunkAgentUIController = new UIController();
 
 /**
  * GM ZMail Management Menu
+ * Simplified Foundry v12 compatible version
  */
 class GMZMailManagementMenu extends FormApplication {
     constructor(object = {}, options = {}) {
@@ -1625,20 +1644,19 @@ class GMZMailManagementMenu extends FormApplication {
     static get defaultOptions() {
         return foundry.utils.mergeObject(super.defaultOptions, {
             id: "gm-zmail-management-menu",
-            title: "ZMail Management",
+            classes: ["sheet"],
+            title: game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.TITLE"),
             template: "modules/cyberpunk-agent/templates/gm-zmail-management.html",
-            width: 800,
-            height: 600,
+            width: 600,
+            height: "auto",
             resizable: true,
             minimizable: true,
-            tabs: [
-                { navSelector: ".tabs", contentSelector: ".content", initial: "compose" }
-            ]
+            tabs: [{navSelector: ".tabs", contentSelector: "form", initial: "compose"}]
         });
     }
 
     async getData(options = {}) {
-        const data = super.getData(options);
+        const data = await super.getData(options);
 
         // Note: Read status is now updated via event-driven notifications from players
         // No need to poll for read status when GM opens ZMail manager
@@ -1709,11 +1727,8 @@ class GMZMailManagementMenu extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Tab navigation
-        html.find('.zmail-tab-btn').click(this._onTabClick.bind(this));
-
         // Send ZMail button
-        html.find('.zmail-send-btn, #send-zmail-btn').click(this._onSendZMailClick.bind(this));
+        html.find('.send-zmail-btn').click(this._onSendZMailClick.bind(this));
 
         // ZMail management action buttons
         html.find('.zmail-management-btn[data-action="view-all-messages"]').click(this._onViewAllMessagesClick.bind(this));
@@ -1722,16 +1737,9 @@ class GMZMailManagementMenu extends FormApplication {
 
         // Recent message actions
         html.find('.zmail-recent-action[data-action="view-message"]').click(this._onViewMessageClick.bind(this));
-        html.find('.zmail-recent-action[data-action="copy-link"]').click(this._onCopyZMailLinkClick.bind(this));
         html.find('.zmail-recent-action[data-action="delete-message"]').click(this._onDeleteMessageClick.bind(this));
-
-        // Recipient selection display
-        html.find('#zmail-recipient').change(this._onRecipientChange.bind(this));
     }
 
-    /**
-     * Handle send ZMail button click
-     */
     async _onSendZMailClick(event) {
         event.preventDefault();
 
@@ -1742,103 +1750,62 @@ class GMZMailManagementMenu extends FormApplication {
 
         // Validate inputs
         if (!recipientDeviceId) {
-            ui.notifications.error("Selecione um destinatário!");
+            ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.VALIDATION.NO_RECIPIENT"));
             return;
         }
-
         if (!sender) {
-            ui.notifications.error("Digite o nome do remetente!");
+            ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.VALIDATION.NO_SENDER"));
             return;
         }
-
         if (!subject) {
-            ui.notifications.error("Digite o assunto da mensagem!");
+            ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.VALIDATION.NO_SUBJECT"));
             return;
         }
-
         if (!content) {
-            ui.notifications.error("Digite o conteúdo da mensagem!");
+            ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.VALIDATION.NO_CONTENT"));
             return;
         }
 
-        // Disable button during sending
         const sendBtn = this.element.find('.send-zmail-btn');
         const originalText = sendBtn.html();
-        sendBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enviando...');
+        sendBtn.prop('disabled', true).html(`<i class="fas fa-spinner fa-spin"></i> ${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.SENDING")}`);
 
         try {
-            // Send ZMail message
-            const success = await window.CyberpunkAgent?.instance?.sendZMailMessage(
-                recipientDeviceId,
-                sender,
-                subject,
-                content
-            );
+            const success = await window.CyberpunkAgent?.instance?.sendZMailMessage(recipientDeviceId, sender, subject, content);
 
             if (success) {
-                ui.notifications.info("ZMail enviado com sucesso!");
-
-                // Clear form
+                ui.notifications.info(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.SUCCESS"));
                 this.element.find('#zmail-sender').val('');
                 this.element.find('#zmail-subject').val('');
                 this.element.find('#zmail-content').val('');
-
-                // Refresh the application
                 this.render(true);
             } else {
-                ui.notifications.error("Erro ao enviar ZMail!");
+                ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.ERROR"));
             }
         } catch (error) {
             console.error("Error sending ZMail:", error);
-            ui.notifications.error("Erro ao enviar ZMail: " + error.message);
+            ui.notifications.error(`${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.COMPOSE.ERROR")}: ${error.message}`);
         } finally {
-            // Re-enable button
             sendBtn.prop('disabled', false).html(originalText);
         }
     }
 
-    /**
-     * Handle view all messages click
-     */
     _onViewAllMessagesClick(event) {
         event.preventDefault();
-        console.log("View all messages clicked");
-
-        // Show all ZMail messages in a dialog
         this._showAllMessagesDialog();
     }
 
-    /**
-     * Handle mark all as read click
-     */
     async _onMarkAllReadClick(event) {
         event.preventDefault();
-        console.log("Mark all as read clicked");
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Marcar Todas como Lidas",
-                content: `
-                  <div class="cp-mark-all-read-dialog">
-                    <p>Tem certeza que deseja marcar todas as mensagens ZMail como lidas?</p>
-                    <p><small>Esta ação afetará todos os jogadores.</small></p>
-                  </div>
-                `,
-                buttons: {
-                    cancel: {
-                        label: "Cancelar",
-                        callback: () => resolve(false)
-                    },
-                    confirm: {
-                        label: "Marcar como Lidas",
-                        callback: () => resolve(true)
-                    }
-                }
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.TITLE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.CONFIRM")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
-            // Mark all messages as read
             let markedCount = 0;
             if (window.CyberpunkAgent?.instance) {
                 for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
@@ -1851,96 +1818,50 @@ class GMZMailManagementMenu extends FormApplication {
                 }
                 await window.CyberpunkAgent.instance.saveZMailData();
             }
-
-            ui.notifications.info(`${markedCount} mensagens marcadas como lidas!`);
+            ui.notifications.info(game.i18n.format("CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.SUCCESS", { count: markedCount }));
             this.render(true);
         }
     }
 
-    /**
-     * Handle clear old messages click
-     */
     async _onClearOldMessagesClick(event) {
         event.preventDefault();
-        console.log("Clear old messages clicked");
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Limpar Mensagens Antigas",
-                content: `
-                  <div class="cp-clear-old-messages-dialog">
-                    <p>Tem certeza que deseja limpar mensagens ZMail antigas (mais de 30 dias)?</p>
-                    <p><small>Esta ação não pode ser desfeita.</small></p>
-                  </div>
-                `,
-                buttons: {
-                    cancel: {
-                        label: "Cancelar",
-                        callback: () => resolve(false)
-                    },
-                    confirm: {
-                        label: "Limpar Mensagens",
-                        callback: () => resolve(true)
-                    }
-                }
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.TITLE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.CONFIRM")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
             const success = await window.CyberpunkAgent?.instance?.clearOldZMailMessages(30);
             if (success) {
-                ui.notifications.info("Mensagens antigas limpas com sucesso!");
+                ui.notifications.info(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.SUCCESS"));
                 this.render(true);
             } else {
-                ui.notifications.error("Erro ao limpar mensagens antigas!");
+                ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.ERROR"));
             }
         }
     }
 
-    /**
-     * Handle view message click
-     */
     _onViewMessageClick(event) {
         event.preventDefault();
         const messageId = event.currentTarget.dataset.messageId;
-        console.log("View message clicked:", messageId);
-
-        // Find and show the message
         this._showMessageDialog(messageId);
     }
 
-    /**
-     * Handle delete message click
-     */
     async _onDeleteMessageClick(event) {
         event.preventDefault();
         const messageId = event.currentTarget.dataset.messageId;
-        console.log("Delete message clicked:", messageId);
 
-        const confirmed = await new Promise((resolve) => {
-            new Dialog({
-                title: "Deletar ZMail",
-                content: `
-                  <div class="cp-delete-zmail-dialog">
-                    <p>Tem certeza que deseja deletar esta mensagem ZMail?</p>
-                    <p><small>Esta ação não pode ser desfeita.</small></p>
-                  </div>
-                `,
-                buttons: {
-                    cancel: {
-                        label: "Cancelar",
-                        callback: () => resolve(false)
-                    },
-                    confirm: {
-                        label: "Deletar",
-                        callback: () => resolve(true)
-                    }
-                }
-            }).render(true);
+        const confirmed = await Dialog.confirm({
+            title: game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.DELETE"),
+            content: `<p>${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.DELETE_CONFIRM")}</p>`,
+            yes: () => true,
+            no: () => false
         });
 
         if (confirmed) {
-            // Find the message and delete it
             let deleted = false;
             if (window.CyberpunkAgent?.instance) {
                 for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
@@ -1953,18 +1874,15 @@ class GMZMailManagementMenu extends FormApplication {
                 }
                 if (deleted) {
                     await window.CyberpunkAgent.instance.saveZMailData();
-                    ui.notifications.info("ZMail deletado com sucesso!");
+                    ui.notifications.info(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.DELETE_SUCCESS"));
                     this.render(true);
                 } else {
-                    ui.notifications.error("Mensagem não encontrada!");
+                    ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.NOT_FOUND"));
                 }
             }
         }
     }
 
-    /**
-     * Show all messages dialog
-     */
     _showAllMessagesDialog() {
         const allMessages = [];
 
@@ -1981,44 +1899,38 @@ class GMZMailManagementMenu extends FormApplication {
             }
         }
 
-        // Sort by timestamp (newest first)
         allMessages.sort((a, b) => b.timestamp - a.timestamp);
 
+        const readLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.STATUS.READ");
+        const unreadLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.STATUS.UNREAD");
+        const toLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.TO");
+
         const content = `
-          <div class="cp-all-messages-dialog">
-            <h3>Total de Mensagens ZMail: ${allMessages.length}</h3>
-            <div class="cp-messages-list" style="max-height: 400px; overflow-y: auto;">
-              ${allMessages.map(msg => `
-                <div class="cp-message-item" style="border: 1px solid var(--cp-border-weak); border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <strong>${msg.sender}</strong>
-                    <span style="font-size: 0.9em; color: var(--cp-text-muted);">${msg.time}</span>
-                  </div>
-                  <div style="font-weight: 600; margin-bottom: 4px;">${msg.subject}</div>
-                  <div style="font-size: 0.9em; color: var(--cp-text-dim);">Para: ${msg.recipientName}</div>
-                  <div style="font-size: 0.9em; color: var(--cp-text-dim); margin-top: 4px;">
-                    ${msg.isRead ? '<span style="color: var(--cp-success);">✓ Lida</span>' : '<span style="color: var(--cp-primary);">● Não lida</span>'}
-                  </div>
-                </div>
-              `).join('')}
+            <div style="max-height: 400px; overflow-y: auto;">
+                <p><strong>${game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.STATS.TOTAL")}:</strong> ${allMessages.length}</p>
+                ${allMessages.map(msg => `
+                    <div style="border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; background: var(--color-bg-option);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <strong style="color: var(--color-text-dark-primary);">${msg.sender}</strong>
+                            <small style="color: var(--color-text-dark-secondary);">${msg.time}</small>
+                        </div>
+                        <div style="font-weight: 600; color: var(--color-text-dark-primary);">${msg.subject}</div>
+                        <div style="font-size: 0.9em; color: var(--color-text-dark-secondary);">${toLabel}: ${msg.recipientName}</div>
+                        <div style="font-size: 0.85em; margin-top: 0.25rem;">
+                            ${msg.isRead ? `<span style="color: var(--color-level-success);">✓ ${readLabel}</span>` : `<span style="color: var(--color-level-warning);">● ${unreadLabel}</span>`}
+                        </div>
+                    </div>
+                `).join('')}
             </div>
-          </div>
         `;
 
         new Dialog({
-            title: "Todas as Mensagens ZMail",
+            title: game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.MANAGE.VIEW_ALL.TITLE"),
             content: content,
-            buttons: {
-                close: {
-                    label: "Fechar"
-                }
-            }
+            buttons: { close: { label: game.i18n.localize("CYBERPUNK_AGENT.DIALOGS.CANCEL") } }
         }).render(true);
     }
 
-    /**
-     * Show message dialog
-     */
     _showMessageDialog(messageId) {
         let message = null;
         let recipientName = 'Unknown';
@@ -2036,139 +1948,38 @@ class GMZMailManagementMenu extends FormApplication {
         }
 
         if (!message) {
-            ui.notifications.error("Mensagem não encontrada!");
+            ui.notifications.error(game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.NOT_FOUND"));
             return;
         }
 
+        const readLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.STATUS.READ");
+        const unreadLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.STATUS.UNREAD");
+        const toLabel = game.i18n.localize("CYBERPUNK_AGENT.ZMAIL.RECENT.TO");
+
         const content = `
-          <div class="cp-message-dialog">
-            <div style="margin-bottom: 16px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <strong>De: ${message.sender}</strong>
-                <span style="font-size: 0.9em; color: var(--cp-text-muted);">${message.time}</span>
-              </div>
-              <div style="font-weight: 600; margin-bottom: 4px;">Assunto: ${message.subject}</div>
-              <div style="font-size: 0.9em; color: var(--cp-text-dim);">Para: ${recipientName}</div>
+            <div>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <strong style="color: var(--color-text-dark-primary);">${message.sender}</strong>
+                        <small style="color: var(--color-text-dark-secondary);">${message.time}</small>
+                    </div>
+                    <div style="font-weight: 600; color: var(--color-text-dark-primary);">${message.subject}</div>
+                    <div style="font-size: 0.9em; color: var(--color-text-dark-secondary);">${toLabel}: ${recipientName}</div>
+                </div>
+                <div style="border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; padding: 1rem; white-space: pre-wrap; background: var(--color-bg-option); color: var(--color-text-dark-primary);">
+                    ${message.content}
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.85em;">
+                    ${message.isRead ? `<span style="color: var(--color-level-success);">✓ ${readLabel}</span>` : `<span style="color: var(--color-level-warning);">● ${unreadLabel}</span>`}
+                </div>
             </div>
-            <div style="background: var(--cp-gradient-message); border: 1px solid var(--cp-border-weak); border-radius: 8px; padding: 16px; white-space: pre-wrap;">
-              ${message.content}
-            </div>
-            <div style="margin-top: 12px; font-size: 0.9em; color: var(--cp-text-dim);">
-              Status: ${message.isRead ? '<span style="color: var(--cp-success);">✓ Lida</span>' : '<span style="color: var(--cp-primary);">● Não lida</span>'}
-            </div>
-          </div>
         `;
 
         new Dialog({
             title: `ZMail: ${message.subject}`,
             content: content,
-            buttons: {
-                close: {
-                    label: "Fechar"
-                }
-            }
+            buttons: { close: { label: game.i18n.localize("CYBERPUNK_AGENT.DIALOGS.CANCEL") } }
         }).render(true);
-    }
-
-    /**
-     * Handle tab navigation
-     */
-    _onTabClick(event) {
-        event.preventDefault();
-        const tabName = event.currentTarget.dataset.tab;
-
-        // Remove active class from all tabs and content
-        this.element.find('.zmail-tab-btn').removeClass('active');
-        this.element.find('.zmail-tab-content').removeClass('active');
-
-        // Add active class to clicked tab and corresponding content
-        event.currentTarget.classList.add('active');
-        this.element.find(`#${tabName}-tab`).addClass('active');
-    }
-
-    /**
-     * Handle copy ZMail link click
-     */
-    async _onCopyZMailLinkClick(event) {
-        event.preventDefault();
-        const messageId = event.currentTarget.dataset.messageId;
-        console.log("Copy ZMail link clicked:", messageId);
-
-        // Find the message to get its details
-        let message = null;
-        let recipientName = 'Unknown';
-
-        if (window.CyberpunkAgent?.instance) {
-            for (const [deviceId, messages] of window.CyberpunkAgent.instance.zmailMessages) {
-                const foundMessage = messages.find(msg => msg.id === messageId);
-                if (foundMessage) {
-                    message = foundMessage;
-                    const device = window.CyberpunkAgent.instance.devices.get(deviceId);
-                    recipientName = device ? device.deviceName : `Device ${deviceId}`;
-                    break;
-                }
-            }
-        }
-
-        if (!message) {
-            ui.notifications.error("ZMail message not found!");
-            return;
-        }
-
-        // Generate the ZMail link
-        const zmailLink = `@ZMAIL[${messageId}]{${message.subject}}`;
-
-        try {
-            // Copy to clipboard
-            await navigator.clipboard.writeText(zmailLink);
-            ui.notifications.info(`ZMail link copied to clipboard: ${message.subject}`);
-            console.log("ZMail link copied:", zmailLink);
-        } catch (error) {
-            console.error("Error copying to clipboard:", error);
-            // Fallback: show the link in a dialog
-            new Dialog({
-                title: "ZMail Link",
-                content: `
-                    <div class="cp-zmail-link-dialog">
-                        <p>Copy this link to share the ZMail message:</p>
-                        <div class="cp-zmail-link-display">
-                            <code>${zmailLink}</code>
-                        </div>
-                        <p class="cp-zmail-link-hint">
-                            <i class="fas fa-info-circle"></i>
-                            Paste this in CHAT7 to create a clickable link to this ZMail message.
-                        </p>
-                    </div>
-                `,
-                buttons: {
-                    close: {
-                        label: "Close"
-                    }
-                }
-            }).render(true);
-        }
-    }
-
-    /**
-     * Handle recipient selection change
-     */
-    _onRecipientChange(event) {
-        const select = event.currentTarget;
-        const selectedOption = select.options[select.selectedIndex];
-        const displayElement = this.element.find('#selected-recipient-display');
-
-        if (selectedOption.value) {
-            const actorName = selectedOption.dataset.actorName;
-            displayElement.html(`
-                <i class="fas fa-user-circle"></i>
-                <span>${actorName}</span>
-            `).addClass('selected');
-        } else {
-            displayElement.html(`
-                <i class="fas fa-user-circle"></i>
-                <span>No recipient selected</span>
-            `).removeClass('selected');
-        }
     }
 }
 
@@ -2545,6 +2356,16 @@ class CyberpunkAgent {
             default: {}
         });
 
+        // Register deletion records for sync tracking
+        game.settings.register('cyberpunk-agent', 'deletion-records', {
+            name: 'Deletion Records',
+            hint: 'Tracks deleted message IDs for sync across clients',
+            scope: 'world',
+            config: false,
+            type: Object,
+            default: {}
+        });
+
         // Register GM message tracking setting
         // Chat notification setting (client-scoped, shows preview in Foundry chat)
         game.settings.register('cyberpunk-agent', 'player-chat-notifications', {
@@ -2793,6 +2614,9 @@ class CyberpunkAgent {
         // Setup item update hooks for equipment changes
         this.setupItemUpdateHooks();
 
+        // Migrate legacy conversation keys (one-time, GM only)
+        await this._migrateConversationKeys();
+
         // ENHANCED: Perform comprehensive sync with server on module load
         console.log("Cyberpunk Agent | Starting comprehensive sync on module load...");
         await this.performInitialMessageSync();
@@ -2811,6 +2635,9 @@ class CyberpunkAgent {
     async performInitialMessageSync() {
         try {
             console.log("Cyberpunk Agent | Performing initial comprehensive message sync...");
+
+            // Sync deletions first (remove messages that were deleted on server)
+            await this._syncDeletions();
 
             // Get all user's devices
             const userDevices = [];
@@ -2838,7 +2665,6 @@ class CyberpunkAgent {
             }
 
             if (totalSynced > 0) {
-                console.log(`Cyberpunk Agent | ${totalSynced} dispositivos sincronizados com servidor`);
                 console.log(`Cyberpunk Agent | Initial sync completed: ${totalSynced}/${userDevices.length} devices synced`);
             }
 
@@ -4544,8 +4370,9 @@ class CyberpunkAgent {
      */
     _getDeviceConversationKey(deviceId1, deviceId2) {
         // Sort device IDs to ensure consistent conversation key
+        // Use | delimiter since device IDs contain hyphens
         const sortedIds = [deviceId1, deviceId2].sort();
-        return `${sortedIds[0]}-${sortedIds[1]}`;
+        return `${sortedIds[0]}|${sortedIds[1]}`;
     }
 
     /**
@@ -4553,7 +4380,8 @@ class CyberpunkAgent {
      */
     _getDeviceSpecificConversationKey(deviceId, contactDeviceId) {
         // Don't sort - maintain direction for device-specific clearing
-        return `${deviceId}-${contactDeviceId}`;
+        // Use | delimiter since device IDs contain hyphens
+        return `${deviceId}|${contactDeviceId}`;
     }
 
     /**
@@ -4561,9 +4389,118 @@ class CyberpunkAgent {
      */
     _getBothDeviceConversationKeys(deviceId1, deviceId2) {
         return {
-            device1ToDevice2: `${deviceId1}-${deviceId2}`,
-            device2ToDevice1: `${deviceId2}-${deviceId1}`
+            device1ToDevice2: `${deviceId1}|${deviceId2}`,
+            device2ToDevice1: `${deviceId2}|${deviceId1}`
         };
+    }
+
+    /**
+     * Parse a conversation key to extract device IDs
+     * @param {string} key - Conversation key in format "deviceId1|deviceId2"
+     * @returns {{deviceId1: string, deviceId2: string}|null}
+     */
+    _parseConversationKey(key) {
+        if (!key || typeof key !== 'string') return null;
+        
+        // Try new format first (pipe delimiter)
+        if (key.includes('|')) {
+            const parts = key.split('|');
+            if (parts.length === 2) {
+                return { deviceId1: parts[0], deviceId2: parts[1] };
+            }
+        }
+        
+        // Fallback: try legacy format (hyphen delimiter with device- prefix)
+        // Pattern: device-XXX-YYY-device-AAA-BBB (where each device ID has 2 hyphens)
+        const legacyMatch = key.match(/^(device-[^|]+)-(device-[^|]+)$/);
+        if (legacyMatch) {
+            return { deviceId1: legacyMatch[1], deviceId2: legacyMatch[2] };
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if a conversation key uses the legacy hyphen format
+     */
+    _isLegacyConversationKey(key) {
+        return key && !key.includes('|') && key.includes('device-');
+    }
+
+    /**
+     * Migrate a legacy conversation key to the new pipe format
+     */
+    _migrateLegacyKey(legacyKey) {
+        const parsed = this._parseConversationKey(legacyKey);
+        if (parsed) {
+            return `${parsed.deviceId1}|${parsed.deviceId2}`;
+        }
+        return legacyKey; // Return as-is if can't parse
+    }
+
+    /**
+     * Migrate all conversation keys from legacy hyphen format to new pipe format
+     * This is a one-time migration that runs on startup
+     */
+    async _migrateConversationKeys() {
+        // Only GM can perform the migration
+        if (!game.user.isGM) {
+            console.log("Cyberpunk Agent | Skipping key migration (not GM)");
+            return;
+        }
+
+        try {
+            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+            const keys = Object.keys(serverMessages);
+            
+            // Check if any keys need migration
+            const legacyKeys = keys.filter(key => this._isLegacyConversationKey(key));
+            
+            if (legacyKeys.length === 0) {
+                console.log("Cyberpunk Agent | No legacy conversation keys to migrate");
+                return;
+            }
+
+            console.log(`Cyberpunk Agent | Migrating ${legacyKeys.length} legacy conversation keys...`);
+
+            const newServerMessages = {};
+            let migratedCount = 0;
+
+            for (const key of keys) {
+                if (this._isLegacyConversationKey(key)) {
+                    const newKey = this._migrateLegacyKey(key);
+                    if (newKey !== key) {
+                        // Migrate to new key, merging if new key already exists
+                        const existingMessages = newServerMessages[newKey] || [];
+                        const oldMessages = serverMessages[key] || [];
+                        
+                        // Merge messages, avoiding duplicates by ID
+                        const mergedMessages = [...existingMessages];
+                        for (const msg of oldMessages) {
+                            if (!mergedMessages.some(m => m.id === msg.id)) {
+                                mergedMessages.push(msg);
+                            }
+                        }
+                        
+                        newServerMessages[newKey] = mergedMessages;
+                        migratedCount++;
+                        console.log(`Cyberpunk Agent | Migrated key: ${key} → ${newKey}`);
+                    } else {
+                        newServerMessages[key] = serverMessages[key];
+                    }
+                } else {
+                    // Already in new format
+                    newServerMessages[key] = serverMessages[key];
+                }
+            }
+
+            if (migratedCount > 0) {
+                await game.settings.set('cyberpunk-agent', 'server-messages', newServerMessages);
+                console.log(`Cyberpunk Agent | Successfully migrated ${migratedCount} conversation keys`);
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error migrating conversation keys:", error);
+        }
     }
 
     /**
@@ -5622,43 +5559,43 @@ class CyberpunkAgent {
     }
 
     /**
-     * GM saves message directly to server settings
+     * GM saves message directly to server settings (using write queue to prevent race conditions)
      */
     async saveMessageToServerAsGM(senderDeviceId, receiverDeviceId, message) {
-        try {
-            const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
-            const keys = this._getBothDeviceConversationKeys(senderDeviceId, receiverDeviceId);
+        // Use write queue to serialize writes and prevent race conditions
+        return window.CyberpunkAgentWriteQueue.queueWrite('server-messages', async () => {
+            try {
+                const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
+                const keys = this._getBothDeviceConversationKeys(senderDeviceId, receiverDeviceId);
 
-            // Initialize conversations in server storage for both devices
-            if (!serverMessages[keys.device1ToDevice2]) {
-                serverMessages[keys.device1ToDevice2] = [];
+                // Initialize conversations in server storage for both devices
+                if (!serverMessages[keys.device1ToDevice2]) {
+                    serverMessages[keys.device1ToDevice2] = [];
+                }
+                if (!serverMessages[keys.device2ToDevice1]) {
+                    serverMessages[keys.device2ToDevice1] = [];
+                }
+
+                // Check if message already exists on server
+                const messageExists1 = serverMessages[keys.device1ToDevice2].some(msg => msg.id === message.id);
+                const messageExists2 = serverMessages[keys.device2ToDevice1].some(msg => msg.id === message.id);
+
+                if (!messageExists1) {
+                    serverMessages[keys.device1ToDevice2].push(message);
+                }
+                if (!messageExists2) {
+                    serverMessages[keys.device2ToDevice1].push(message);
+                }
+
+                // Save to server settings
+                await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+
+                return true;
+            } catch (error) {
+                console.error(`Cyberpunk Agent | Error saving message to server as GM:`, error);
+                throw error;
             }
-            if (!serverMessages[keys.device2ToDevice1]) {
-                serverMessages[keys.device2ToDevice1] = [];
-            }
-
-            // Check if message already exists on server
-            const messageExists1 = serverMessages[keys.device1ToDevice2].some(msg => msg.id === message.id);
-            const messageExists2 = serverMessages[keys.device2ToDevice1].some(msg => msg.id === message.id);
-
-            if (!messageExists1) {
-                serverMessages[keys.device1ToDevice2].push(message);
-                console.log(`Cyberpunk Agent | Message saved to server for ${keys.device1ToDevice2}: ${message.text}`);
-            }
-            if (!messageExists2) {
-                serverMessages[keys.device2ToDevice1].push(message);
-                console.log(`Cyberpunk Agent | Message saved to server for ${keys.device2ToDevice1}: ${message.text}`);
-            }
-
-            // Save to server settings
-            await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
-            console.log(`Cyberpunk Agent | Server storage updated with message for both device perspectives`);
-
-            return true;
-        } catch (error) {
-            console.error(`Cyberpunk Agent | Error saving message to server as GM:`, error);
-            return false;
-        }
+        }, `save-msg-${message.id}`);
     }
 
     /**
@@ -8586,40 +8523,38 @@ class CyberpunkAgent {
             const serverMessages = game.settings.get('cyberpunk-agent', 'server-messages') || {};
             let totalDeleted = 0;
 
-            // For device-specific storage, we need to delete from both device perspectives
-            // Extract device IDs from conversation key (format: device-A-device-B)
-            const deviceIds = conversationKey.split('-');
-            if (deviceIds.length >= 2) {
-                const device1 = deviceIds[0];
-                const device2 = deviceIds.slice(1).join('-'); // Handle device IDs that might contain hyphens
+            // Parse the conversation key to get device IDs
+            const parsed = this._parseConversationKey(conversationKey);
+            
+            if (parsed) {
+                const { deviceId1, deviceId2 } = parsed;
 
-                // Get both device-specific conversation keys
-                const key1To2 = `${device1}-${device2}`;
-                const key2To1 = `${device2}-${device1}`;
-
-                console.log(`Cyberpunk Agent | Deleting messages from both device perspectives: ${key1To2} and ${key2To1}`);
+                // Get both device-specific conversation keys using the new format
+                const keys = this._getBothDeviceConversationKeys(deviceId1, deviceId2);
 
                 // Delete from first device's perspective
-                if (serverMessages[key1To2]) {
-                    const originalCount1 = serverMessages[key1To2].length;
-                    serverMessages[key1To2] = serverMessages[key1To2].filter(
+                if (serverMessages[keys.device1ToDevice2]) {
+                    const originalCount1 = serverMessages[keys.device1ToDevice2].length;
+                    serverMessages[keys.device1ToDevice2] = serverMessages[keys.device1ToDevice2].filter(
                         message => !messageIds.includes(message.id)
                     );
-                    const deleted1 = originalCount1 - serverMessages[key1To2].length;
+                    const deleted1 = originalCount1 - serverMessages[keys.device1ToDevice2].length;
                     totalDeleted += deleted1;
-                    console.log(`Cyberpunk Agent | Deleted ${deleted1} messages from ${key1To2}`);
                 }
 
                 // Delete from second device's perspective
-                if (serverMessages[key2To1]) {
-                    const originalCount2 = serverMessages[key2To1].length;
-                    serverMessages[key2To1] = serverMessages[key2To1].filter(
+                if (serverMessages[keys.device2ToDevice1]) {
+                    const originalCount2 = serverMessages[keys.device2ToDevice1].length;
+                    serverMessages[keys.device2ToDevice1] = serverMessages[keys.device2ToDevice1].filter(
                         message => !messageIds.includes(message.id)
                     );
-                    const deleted2 = originalCount2 - serverMessages[key2To1].length;
+                    const deleted2 = originalCount2 - serverMessages[keys.device2ToDevice1].length;
                     totalDeleted += deleted2;
-                    console.log(`Cyberpunk Agent | Deleted ${deleted2} messages from ${key2To1}`);
                 }
+
+                // Track deletions for sync purposes
+                await this._recordMessageDeletions(messageIds);
+
             } else {
                 // Fallback for non-device-specific keys
                 if (serverMessages[conversationKey]) {
@@ -8628,18 +8563,77 @@ class CyberpunkAgent {
                         message => !messageIds.includes(message.id)
                     );
                     totalDeleted = originalCount - serverMessages[conversationKey].length;
-                    console.log(`Cyberpunk Agent | Deleted ${totalDeleted} messages from ${conversationKey}`);
                 }
             }
 
-            // Save updated messages back to server
-            await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
-            console.log(`Cyberpunk Agent | GM deleted ${totalDeleted} messages from server storage`);
+            // Save updated messages back to server using write queue
+            await window.CyberpunkAgentWriteQueue.queueWrite('server-messages', async () => {
+                await game.settings.set('cyberpunk-agent', 'server-messages', serverMessages);
+            }, `delete-msgs-${Date.now()}`);
 
             return true;
         } catch (error) {
             console.error("Cyberpunk Agent | Error deleting messages from server as GM:", error);
             return false;
+        }
+    }
+
+    /**
+     * Record message deletions for sync tracking
+     */
+    async _recordMessageDeletions(messageIds) {
+        try {
+            if (!game.user.isGM) return;
+
+            const deletionRecords = game.settings.get('cyberpunk-agent', 'deletion-records') || {};
+            const now = Date.now();
+            const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+            // Add new deletion records
+            for (const id of messageIds) {
+                deletionRecords[id] = now;
+            }
+
+            // Clean up old records (older than 30 days)
+            for (const [id, timestamp] of Object.entries(deletionRecords)) {
+                if (timestamp < thirtyDaysAgo) {
+                    delete deletionRecords[id];
+                }
+            }
+
+            await game.settings.set('cyberpunk-agent', 'deletion-records', deletionRecords);
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error recording message deletions:", error);
+        }
+    }
+
+    /**
+     * Check for deleted messages during sync and remove them locally
+     */
+    async _syncDeletions() {
+        try {
+            const deletionRecords = game.settings.get('cyberpunk-agent', 'deletion-records') || {};
+            const deletedIds = Object.keys(deletionRecords);
+
+            if (deletedIds.length === 0) return;
+
+            let removedCount = 0;
+
+            // Remove deleted messages from local storage
+            for (const [key, messages] of this.messages.entries()) {
+                const originalCount = messages.length;
+                const filtered = messages.filter(msg => !deletedIds.includes(msg.id));
+                if (filtered.length < originalCount) {
+                    this.messages.set(key, filtered);
+                    removedCount += originalCount - filtered.length;
+                }
+            }
+
+            if (removedCount > 0) {
+                console.log(`Cyberpunk Agent | Synced ${removedCount} deleted messages from server`);
+            }
+        } catch (error) {
+            console.error("Cyberpunk Agent | Error syncing deletions:", error);
         }
     }
 

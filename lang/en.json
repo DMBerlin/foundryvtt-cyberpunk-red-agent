@@ -56,32 +56,119 @@
       "PLAYER_CHAT_NOTIFICATIONS": {
         "NAME": "Show Agent Notifications in Chat",
         "HINT": "Display a notification in Foundry chat when you send or receive an Agent message"
+      }
+    },
+    "GM_MANAGEMENT": {
+      "TITLE": "GM Chat7 Management",
+      "DESCRIPTION": "Use these tools to manage all Cyberpunk Agent data across all devices.",
+      "CLEAR_MESSAGES": {
+        "TITLE": "Clear All Messages",
+        "HINT": "Delete ALL chat message histories for ALL devices. This action cannot be undone.",
+        "BUTTON": "Clear All Messages",
+        "CONFIRM_TITLE": "Clear All Messages",
+        "CONFIRM_MESSAGE": "This will delete ALL chat message histories for ALL devices in the registry. This action cannot be undone. Are you sure?",
+        "SUCCESS": "All messages cleared successfully!",
+        "ERROR": "Error clearing all messages"
       },
-      "GM_DATA_MANAGEMENT": {
-        "TITLE": "GM Data Management",
-        "DESCRIPTION": "Manage all Cyberpunk Agent data across all devices in the registry",
-        "CLEAR_ALL_MESSAGES": {
-          "TITLE": "Clear All Messages",
-          "DESCRIPTION": "This will delete ALL chat message histories for ALL devices in the registry. This action cannot be undone.",
-          "BUTTON": "Clear All Messages",
-          "SUCCESS": "All messages cleared successfully!",
-          "ERROR": "Error clearing all messages: {error}"
+      "CLEAR_CONTACTS": {
+        "TITLE": "Clear All Contact Lists",
+        "HINT": "Clear contact lists from all devices. Devices will remain but contacts will be removed.",
+        "BUTTON": "Clear All Contacts",
+        "CONFIRM_TITLE": "Clear All Contact Lists",
+        "CONFIRM_MESSAGE": "This will clear all contact lists from all devices. Devices will remain but contacts will be removed. Are you sure?",
+        "SUCCESS": "All contact lists cleared successfully!",
+        "ERROR": "Error clearing contact lists"
+      },
+      "SYNC_DEVICES": {
+        "TITLE": "Synchronize All Devices",
+        "HINT": "Update device names, avatars, and ensure all devices have phone numbers.",
+        "BUTTON": "Synchronize Devices",
+        "CONFIRM_TITLE": "Master Synchronization",
+        "CONFIRM_MESSAGE": "This will update actor data, synchronize phone numbers, and sync all client message history from the server. Local-only messages may be lost. Continue?",
+        "SUCCESS": "Master synchronization completed!",
+        "ERROR": "Error during synchronization"
+      },
+      "MASTER_RESET": {
+        "TITLE": "Master Reset System",
+        "HINT": "DANGER: Completely reset the entire system - clears ALL messages, ALL contacts, and forces ALL clients to restart. This is IRREVERSIBLE!",
+        "BUTTON": "Master Reset",
+        "CONFIRM_TITLE": "Master Reset System",
+        "CONFIRM_MESSAGE": "This will completely reset the entire Cyberpunk Agent system. ALL messages, ALL contacts will be deleted, and ALL clients will be forced to restart. This action is IRREVERSIBLE! Are you absolutely sure?",
+        "SUCCESS": "Master reset completed.",
+        "ERROR": "Error during master reset"
+      }
+    },
+    "ZMAIL": {
+      "TITLE": "ZMail Management",
+      "DESCRIPTION": "Corporate messaging system for secure GM-to-player communications",
+      "STATS": {
+        "TOTAL": "Total Messages",
+        "UNREAD": "Unread",
+        "PLAYERS": "Active Players"
+      },
+      "TABS": {
+        "COMPOSE": "Compose",
+        "MANAGE": "Manage",
+        "RECENT": "Recent"
+      },
+      "COMPOSE": {
+        "RECIPIENT": "Recipient",
+        "RECIPIENT_PLACEHOLDER": "Choose a player...",
+        "NO_RECIPIENT": "No recipient selected",
+        "SENDER": "Sender",
+        "SENDER_PLACEHOLDER": "e.g., Corporate Security",
+        "SUBJECT": "Subject",
+        "SUBJECT_PLACEHOLDER": "Message subject...",
+        "CONTENT": "Message Content",
+        "CONTENT_PLACEHOLDER": "Enter your ZMail message content...",
+        "CONTENT_HINT": "HTML formatting supported. Players cannot reply to ZMail messages.",
+        "SEND": "Send ZMail",
+        "SENDING": "Sending...",
+        "SUCCESS": "ZMail sent successfully!",
+        "ERROR": "Error sending ZMail",
+        "VALIDATION": {
+          "NO_RECIPIENT": "Please select a recipient!",
+          "NO_SENDER": "Please enter a sender name!",
+          "NO_SUBJECT": "Please enter a subject!",
+          "NO_CONTENT": "Please enter message content!"
+        }
+      },
+      "MANAGE": {
+        "TITLE": "ZMail Management Actions",
+        "VIEW_ALL": {
+          "TITLE": "View All Messages",
+          "DESC": "Browse all sent ZMail messages"
         },
-        "CLEAR_ALL_CONTACT_LISTS": {
-          "TITLE": "Clear All Contact Lists",
-          "DESCRIPTION": "This will clear the contact list from all agent devices in the registry. This will remove all contacts but keep the devices themselves. This action cannot be undone.",
-          "BUTTON": "Clear All Contact Lists",
-          "SUCCESS": "All contact lists cleared successfully!",
-          "ERROR": "Error clearing all contact lists: {error}"
+        "MARK_READ": {
+          "TITLE": "Mark All as Read",
+          "DESC": "Mark all messages as read for all players",
+          "CONFIRM": "Are you sure you want to mark all ZMail messages as read?",
+          "SUCCESS": "{count} messages marked as read!"
         },
-        "SYNCHRONIZE_ALL_DEVICES": {
-          "TITLE": "Synchronize All Devices",
-          "DESCRIPTION": "This will synchronize all devices with the registry to ensure all devices have phone numbers attached to them. This will update any devices that are missing phone numbers.",
-          "BUTTON": "Synchronize All Devices",
-          "SUCCESS": "All devices synchronized successfully!",
-          "ERROR": "Error synchronizing all devices: {error}"
-        },
-        "WARNING": "Warning: These actions are irreversible and will affect all users in the game."
+        "CLEAR_OLD": {
+          "TITLE": "Clear Old Messages",
+          "DESC": "Remove messages older than 30 days",
+          "CONFIRM": "Are you sure you want to delete ZMail messages older than 30 days?",
+          "SUCCESS": "Old messages cleared successfully!",
+          "ERROR": "Error clearing old messages"
+        }
+      },
+      "RECENT": {
+        "TITLE": "Recent ZMail Messages",
+        "NO_MESSAGES": "No ZMail messages sent yet",
+        "NO_MESSAGES_HINT": "Start by composing your first ZMail message in the Compose tab.",
+        "TO": "To",
+        "VIEW": "View",
+        "COPY_LINK": "Copy Link",
+        "DELETE": "Delete",
+        "DELETE_CONFIRM": "Are you sure you want to delete this ZMail message?",
+        "DELETE_SUCCESS": "ZMail deleted successfully!",
+        "NOT_FOUND": "Message not found!"
+      },
+      "FOOTER": "ZMail is a secure, one-way messaging system. Players can read, mark as read, and delete messages, but cannot reply.",
+      "STATUS": {
+        "READ": "Read",
+        "UNREAD": "Unread"
       }
     }
   }

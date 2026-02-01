@@ -1,56 +1,52 @@
 <form class="gm-data-management-form">
-  <div class="form-group">
-    <h2>GM Chat7 Management</h2>
-    <p class="notes">Use these tools to manage all Cyberpunk Agent data across all devices in the registry.</p>
-  </div>
+  <header class="form-header flexrow">
+    <h2><i class="fas fa-mobile-alt"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.TITLE"}}</h2>
+  </header>
 
-  <div class="form-group">
-    <h3>Clear All Messages</h3>
-    <p class="notes">This will delete ALL chat message histories for ALL devices in the registry. This action cannot be
-      undone.</p>
-    <button type="button" class="clear-all-messages"
-      style="background-color: #ff6b6b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
-      <i class="fas fa-trash"></i> Clear All Messages
-    </button>
-  </div>
+  <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.DESCRIPTION"}}</p>
 
-  <div class="form-group">
-    <h3>Clear All Contact Lists</h3>
-    <p class="notes">This will clear the contact list from all agent devices in the registry. This will remove all
-      contacts but keep the devices themselves. This action cannot be undone.</p>
-    <button type="button" class="clear-all-contact-lists"
-      style="background-color: #ffa502; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
-      <i class="fas fa-address-book"></i> Clear All Contact Lists
-    </button>
-  </div>
+  <section class="form-group">
+    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.TITLE"}}</label>
+      <button type="button" class="clear-all-messages" style="flex: 0 0 auto;">
+        <i class="fas fa-trash"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.BUTTON"}}
+      </button>
+    </div>
+    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.HINT"}}</p>
+  </section>
 
-  <div class="form-group">
-    <h3>Synchronize All Devices</h3>
-    <p class="notes">This will synchronize all devices with the registry to ensure all devices have phone numbers
-      attached to them. This will update any devices that are missing phone numbers.</p>
-    <button type="button" class="synchronize-all-devices"
-      style="background-color: #2ed573; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
-      <i class="fas fa-sync"></i> Synchronize All Devices
-    </button>
-  </div>
+  <section class="form-group">
+    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.TITLE"}}</label>
+      <button type="button" class="clear-all-contact-lists" style="flex: 0 0 auto;">
+        <i class="fas fa-address-book"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.BUTTON"}}
+      </button>
+    </div>
+    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.HINT"}}</p>
+  </section>
 
-  <div class="form-group">
-    <h3>Master Reset System</h3>
-    <p class="notes" style="color: #e74c3c; font-weight: bold;">
-      <i class="fas fa-exclamation-triangle"></i>
-      This will completely reset the entire Cyberpunk Agent system: clear ALL messages, ALL contact lists, and force ALL
-      clients to restart. This action is IRREVERSIBLE and will affect ALL users!
-    </p>
-    <button type="button" class="master-reset-system"
-      style="background-color: #ff3838; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-      <i class="fas fa-nuclear"></i> Master Reset System
-    </button>
-  </div>
+  <section class="form-group">
+    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.TITLE"}}</label>
+      <button type="button" class="synchronize-all-devices" style="flex: 0 0 auto;">
+        <i class="fas fa-sync"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.BUTTON"}}
+      </button>
+    </div>
+    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.HINT"}}</p>
+  </section>
 
-  <div class="form-group">
-    <p class="notes" style="color: #e74c3c; font-weight: bold;">
-      <i class="fas fa-exclamation-triangle"></i>
-      Warning: These actions are irreversible and will affect all users in the game.
-    </p>
-  </div>
+  <hr>
+
+  <section class="form-group">
+    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+      <label style="flex: 1; margin: 0; color: var(--color-level-error);">
+        <i class="fas fa-exclamation-triangle"></i>
+        {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.TITLE"}}
+      </label>
+      <button type="button" class="master-reset-system" style="flex: 0 0 auto; background: var(--color-level-error); color: var(--color-text-light-highlight);">
+        <i class="fas fa-skull"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.BUTTON"}}
+      </button>
+    </div>
+    <p class="hint" style="color: var(--color-level-error);">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.HINT"}}</p>
+  </section>
 </form>

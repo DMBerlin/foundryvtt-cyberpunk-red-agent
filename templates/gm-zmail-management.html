@@ -1,216 +1,140 @@
-<div class="gm-zmail-management">
-  <!-- Header -->
-  <div class="zmail-header">
-    <div class="zmail-header-icon">
-      <i class="fas fa-envelope"></i>
-    </div>
-    <div class="zmail-header-content">
-      <h1>ZMail Management</h1>
-      <p>Corporate messaging system for secure GM-to-player communications</p>
-    </div>
-  </div>
+<form class="gm-zmail-management">
+  <header class="form-header flexrow">
+    <h2><i class="fas fa-envelope"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.TITLE"}}</h2>
+  </header>
+
+  <p class="notes">{{localize "CYBERPUNK_AGENT.ZMAIL.DESCRIPTION"}}</p>
 
   <!-- Quick Stats -->
-  <div class="zmail-quick-stats">
-    <div class="zmail-stat-card">
-      <div class="zmail-stat-icon">
-        <i class="fas fa-envelope"></i>
-      </div>
-      <div class="zmail-stat-content">
-        <div class="zmail-stat-number">{{totalMessages}}</div>
-        <div class="zmail-stat-label">Total Messages</div>
-      </div>
+  <div class="flexrow" style="gap: 1rem; margin-bottom: 1rem;">
+    <div class="form-group" style="flex: 1; text-align: center; padding: 0.5rem; border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; background: var(--color-bg-option);">
+      <label style="margin: 0; color: var(--color-text-dark-primary);"><i class="fas fa-envelope"></i> {{totalMessages}}</label>
+      <p class="hint" style="margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.STATS.TOTAL"}}</p>
     </div>
-    <div class="zmail-stat-card">
-      <div class="zmail-stat-icon">
-        <i class="fas fa-envelope-open"></i>
-      </div>
-      <div class="zmail-stat-content">
-        <div class="zmail-stat-number">{{unreadMessages}}</div>
-        <div class="zmail-stat-label">Unread</div>
-      </div>
+    <div class="form-group" style="flex: 1; text-align: center; padding: 0.5rem; border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; background: var(--color-bg-option);">
+      <label style="margin: 0; color: var(--color-text-dark-primary);"><i class="fas fa-envelope-open"></i> {{unreadMessages}}</label>
+      <p class="hint" style="margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.STATS.UNREAD"}}</p>
     </div>
-    <div class="zmail-stat-card">
-      <div class="zmail-stat-icon">
-        <i class="fas fa-users"></i>
-      </div>
-      <div class="zmail-stat-content">
-        <div class="zmail-stat-number">{{activePlayers}}</div>
-        <div class="zmail-stat-label">Active Players</div>
-      </div>
+    <div class="form-group" style="flex: 1; text-align: center; padding: 0.5rem; border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; background: var(--color-bg-option);">
+      <label style="margin: 0; color: var(--color-text-dark-primary);"><i class="fas fa-users"></i> {{activePlayers}}</label>
+      <p class="hint" style="margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.STATS.PLAYERS"}}</p>
     </div>
   </div>
 
-  <!-- Main Content Tabs -->
-  <div class="zmail-tabs">
-    <div class="zmail-tab-nav">
-      <button class="zmail-tab-btn active" data-tab="compose">
-        <i class="fas fa-edit"></i> Compose
-      </button>
-      <button class="zmail-tab-btn" data-tab="manage">
-        <i class="fas fa-cog"></i> Manage
-      </button>
-      <button class="zmail-tab-btn" data-tab="recent">
-        <i class="fas fa-history"></i> Recent
-      </button>
+  <!-- Tabs -->
+  <nav class="sheet-tabs tabs" data-group="zmail-tabs">
+    <a class="item active" data-tab="compose"><i class="fas fa-edit"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.TABS.COMPOSE"}}</a>
+    <a class="item" data-tab="manage"><i class="fas fa-cog"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.TABS.MANAGE"}}</a>
+    <a class="item" data-tab="recent"><i class="fas fa-history"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.TABS.RECENT"}}</a>
+  </nav>
+
+  <!-- Compose Tab -->
+  <section class="tab active" data-tab="compose" data-group="zmail-tabs">
+    <div class="form-group">
+      <label for="zmail-recipient"><i class="fas fa-user"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.RECIPIENT"}}</label>
+      <select id="zmail-recipient" name="recipient" required>
+        <option value="">{{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.RECIPIENT_PLACEHOLDER"}}</option>
+        {{#each players}}
+        <option value="{{deviceId}}" data-actor-name="{{actorName}}">
+          {{actorName}} ({{deviceName}})
+        </option>
+        {{/each}}
+      </select>
     </div>
 
-    <!-- Compose Tab -->
-    <div class="zmail-tab-content active" id="compose-tab">
-      <form class="zmail-compose-form">
-        <div class="zmail-compose-grid">
-          <!-- Recipient Selection -->
-          <div class="zmail-form-group zmail-form-group-wide">
-            <label for="zmail-recipient">
-              <i class="fas fa-user"></i> Recipient
-            </label>
-            <div class="zmail-select-wrapper">
-              <select id="zmail-recipient" name="recipient" required>
-                <option value="">Choose a player...</option>
-                {{#each players}}
-                <option value="{{deviceId}}" data-actor-name="{{actorName}}">
-                  {{actorName}} ({{deviceName}})
-                </option>
-                {{/each}}
-              </select>
-              <div class="zmail-selected-recipient" id="selected-recipient-display">
-                <i class="fas fa-user-circle"></i>
-                <span>No recipient selected</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Sender -->
-          <div class="zmail-form-group">
-            <label for="zmail-sender">
-              <i class="fas fa-building"></i> Sender
-            </label>
-            <input type="text" id="zmail-sender" name="sender" placeholder="e.g., Corporate Security" required>
-          </div>
-
-          <!-- Subject -->
-          <div class="zmail-form-group">
-            <label for="zmail-subject">
-              <i class="fas fa-tag"></i> Subject
-            </label>
-            <input type="text" id="zmail-subject" name="subject" placeholder="Message subject..." required>
-          </div>
-
-          <!-- Message Content -->
-          <div class="zmail-form-group zmail-form-group-wide">
-            <label for="zmail-content">
-              <i class="fas fa-align-left"></i> Message Content
-            </label>
-            <textarea id="zmail-content" name="content" rows="6" placeholder="Enter your ZMail message content..."
-              required></textarea>
-            <div class="zmail-content-hint">
-              <i class="fas fa-info-circle"></i>
-              HTML formatting supported. Players cannot reply to ZMail messages.
-            </div>
-          </div>
-        </div>
-
-        <div class="zmail-compose-actions">
-          <button type="button" class="zmail-send-btn" id="send-zmail-btn">
-            <i class="fas fa-paper-plane"></i>
-            <span>Send ZMail</span>
-          </button>
-        </div>
-      </form>
+    <div class="form-group">
+      <label for="zmail-sender"><i class="fas fa-building"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.SENDER"}}</label>
+      <input type="text" id="zmail-sender" name="sender" placeholder="{{localize 'CYBERPUNK_AGENT.ZMAIL.COMPOSE.SENDER_PLACEHOLDER'}}" required>
     </div>
 
-    <!-- Manage Tab -->
-    <div class="zmail-tab-content" id="manage-tab">
-      <div class="zmail-management-section">
-        <h3>ZMail Management Actions</h3>
-        <div class="zmail-management-grid">
-          <button type="button" class="zmail-management-btn" data-action="view-all-messages">
-            <div class="zmail-management-icon">
-              <i class="fas fa-list"></i>
-            </div>
-            <div class="zmail-management-content">
-              <div class="zmail-management-title">View All Messages</div>
-              <div class="zmail-management-desc">Browse all sent ZMail messages</div>
-            </div>
-          </button>
+    <div class="form-group">
+      <label for="zmail-subject"><i class="fas fa-tag"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.SUBJECT"}}</label>
+      <input type="text" id="zmail-subject" name="subject" placeholder="{{localize 'CYBERPUNK_AGENT.ZMAIL.COMPOSE.SUBJECT_PLACEHOLDER'}}" required>
+    </div>
 
-          <button type="button" class="zmail-management-btn" data-action="mark-all-read">
-            <div class="zmail-management-icon">
-              <i class="fas fa-check-double"></i>
-            </div>
-            <div class="zmail-management-content">
-              <div class="zmail-management-title">Mark All as Read</div>
-              <div class="zmail-management-desc">Mark all messages as read for all players</div>
-            </div>
-          </button>
+    <div class="form-group stacked">
+      <label for="zmail-content"><i class="fas fa-align-left"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.CONTENT"}}</label>
+      <textarea id="zmail-content" name="content" rows="6" placeholder="{{localize 'CYBERPUNK_AGENT.ZMAIL.COMPOSE.CONTENT_PLACEHOLDER'}}" required></textarea>
+      <p class="hint"><i class="fas fa-info-circle"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.CONTENT_HINT"}}</p>
+    </div>
 
-          <button type="button" class="zmail-management-btn" data-action="clear-old-messages">
-            <div class="zmail-management-icon">
-              <i class="fas fa-trash"></i>
-            </div>
-            <div class="zmail-management-content">
-              <div class="zmail-management-title">Clear Old Messages</div>
-              <div class="zmail-management-desc">Remove messages older than 30 days</div>
-            </div>
+    <div class="form-group">
+      <button type="button" class="send-zmail-btn" id="send-zmail-btn">
+        <i class="fas fa-paper-plane"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.COMPOSE.SEND"}}
+      </button>
+    </div>
+  </section>
+
+  <!-- Manage Tab -->
+  <section class="tab" data-tab="manage" data-group="zmail-tabs">
+    <h3>{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.TITLE"}}</h3>
+    
+    <div class="form-group">
+      <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+        <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.VIEW_ALL.TITLE"}}</label>
+        <button type="button" class="zmail-management-btn" data-action="view-all-messages" style="flex: 0 0 auto;">
+          <i class="fas fa-list"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.VIEW_ALL.TITLE"}}
+        </button>
+      </div>
+      <p class="hint">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.VIEW_ALL.DESC"}}</p>
+    </div>
+
+    <div class="form-group">
+      <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+        <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.TITLE"}}</label>
+        <button type="button" class="zmail-management-btn" data-action="mark-all-read" style="flex: 0 0 auto;">
+          <i class="fas fa-check-double"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.TITLE"}}
+        </button>
+      </div>
+      <p class="hint">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.MARK_READ.DESC"}}</p>
+    </div>
+
+    <div class="form-group">
+      <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
+        <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.TITLE"}}</label>
+        <button type="button" class="zmail-management-btn" data-action="clear-old-messages" style="flex: 0 0 auto;">
+          <i class="fas fa-trash"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.TITLE"}}
+        </button>
+      </div>
+      <p class="hint">{{localize "CYBERPUNK_AGENT.ZMAIL.MANAGE.CLEAR_OLD.DESC"}}</p>
+    </div>
+  </section>
+
+  <!-- Recent Tab -->
+  <section class="tab" data-tab="recent" data-group="zmail-tabs">
+    <h3>{{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.TITLE"}}</h3>
+    
+    {{#if recentMessages.length}}
+    <div class="zmail-recent-list" style="max-height: 300px; overflow-y: auto;">
+      {{#each recentMessages}}
+      <div class="zmail-recent-item" style="border: 1px solid var(--color-border-light-tertiary); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; background: var(--color-bg-option);">
+        <div class="flexrow" style="justify-content: space-between; margin-bottom: 0.25rem;">
+          <strong style="color: var(--color-text-dark-primary);"><i class="fas fa-building"></i> {{sender}}</strong>
+          <small style="color: var(--color-text-dark-secondary);">{{time}}</small>
+        </div>
+        <div style="font-weight: 600; color: var(--color-text-dark-primary);">{{subject}}</div>
+        <div style="font-size: 0.9em; color: var(--color-text-dark-secondary);"><i class="fas fa-user"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.TO"}}: {{recipientName}}</div>
+        <div class="flexrow" style="gap: 0.5rem; margin-top: 0.5rem;">
+          <button type="button" class="zmail-recent-action" data-action="view-message" data-message-id="{{id}}">
+            <i class="fas fa-eye"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.VIEW"}}
+          </button>
+          <button type="button" class="zmail-recent-action" data-action="delete-message" data-message-id="{{id}}">
+            <i class="fas fa-trash"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.DELETE"}}
           </button>
         </div>
       </div>
+      {{/each}}
     </div>
+    {{else}}
+    <div style="text-align: center; padding: 2rem; color: var(--color-text-dark-secondary);">
+      <i class="fas fa-inbox fa-3x"></i>
+      <h4 style="color: var(--color-text-dark-primary);">{{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.NO_MESSAGES"}}</h4>
+      <p class="notes">{{localize "CYBERPUNK_AGENT.ZMAIL.RECENT.NO_MESSAGES_HINT"}}</p>
+    </div>
+    {{/if}}
+  </section>
 
-    <!-- Recent Tab -->
-    <div class="zmail-tab-content" id="recent-tab">
-      <div class="zmail-recent-section">
-        <h3>Recent ZMail Messages</h3>
-        <div class="zmail-recent-messages">
-          {{#if recentMessages.length}}
-          {{#each recentMessages}}
-          <div class="zmail-recent-item">
-            <div class="zmail-recent-header">
-              <div class="zmail-recent-sender">
-                <i class="fas fa-building"></i>
-                <span>{{sender}}</span>
-              </div>
-              <div class="zmail-recent-time">{{time}}</div>
-            </div>
-            <div class="zmail-recent-subject">{{subject}}</div>
-            <div class="zmail-recent-recipient">
-              <i class="fas fa-user"></i>
-              <span>To: {{recipientName}}</span>
-            </div>
-            <div class="zmail-recent-actions">
-              <button class="zmail-recent-action" data-action="view-message" data-message-id="{{id}}">
-                <i class="fas fa-eye"></i> View
-              </button>
-              <button class="zmail-recent-action" data-action="copy-link" data-message-id="{{id}}"
-                title="Copy ZMail Link">
-                <i class="fas fa-link"></i> Copy Link
-              </button>
-              <button class="zmail-recent-action" data-action="delete-message" data-message-id="{{id}}">
-                <i class="fas fa-trash"></i> Delete
-              </button>
-            </div>
-          </div>
-          {{/each}}
-          {{else}}
-          <div class="zmail-no-recent">
-            <div class="zmail-no-recent-icon">
-              <i class="fas fa-inbox"></i>
-            </div>
-            <h4>No ZMail messages sent yet</h4>
-            <p>Start by composing your first ZMail message in the Compose tab.</p>
-          </div>
-          {{/if}}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer Info -->
-  <div class="zmail-footer">
-    <div class="zmail-footer-info">
-      <i class="fas fa-shield-alt"></i>
-      <span>ZMail is a secure, one-way messaging system. Players can read, mark as read, and delete messages, but cannot
-        reply.</span>
-    </div>
-  </div>
-</div>
+  <footer class="sheet-footer" style="margin-top: 1rem;">
+    <p class="notes"><i class="fas fa-shield-alt"></i> {{localize "CYBERPUNK_AGENT.ZMAIL.FOOTER"}}</p>
+  </footer>
+</form>
