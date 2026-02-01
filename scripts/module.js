@@ -2417,14 +2417,14 @@ class CyberpunkAgent {
             default: true
         });
 
-        // Token controls toolbar button setting (client-scoped, enabled by default)
+        // Token controls toolbar button setting (client-scoped, disabled by default)
         game.settings.register('cyberpunk-agent', 'enable-token-controls-button', {
             name: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_CONTROLS_BUTTON.NAME'),
             hint: game.i18n.localize('CYBERPUNK_AGENT.SETTINGS.ENABLE_TOKEN_CONTROLS_BUTTON.HINT'),
             scope: 'client',
             config: true,
             type: Boolean,
-            default: true
+            default: false
         });
 
         // FAB position setting (client-scoped, hidden)

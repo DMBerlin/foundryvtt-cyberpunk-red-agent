@@ -1,52 +1,56 @@
 <form class="gm-data-management-form">
-  <header class="form-header flexrow">
-    <h2><i class="fas fa-mobile-alt"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.TITLE"}}</h2>
+  <header class="sheet-header">
+    <h1 class="gm-management-title">
+      <i class="fas fa-mobile-alt"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.TITLE"}}
+    </h1>
   </header>
 
-  <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.DESCRIPTION"}}</p>
+  <section class="sheet-body">
+    <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.DESCRIPTION"}}</p>
 
-  <section class="form-group">
-    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
-      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.TITLE"}}</label>
-      <button type="button" class="clear-all-messages" style="flex: 0 0 auto;">
-        <i class="fas fa-trash"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.BUTTON"}}
-      </button>
+    <div class="form-group">
+      <div class="form-fields flexrow">
+        <label class="gm-management-label">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.TITLE"}}</label>
+        <button type="button" class="clear-all-messages">
+          <i class="fas fa-trash"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.BUTTON"}}
+        </button>
+      </div>
+      <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.HINT"}}</p>
     </div>
-    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_MESSAGES.HINT"}}</p>
-  </section>
 
-  <section class="form-group">
-    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
-      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.TITLE"}}</label>
-      <button type="button" class="clear-all-contact-lists" style="flex: 0 0 auto;">
-        <i class="fas fa-address-book"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.BUTTON"}}
-      </button>
+    <div class="form-group">
+      <div class="form-fields flexrow">
+        <label class="gm-management-label">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.TITLE"}}</label>
+        <button type="button" class="clear-all-contact-lists">
+          <i class="fas fa-address-book"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.BUTTON"}}
+        </button>
+      </div>
+      <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.HINT"}}</p>
     </div>
-    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.CLEAR_CONTACTS.HINT"}}</p>
-  </section>
 
-  <section class="form-group">
-    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
-      <label style="flex: 1; margin: 0;">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.TITLE"}}</label>
-      <button type="button" class="synchronize-all-devices" style="flex: 0 0 auto;">
-        <i class="fas fa-sync"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.BUTTON"}}
-      </button>
+    <div class="form-group">
+      <div class="form-fields flexrow">
+        <label class="gm-management-label">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.TITLE"}}</label>
+        <button type="button" class="synchronize-all-devices">
+          <i class="fas fa-sync"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.BUTTON"}}
+        </button>
+      </div>
+      <p class="notes">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.HINT"}}</p>
     </div>
-    <p class="hint">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.SYNC_DEVICES.HINT"}}</p>
-  </section>
 
-  <hr>
+    <hr>
 
-  <section class="form-group">
-    <div class="form-fields flexrow" style="justify-content: space-between; align-items: center;">
-      <label style="flex: 1; margin: 0; color: var(--color-level-error);">
-        <i class="fas fa-exclamation-triangle"></i>
-        {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.TITLE"}}
-      </label>
-      <button type="button" class="master-reset-system" style="flex: 0 0 auto; background: var(--color-level-error); color: var(--color-text-light-highlight);">
-        <i class="fas fa-skull"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.BUTTON"}}
-      </button>
+    <div class="form-group gm-management-danger">
+      <div class="form-fields flexrow">
+        <label class="gm-management-label gm-management-label-danger">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.TITLE"}}
+        </label>
+        <button type="button" class="master-reset-system">
+          <i class="fas fa-skull"></i> {{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.BUTTON"}}
+        </button>
+      </div>
+      <p class="notes gm-management-hint-danger">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.HINT"}}</p>
     </div>
-    <p class="hint" style="color: var(--color-level-error);">{{localize "CYBERPUNK_AGENT.GM_MANAGEMENT.MASTER_RESET.HINT"}}</p>
   </section>
 </form>
