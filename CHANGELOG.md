@@ -2,6 +2,84 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.2.0] - 2026-02-28
+
+### Added
+- **Foundry v12 Compatibility**: Full support for FoundryVTT v12
+  - Updated `module.json` compatibility (minimum v10, verified v12)
+  - Replaced deprecated `mergeObject` with `foundry.utils.mergeObject`
+  - Updated `CONST.CHAT_MESSAGE_TYPES` to `CONST.CHAT_MESSAGE_STYLES` for v12 chat API
+
+- **Floating Action Button (FAB)**: Quick-access Agent button on the canvas
+  - Cyberpunk 2077-styled draggable button with red/blue color scheme
+  - Glitch animation on click with scanline and digital noise overlays
+  - Position persisted per-user; toggleable via `enable-fab-button` setting
+  - Single actor opens directly; multiple actors shows selection menu
+
+- **Token HUD Button**: Agent access from token right-click menu
+  - Button appears when right-clicking tokens whose actors have equipped Agents
+  - Opens Agent for that specific token's actor directly (no selection dialog)
+  - Toggleable via `enable-token-hud-button` setting
+
+- **Configurable Notification System**: User-controlled notification channels
+  - **Sound**: `notification-sound` setting (default: ON)
+  - **Toast**: `toast-notifications` setting (default: OFF)
+  - **Foundry Chat**: `player-chat-notifications` setting (default: ON) — Cyberpunk-styled messages in chat sidebar
+  - Smart suppression: no notifications when viewing active conversation, contact muted, or within cooldown
+
+- **GM Offline Resilience**: Operation queueing when GM is disconnected
+  - Detects GM online/offline status via `userConnected` hook
+  - Queues messages, contact adds/removes, and read status when GM offline
+  - Replays queued operations when GM reconnects
+  - UI indicator (⚠️) shows "Sync Paused" and pending operation count
+  - Operations stored in localStorage for persistence across page refresh
+
+- **Mook Actor Support**: Agent detection now supports mook (NPC) actors in addition to characters
+
+### Enhanced
+- **UIController**: Incremental DOM updates instead of full re-renders
+  - `newMessage` type: appends messages without full render, preserves scroll
+  - `unreadCount` type: updates badges without re-rendering conversation
+  - `full` type: full render for contact list changes
+  - Reduced debounce from 1000ms to 200ms for real-time updates
+
+- **Scroll Behavior**: Simplified and reliable conversation scrolling
+  - Persist scroll position when leaving conversation (back button)
+  - Scroll to bottom when sending or receiving messages
+  - Per-conversation scroll position stored in `_conversationScrollPositions`
+  - Removed CSS `scroll-behavior: smooth` for instant positioning
+
+- **Messaging Architecture**: Race condition and sync improvements
+  - `WriteQueueManager` serializes GM writes to prevent concurrent `game.settings.set()` conflicts
+  - Conversation keys use `|` pipe delimiter (legacy `-` keys auto-migrated)
+  - `deletion-records` setting with 30-day retention for cross-client deletion sync
+
+- **GM Management UI**: Updated to Foundry v12 standards
+  - Theme-aware colors for ZMail form and Send button
+  - Improved text readability in GM management interfaces
+  - Updated default notification settings
+
+### Fixed
+- **Toolbar Button**: Agent icon in scene controls now works reliably
+  - Use DOM event listener instead of Foundry onClick (survives re-renders)
+  - Button only appears when user has actors with equipped Agents
+  - Correct ownership level check (3=OWNER, not 1)
+  - Hook registration moved to `init` for earlier availability
+  - Force controls update after instance creation
+
+- **FAB Visibility**: FAB now appends to `body` instead of `#ui-bottom` for reliable display
+- **Notification Deduplication**: Separate deduplication for notifications vs. debug logs
+- **Player Chat Notifications**: Only sent to message receiver, hidden from GM settings
+- **Input Focus**: Persisted after sending message (no focus loss)
+- **Real-time UI Updates**: UI updates even when message was already processed
+- **Device Property Access**: Fixed in GM agent selection menu
+
+### Technical
+- Added `CLAUDE.md` for AI assistant context
+- Makefile with `make start`/`make stop` for local development
+- Removed obsolete docs and config files (contact-search, hintrc, dev-copy.bat)
+- Comprehensive v12 upgrade roadmap documentation
+
 ## [5.0.0] - 2025-01-27
 
 ### Added
