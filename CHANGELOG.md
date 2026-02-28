@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [5.2.0] - 2026-02-28
+## [6.0.0] - 2026-02-28
 
 ### Added
 - **Foundry v12 Compatibility**: Full support for FoundryVTT v12
